@@ -1,4 +1,6 @@
-﻿using MudBlazor.Services;
+﻿using Genoma.Data;
+using Microsoft.EntityFrameworkCore;
+using MudBlazor.Services;
 
 namespace Genoma;
 
@@ -16,6 +18,12 @@ public static class MauiProgram
 
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddMudServices();
+
+        var connectionString = "Server=127.0.0.1;Port=3306;Database=genoma_db;User=root;Password=root;";
+
+        builder.Services.AddDbContext<GenomaContext>(options =>
+            options.UseMySql(connectionString,
+                ServerVersion.AutoDetect(connectionString)));
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
