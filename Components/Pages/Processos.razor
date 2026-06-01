@@ -31,6 +31,7 @@
         <HeaderContent>
             <MudTh>N.º Processo</MudTh>
             <MudTh>Paciente</MudTh>
+            <MudTh>Teste</MudTh>
             <MudTh>Data Entrada</MudTh>
             <MudTh>Notas</MudTh>
             <MudTh>Ações</MudTh>
@@ -38,6 +39,7 @@
         <RowTemplate>
             <MudTd>@context.NumeroProcesso</MudTd>
             <MudTd>@(context.Paciente?.Nome ?? "—")</MudTd>
+            <MudTd>@(context.Teste?.Nome ?? "—")</MudTd>
             <MudTd>@context.DataEntrada.ToString("dd/MM/yyyy")</MudTd>
             <MudTd>@(context.Notas ?? "—")</MudTd>
             <MudTd>
@@ -80,6 +82,7 @@
             todos = await DB.Processos
                 .AsNoTracking()
                 .Include(p => p.Paciente)
+                .Include(p => p.Teste)
                 .Where(p => p.Ativo)
                 .OrderByDescending(p => p.DataEntrada)
                 .ToListAsync();

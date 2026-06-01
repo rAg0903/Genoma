@@ -1,4 +1,5 @@
 ﻿using Genoma.Data;
+using Genoma.Services;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 
@@ -24,6 +25,8 @@ public static class MauiProgram
 
         builder.Services.AddDbContext<GenomaContext>(options =>
             options.UseMySql(connectionString, serverVersion));
+
+        builder.Services.AddSingleton<IAnexoService, AnexoService>();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();

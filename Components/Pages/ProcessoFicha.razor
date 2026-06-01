@@ -24,7 +24,26 @@
             <MudTextField @bind-Value="numeroProcesso" Label="N.º Processo" ReadOnly="true" />
         </MudItem>
         <MudItem xs="12" md="6">
+            <MudSelect Value="testeId" ValueChanged="@((string? id) => OnTesteAlterado(id))" Label="Teste genético" Clearable="true">
+                @foreach (var t in testes)
+                {
+                    <MudSelectItem Value="@t.Id">@t.Nome (@t.Preco.ToString("N2") €)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudSelect @bind-Value="postoId" Label="Posto de colheita" Clearable="true">
+                @foreach (var p in postos)
+                {
+                    <MudSelectItem Value="@p.Id">@p.Nome</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="6">
             <MudDatePicker @bind-Date="dataEntrada" Label="Data de Entrada" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudNumericField @bind-Value="precoTeste" Label="Preço (€)" Min="0" />
         </MudItem>
         <MudItem xs="12">
             <MudTextField @bind-Value="notas" Label="Notas" Lines="3" />
@@ -45,23 +64,34 @@
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
 
     private List<Paciente> pacientes = new();
+    private List<Teste> testes = new();
+    private List<Posto> postos = new();
     private string? pacienteId;
+    private string? testeId;
+    private string? postoId;
     private string numeroProcesso = string.Empty;
     private DateTime? dataEntrada = DateTime.Today;
+    private decimal precoTeste;
     private string? notas;
     private string? erro;
     private bool aGuardar;
 
     protected override async Task OnInitializedAsync()
     {
-        pacientes = await DB.Pacientes
-            .AsNoTracking()
-            .Where(p => p.Ativo)
-            .OrderBy(p => p.Nome)
-            .ToListAsync();
+        pacientes = await DB.Pacientes.AsNoTracking().Where(p => p.Ativo).OrderBy(p => p.Nome).ToListAsync();
+        testes = await DB.Testes.AsNoTracking().Where(t => t.Ativo).OrderBy(t => t.Nome).ToListAsync();
+        postos = await DB.Postos.AsNoTracking().OrderBy(p => p.Nome).ToListAsync();
 
         var count = await DB.Processos.CountAsync() + 1;
         numeroProcesso = $"P{DateTime.Now:yyyyMMdd}-{count:D4}";
+    }
+
+    private void OnTesteAlterado(string? id)
+    {
+        testeId = id;
+        var teste = testes.FirstOrDefault(t => t.Id == id);
+        if (teste != null)
+            precoTeste = teste.Preco;
     }
 
     private async Task Guardar()
@@ -77,33 +107,31 @@
 
         try
         {
+            if (!string.IsNullOrEmpty(testeId))
+            {
+                var (ok, msg) = await StockService.DescontarPorTesteAsync(DB, testeId);
+                if (!ok)
+                {
+                    Snackbar.Add(msg ?? "Stock insuficiente.", Severity.Error);
+                    return;
+                }
+            }
+
             var processoId = Guid.NewGuid().ToString();
-            var processo = new Processo
+            DB.Processos.Add(new Processo
             {
                 Id = processoId,
                 NumeroProcesso = numeroProcesso,
                 PacienteId = pacienteId,
+                TesteId = testeId,
+                PostoId = postoId,
                 DataEntrada = dataEntrada ?? DateTime.Today,
                 Notas = notas,
                 Ativo = true
-            };
-
-            DB.Processos.Add(processo);
-            DB.InformacaoClinica.Add(new InformacaoClinica
-            {
-                Id = Guid.NewGuid().ToString(),
-                ProcessoId = processoId
             });
-            DB.Colheitas.Add(new Colheita
-            {
-                Id = Guid.NewGuid().ToString(),
-                ProcessoId = processoId
-            });
-            DB.Facturacao.Add(new Facturacao
-            {
-                Id = Guid.NewGuid().ToString(),
-                ProcessoId = processoId
-            });
+            DB.InformacaoClinica.Add(new InformacaoClinica { Id = Guid.NewGuid().ToString(), ProcessoId = processoId });
+            DB.Colheitas.Add(new Colheita { Id = Guid.NewGuid().ToString(), ProcessoId = processoId, PostoId = postoId });
+            DB.Facturacao.Add(new Facturacao { Id = Guid.NewGuid().ToString(), ProcessoId = processoId, PrecoTeste = precoTeste });
 
             await DB.SaveChangesAsync();
             Snackbar.Add("Processo criado.", Severity.Success);

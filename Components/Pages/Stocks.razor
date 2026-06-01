@@ -1,0 +1,178 @@
+@page "/stocks"
+
+<MudText Typo="Typo.h4" Class="mb-2">Stocks</MudText>
+<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
+    Inventário de kits e reagentes
+</MudText>
+
+@if (!string.IsNullOrEmpty(erro))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
+}
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Itens ativos</MudText>
+            <MudText Typo="Typo.h5">@stocks.Count</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Stock baixo</MudText>
+            <MudText Typo="Typo.h5" Color="Color.Warning">@stocks.Count(s => s.Quantidade <= s.QuantidadeMinima)</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudPaper Elevation="2" Class="pa-4">
+    <MudStack Row="true" Class="mb-4">
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => AbrirDialogo())">Novo Item</MudButton>
+    </MudStack>
+
+    <MudTable Items="@stocks" Hover="true" Striped="true" Loading="@carregando">
+        <HeaderContent>
+            <MudTh>Nome</MudTh>
+            <MudTh>Teste ligado</MudTh>
+            <MudTh>Quantidade</MudTh>
+            <MudTh>Mínimo</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh>Ações</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Nome</MudTd>
+            <MudTd>@(context.Teste?.Nome ?? "—")</MudTd>
+            <MudTd>@context.Quantidade</MudTd>
+            <MudTd>@context.QuantidadeMinima</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(context.Quantidade <= context.QuantidadeMinima ? Color.Warning : Color.Success)">
+                    @(context.Quantidade <= context.QuantidadeMinima ? "Baixo" : "OK")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Add" title="Repor +1"
+                               Color="Color.Success" Size="Size.Small"
+                               OnClick="@(() => AjustarStock(context.Id, 1))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Remove" title="Retirar -1"
+                               Color="Color.Warning" Size="Size.Small"
+                               OnClick="@(() => AjustarStock(context.Id, -1))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                               OnClick="@(() => AbrirDialogo(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                               OnClick="@(() => Eliminar(context.Id))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent><MudText>Sem items de stock.</MudText></NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<MudDialog @bind-Visible="dialogoAberto" Options="dialogoOpcoes">
+    <TitleContent><MudText Typo="Typo.h6">@(itemEditar?.Id != null && stocks.Any(s => s.Id == itemEditar.Id) ? "Editar Stock" : "Novo Item")</MudText></TitleContent>
+    <DialogContent>
+        @if (itemEditar != null)
+        {
+            <MudTextField @bind-Value="itemEditar.Nome" Label="Nome *" Class="mb-3" />
+            <MudTextField @bind-Value="itemEditar.Descricao" Label="Descrição" Class="mb-3" />
+            <MudSelect @bind-Value="itemEditar.TesteId" Label="Teste associado" Clearable="true" Class="mb-3">
+                @foreach (var t in testes)
+                {
+                    <MudSelectItem Value="@t.Id">@t.Nome</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField @bind-Value="itemEditar.Quantidade" Label="Quantidade" Min="0" Class="mb-3" />
+            <MudNumericField @bind-Value="itemEditar.QuantidadeMinima" Label="Quantidade mínima" Min="0" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => dialogoAberto = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Guardar">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] private GenomaContext DB { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<StockItem> stocks = new();
+    private List<Teste> testes = new();
+    private StockItem? itemEditar;
+    private bool dialogoAberto;
+    private bool carregando = true;
+    private string? erro;
+
+    private DialogOptions dialogoOpcoes = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar()
+    {
+        carregando = true;
+        try
+        {
+            stocks = await DB.StockItems.AsNoTracking().Include(s => s.Teste)
+                .Where(s => s.Ativo).OrderBy(s => s.Nome).ToListAsync();
+            testes = await DB.Testes.AsNoTracking().Where(t => t.Ativo).OrderBy(t => t.Nome).ToListAsync();
+        }
+        catch (Exception ex) { erro = ex.Message; }
+        finally { carregando = false; }
+    }
+
+    private void AbrirDialogo(StockItem? item = null)
+    {
+        itemEditar = item == null
+            ? new StockItem { Ativo = true, QuantidadeMinima = 5 }
+            : new StockItem
+            {
+                Id = item.Id, Nome = item.Nome, Descricao = item.Descricao,
+                Quantidade = item.Quantidade, QuantidadeMinima = item.QuantidadeMinima,
+                TesteId = item.TesteId, Ativo = item.Ativo
+            };
+        dialogoAberto = true;
+    }
+
+    private async Task Guardar()
+    {
+        if (itemEditar == null || string.IsNullOrWhiteSpace(itemEditar.Nome)) return;
+        try
+        {
+            var existente = await DB.StockItems.FindAsync(itemEditar.Id);
+            if (existente == null)
+            {
+                itemEditar.Id = Guid.NewGuid().ToString();
+                itemEditar.CreatedAt = DateTime.Now;
+                DB.StockItems.Add(itemEditar);
+            }
+            else
+            {
+                existente.Nome = itemEditar.Nome;
+                existente.Descricao = itemEditar.Descricao;
+                existente.TesteId = itemEditar.TesteId;
+                existente.Quantidade = itemEditar.Quantidade;
+                existente.QuantidadeMinima = itemEditar.QuantidadeMinima;
+            }
+            await DB.SaveChangesAsync();
+            dialogoAberto = false;
+            Snackbar.Add("Stock guardado.", Severity.Success);
+            await Carregar();
+        }
+        catch (Exception ex) { erro = ex.Message; }
+    }
+
+    private async Task AjustarStock(string id, int delta)
+    {
+        var item = await DB.StockItems.FindAsync(id);
+        if (item == null) return;
+        item.Quantidade = Math.Max(0, item.Quantidade + delta);
+        await DB.SaveChangesAsync();
+        await Carregar();
+    }
+
+    private async Task Eliminar(string id)
+    {
+        var item = await DB.StockItems.FindAsync(id);
+        if (item != null) { item.Ativo = false; await DB.SaveChangesAsync(); await Carregar(); }
+    }
+}

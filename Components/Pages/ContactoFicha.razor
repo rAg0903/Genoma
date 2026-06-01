@@ -73,6 +73,22 @@ else
             else
             {
                 <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudSelect Value="testeId" ValueChanged="@((string? id) => OnTesteAlterado(id))" Label="Teste genético" Clearable="true">
+                            @foreach (var t in testes)
+                            {
+                                <MudSelectItem Value="@t.Id">@t.Nome (@t.Preco.ToString("N2") €)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSelect @bind-Value="postoId" Label="Posto de colheita" Clearable="true">
+                            @foreach (var p in postos)
+                            {
+                                <MudSelectItem Value="@p.Id">@p.Nome</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
                     <MudItem xs="12" md="3">
                         <MudNumericField @bind-Value="semanasGravidez" Label="Semanas" Min="0" Max="45" />
                     </MudItem>
@@ -127,6 +143,12 @@ else
             }
             else
             {
+                @if (!string.IsNullOrEmpty(testeNome))
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                        Teste: <strong>@testeNome</strong> — preço sugerido aplicado na tab Faturação.
+                    </MudAlert>
+                }
                 <MudGrid>
                     <MudItem xs="12" md="4">
                         <MudNumericField @bind-Value="precoTeste" Label="Preço teste (€)" Min="0" />
@@ -168,9 +190,43 @@ else
         </MudTabPanel>
 
         <MudTabPanel Text="Anexos" Icon="@Icons.Material.Filled.AttachFile">
-            <MudAlert Severity="Severity.Info">
-                Upload de anexos disponível numa próxima versão.
-            </MudAlert>
+            @if (processoId == null)
+            {
+                <MudAlert Severity="Severity.Info">Cria um processo para adicionar anexos.</MudAlert>
+            }
+            else
+            {
+                <MudStack Row="true" Class="mb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Upload"
+                               OnClick="AdicionarAnexo" Disabled="aGuardar">
+                        Adicionar PDF
+                    </MudButton>
+                </MudStack>
+                @if (!anexos.Any())
+                {
+                    <MudAlert Severity="Severity.Info">Sem anexos neste processo.</MudAlert>
+                }
+                else
+                {
+                    <MudTable Items="@anexos" Dense="true" Hover="true">
+                        <HeaderContent>
+                            <MudTh>Ficheiro</MudTh>
+                            <MudTh>Data</MudTh>
+                            <MudTh>Ações</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@AnexoService.ObterNomeFicheiro(context.UrlFicheiro)</MudTd>
+                            <MudTd>@context.DataUpload.ToString("dd/MM/yyyy HH:mm")</MudTd>
+                            <MudTd>
+                                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small"
+                                               title="Abrir" OnClick="@(() => AbrirAnexo(context))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                               title="Eliminar" OnClick="@(() => EliminarAnexo(context.Id))" />
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            }
         </MudTabPanel>
     </MudTabs>
 
@@ -188,6 +244,15 @@ else
     [Inject] private GenomaContext DB { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private IAnexoService AnexoService { get; set; } = default!;
+
+    private List<Teste> testes = new();
+    private List<Posto> postos = new();
+    private List<AssetsResultados> anexos = new();
+    private string? testeId;
+    private string? testeIdOriginal;
+    private string? testeNome;
+    private string? postoId;
 
     private Paciente paciente = new();
     private string? processoId;
@@ -249,9 +314,14 @@ else
                 .Include(p => p.InformacaoClinica)
                 .Include(p => p.Colheita)
                 .Include(p => p.Facturacao)
+                .Include(p => p.Teste)
+                .Include(p => p.Assets)
                 .Where(p => p.PacienteId == Id && p.Ativo)
                 .OrderByDescending(p => p.DataEntrada)
                 .FirstOrDefaultAsync();
+
+            testes = await DB.Testes.AsNoTracking().Where(t => t.Ativo).OrderBy(t => t.Nome).ToListAsync();
+            postos = await DB.Postos.AsNoTracking().OrderBy(p => p.Nome).ToListAsync();
 
             if (processo != null)
                 PreencherCamposProcesso(processo);
@@ -271,6 +341,11 @@ else
         processoId = processo.Id;
         numeroProcesso = processo.NumeroProcesso;
         notasProcesso = processo.Notas;
+        testeId = processo.TesteId;
+        testeIdOriginal = processo.TesteId;
+        testeNome = processo.Teste?.Nome;
+        postoId = processo.PostoId;
+        anexos = processo.Assets.ToList();
 
         if (processo.InformacaoClinica != null)
         {
@@ -297,6 +372,56 @@ else
             referenciaMultibanco = processo.Facturacao.ReferenciaMultibanco;
             comissao = processo.Facturacao.Comissao;
         }
+    }
+
+    private void OnTesteAlterado(string? id)
+    {
+        testeId = id;
+        var teste = testes.FirstOrDefault(t => t.Id == id);
+        testeNome = teste?.Nome;
+        if (teste != null)
+            precoTeste = teste.Preco;
+    }
+
+    private async Task AdicionarAnexo()
+    {
+        if (processoId == null) return;
+        aGuardar = true;
+        try
+        {
+            var resultado = await AnexoService.SelecionarEGuardarAsync(processoId);
+            if (resultado == null) return;
+
+            DB.AssetsResultados.Add(new AssetsResultados
+            {
+                Id = Guid.NewGuid().ToString(),
+                ProcessoId = processoId,
+                UrlFicheiro = resultado.Value.CaminhoRelativo,
+                TipoFicheiro = "PDF",
+                DataUpload = DateTime.Now
+            });
+            await DB.SaveChangesAsync();
+            anexos = await DB.AssetsResultados.AsNoTracking()
+                .Where(a => a.ProcessoId == processoId).ToListAsync();
+            Snackbar.Add("Anexo adicionado.", Severity.Success);
+        }
+        catch (Exception ex) { erro = ex.Message; }
+        finally { aGuardar = false; }
+    }
+
+    private async Task AbrirAnexo(AssetsResultados anexo)
+    {
+        try { await AnexoService.AbrirAnexoAsync(anexo.UrlFicheiro); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task EliminarAnexo(string id)
+    {
+        var anexo = await DB.AssetsResultados.FindAsync(id);
+        if (anexo == null) return;
+        DB.AssetsResultados.Remove(anexo);
+        await DB.SaveChangesAsync();
+        anexos = anexos.Where(a => a.Id != id).ToList();
     }
 
     private async Task CriarProcesso()
@@ -408,6 +533,27 @@ else
         if (processo == null) return;
 
         processo.Notas = notasProcesso;
+        processo.PostoId = postoId;
+
+        if (testeId != testeIdOriginal)
+        {
+            if (!string.IsNullOrEmpty(testeIdOriginal))
+                await StockService.ReporPorTesteAsync(DB, testeIdOriginal);
+
+            if (!string.IsNullOrEmpty(testeId))
+            {
+                var (ok, msg) = await StockService.DescontarPorTesteAsync(DB, testeId);
+                if (!ok)
+                    throw new InvalidOperationException(msg ?? "Stock insuficiente para o teste selecionado.");
+            }
+
+            processo.TesteId = testeId;
+            testeIdOriginal = testeId;
+        }
+        else
+        {
+            processo.TesteId = testeId;
+        }
 
         var ic = await DB.InformacaoClinica.FirstOrDefaultAsync(x => x.ProcessoId == processoId);
         if (ic != null)
@@ -425,6 +571,7 @@ else
             colheita.DataPrevista = dataPrevistaColheita;
             colheita.Periodo = periodoColheita;
             colheita.DataEfetiva = dataEfetivaColheita;
+            colheita.PostoId = postoId;
         }
 
         var facturacao = await DB.Facturacao.FirstOrDefaultAsync(x => x.ProcessoId == processoId);

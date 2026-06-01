@@ -26,6 +26,9 @@ public class Processo
     [Column("kit_id")]
     public string? KitId { get; set; }
 
+    [Column("teste_id")]
+    public string? TesteId { get; set; }
+
     [Column("status_id")]
     public string? StatusId { get; set; }
 
@@ -44,6 +47,9 @@ public class Processo
 
     [ForeignKey("PostoId")]
     public Posto? Posto { get; set; }
+
+    [ForeignKey("TesteId")]
+    public Teste? Teste { get; set; }
 
     public InformacaoClinica? InformacaoClinica { get; set; }
     public Colheita? Colheita { get; set; }

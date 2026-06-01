@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS processos (
   medico_id VARCHAR(36) NULL,
   posto_id VARCHAR(36) NULL,
   kit_id VARCHAR(36) NULL,
+  teste_id VARCHAR(36) NULL,
   status_id VARCHAR(36) NULL,
   data_entrada DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   notas TEXT NULL,
@@ -130,6 +131,18 @@ CREATE TABLE IF NOT EXISTS assets_resultados (
   tipo_ficheiro VARCHAR(20) NOT NULL DEFAULT 'PDF',
   data_upload DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (processo_id) REFERENCES processos(id)
+);
+
+CREATE TABLE IF NOT EXISTS stocks (
+  id VARCHAR(36) PRIMARY KEY,
+  nome VARCHAR(255) NOT NULL,
+  descricao TEXT NULL,
+  quantidade INT NOT NULL DEFAULT 0,
+  quantidade_minima INT NOT NULL DEFAULT 5,
+  teste_id VARCHAR(36) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ativo TINYINT(1) NOT NULL DEFAULT 1,
+  FOREIGN KEY (teste_id) REFERENCES testes(id)
 );
 
 -- Dados de exemplo para testar Contactos
