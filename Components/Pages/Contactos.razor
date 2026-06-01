@@ -1,13 +1,19 @@
 ﻿@page "/contactos"
-@using Genoma.Models
-@using Genoma.Data
-@inject GenomaContext DB
-@inject NavigationManager Nav
 
 <MudText Typo="Typo.h4" Class="mb-2">Contactos</MudText>
 <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
     Gestão de pacientes e clientes
 </MudText>
+
+@if (!string.IsNullOrEmpty(erro))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">
+        @erro
+        <MudText Typo="Typo.caption" Class="mt-2">
+            Confirma que o MariaDB está a correr e que a base de dados genoma_db existe.
+        </MudText>
+    </MudAlert>
+}
 
 <MudGrid Class="mb-4">
     <MudItem xs="12" sm="6" md="3">
@@ -74,12 +80,16 @@
 </MudPaper>
 
 @code {
+    [Inject] private GenomaContext DB { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
     private List<Paciente> todosContactos = new();
     private List<Paciente> contactosFiltrados = new();
     private string pesquisa = string.Empty;
+    private string? erro;
     private bool carregando = true;
-    private int totalContactos = 0;
-    private int novosEsteMes = 0;
+    private int totalContactos;
+    private int novosEsteMes;
 
     protected override async Task OnInitializedAsync()
     {
@@ -89,16 +99,34 @@
     private async Task CarregarContactos()
     {
         carregando = true;
-        todosContactos = DB.Pacientes
-            .Where(p => p.Ativo)
-            .OrderBy(p => p.Nome)
-            .ToList();
-        contactosFiltrados = todosContactos;
-        totalContactos = todosContactos.Count;
-        novosEsteMes = todosContactos
-            .Count(p => p.CreatedAt.Month == DateTime.Now.Month
-                     && p.CreatedAt.Year == DateTime.Now.Year);
-        carregando = false;
+        erro = null;
+
+        try
+        {
+            todosContactos = await DB.Pacientes
+                .AsNoTracking()
+                .Where(p => p.Ativo)
+                .OrderBy(p => p.Nome)
+                .ToListAsync();
+
+            contactosFiltrados = todosContactos;
+            totalContactos = todosContactos.Count;
+            novosEsteMes = todosContactos.Count(p =>
+                p.CreatedAt.Month == DateTime.Now.Month &&
+                p.CreatedAt.Year == DateTime.Now.Year);
+        }
+        catch (Exception ex)
+        {
+            erro = $"Erro ao carregar contactos: {ex.Message}";
+            todosContactos = new();
+            contactosFiltrados = new();
+            totalContactos = 0;
+            novosEsteMes = 0;
+        }
+        finally
+        {
+            carregando = false;
+        }
     }
 
     private void FiltrarContactos()
@@ -115,14 +143,22 @@
 
     private void NovoContacto() => Nav.NavigateTo("/contactos/novo");
     private void EditarContacto(string id) => Nav.NavigateTo($"/contactos/{id}");
+
     private async Task EliminarContacto(string id)
     {
-        var paciente = DB.Pacientes.Find(id);
-        if (paciente != null)
+        try
         {
-            paciente.Ativo = false;
-            await DB.SaveChangesAsync();
-            await CarregarContactos();
+            var paciente = await DB.Pacientes.FindAsync(id);
+            if (paciente != null)
+            {
+                paciente.Ativo = false;
+                await DB.SaveChangesAsync();
+                await CarregarContactos();
+            }
+        }
+        catch (Exception ex)
+        {
+            erro = $"Erro ao eliminar contacto: {ex.Message}";
         }
     }
 }

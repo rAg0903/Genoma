@@ -1,0 +1,121 @@
+@page "/processos/novo"
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="/processos" />
+    <MudText Typo="Typo.h4">Novo Processo</MudText>
+</MudStack>
+
+@if (!string.IsNullOrEmpty(erro))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
+}
+
+<MudPaper Elevation="2" Class="pa-4">
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudSelect @bind-Value="pacienteId" Label="Paciente *" Required="true">
+                @foreach (var p in pacientes)
+                {
+                    <MudSelectItem Value="@p.Id">@p.Nome</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField @bind-Value="numeroProcesso" Label="N.º Processo" ReadOnly="true" />
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudDatePicker @bind-Date="dataEntrada" Label="Data de Entrada" />
+        </MudItem>
+        <MudItem xs="12">
+            <MudTextField @bind-Value="notas" Label="Notas" Lines="3" />
+        </MudItem>
+    </MudGrid>
+
+    <MudStack Row="true" Class="mt-4" Spacing="2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Guardar" Disabled="aGuardar">
+            Criar Processo
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Href="/processos">Cancelar</MudButton>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Inject] private GenomaContext DB { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<Paciente> pacientes = new();
+    private string? pacienteId;
+    private string numeroProcesso = string.Empty;
+    private DateTime? dataEntrada = DateTime.Today;
+    private string? notas;
+    private string? erro;
+    private bool aGuardar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        pacientes = await DB.Pacientes
+            .AsNoTracking()
+            .Where(p => p.Ativo)
+            .OrderBy(p => p.Nome)
+            .ToListAsync();
+
+        var count = await DB.Processos.CountAsync() + 1;
+        numeroProcesso = $"P{DateTime.Now:yyyyMMdd}-{count:D4}";
+    }
+
+    private async Task Guardar()
+    {
+        if (string.IsNullOrEmpty(pacienteId))
+        {
+            Snackbar.Add("Seleciona um paciente.", Severity.Warning);
+            return;
+        }
+
+        aGuardar = true;
+        erro = null;
+
+        try
+        {
+            var processoId = Guid.NewGuid().ToString();
+            var processo = new Processo
+            {
+                Id = processoId,
+                NumeroProcesso = numeroProcesso,
+                PacienteId = pacienteId,
+                DataEntrada = dataEntrada ?? DateTime.Today,
+                Notas = notas,
+                Ativo = true
+            };
+
+            DB.Processos.Add(processo);
+            DB.InformacaoClinica.Add(new InformacaoClinica
+            {
+                Id = Guid.NewGuid().ToString(),
+                ProcessoId = processoId
+            });
+            DB.Colheitas.Add(new Colheita
+            {
+                Id = Guid.NewGuid().ToString(),
+                ProcessoId = processoId
+            });
+            DB.Facturacao.Add(new Facturacao
+            {
+                Id = Guid.NewGuid().ToString(),
+                ProcessoId = processoId
+            });
+
+            await DB.SaveChangesAsync();
+            Snackbar.Add("Processo criado.", Severity.Success);
+            Nav.NavigateTo($"/contactos/{pacienteId}");
+        }
+        catch (Exception ex)
+        {
+            erro = ex.Message;
+        }
+        finally
+        {
+            aGuardar = false;
+        }
+    }
+}

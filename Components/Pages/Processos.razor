@@ -1,0 +1,127 @@
+@page "/processos"
+
+<MudText Typo="Typo.h4" Class="mb-2">Processos</MudText>
+<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
+    Gestão de processos clínicos
+</MudText>
+
+@if (!string.IsNullOrEmpty(erro))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
+}
+
+<MudPaper Elevation="2" Class="pa-4">
+    <MudStack Row="true" Class="mb-4" AlignItems="AlignItems.Center">
+        <MudTextField @bind-Value="pesquisa"
+                      Placeholder="Pesquisar por n.º processo ou paciente..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      OnKeyUp="Filtrar"
+                      Class="flex-grow-1" />
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Href="/processos/novo">
+            Novo Processo
+        </MudButton>
+    </MudStack>
+
+    <MudTable Items="@processosFiltrados" Hover="true" Striped="true" Loading="@carregando">
+        <HeaderContent>
+            <MudTh>N.º Processo</MudTh>
+            <MudTh>Paciente</MudTh>
+            <MudTh>Data Entrada</MudTh>
+            <MudTh>Notas</MudTh>
+            <MudTh>Ações</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.NumeroProcesso</MudTd>
+            <MudTd>@(context.Paciente?.Nome ?? "—")</MudTd>
+            <MudTd>@context.DataEntrada.ToString("dd/MM/yyyy")</MudTd>
+            <MudTd>@(context.Notas ?? "—")</MudTd>
+            <MudTd>
+                @if (context.PacienteId != null)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Person"
+                                   title="Ver contacto"
+                                   Color="Color.Primary" Size="Size.Small"
+                                   Href="@($"/contactos/{context.PacienteId}")" />
+                }
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Color="Color.Error" Size="Size.Small"
+                               OnClick="@(() => Eliminar(context.Id))" />
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>Nenhum processo encontrado.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    [Inject] private GenomaContext DB { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<Processo> todos = new();
+    private List<Processo> processosFiltrados = new();
+    private string pesquisa = string.Empty;
+    private string? erro;
+    private bool carregando = true;
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar()
+    {
+        carregando = true;
+        erro = null;
+        try
+        {
+            todos = await DB.Processos
+                .AsNoTracking()
+                .Include(p => p.Paciente)
+                .Where(p => p.Ativo)
+                .OrderByDescending(p => p.DataEntrada)
+                .ToListAsync();
+            processosFiltrados = todos;
+        }
+        catch (Exception ex)
+        {
+            erro = ex.Message;
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private void Filtrar()
+    {
+        if (string.IsNullOrWhiteSpace(pesquisa))
+            processosFiltrados = todos;
+        else
+            processosFiltrados = todos
+                .Where(p => p.NumeroProcesso.Contains(pesquisa, StringComparison.OrdinalIgnoreCase)
+                         || (p.Paciente?.Nome.Contains(pesquisa, StringComparison.OrdinalIgnoreCase) ?? false))
+                .ToList();
+    }
+
+    private async Task Eliminar(string id)
+    {
+        try
+        {
+            var p = await DB.Processos.FindAsync(id);
+            if (p != null)
+            {
+                p.Ativo = false;
+                await DB.SaveChangesAsync();
+                Snackbar.Add("Processo arquivado.", Severity.Success);
+                await Carregar();
+            }
+        }
+        catch (Exception ex)
+        {
+            erro = ex.Message;
+        }
+    }
+}

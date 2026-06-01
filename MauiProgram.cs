@@ -20,10 +20,10 @@ public static class MauiProgram
         builder.Services.AddMudServices();
 
         var connectionString = "Server=127.0.0.1;Port=3306;Database=genoma_db;User=root;Password=root;";
+        var serverVersion = new MySqlServerVersion(new Version(12, 1, 0));
 
         builder.Services.AddDbContext<GenomaContext>(options =>
-            options.UseMySql(connectionString,
-                ServerVersion.AutoDetect(connectionString)));
+            options.UseMySql(connectionString, serverVersion));
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();

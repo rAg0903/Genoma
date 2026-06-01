@@ -3,4 +3,15 @@
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(Layout.MainLayout)">
+            <MudText Typo="Typo.h5" Class="pa-4">Página não encontrada</MudText>
+            <MudText Class="px-4 pb-4" Color="Color.Secondary">
+                A rota solicitada não existe ou o módulo ainda não foi implementado.
+            </MudText>
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary" Class="mx-4">
+                Voltar ao Dashboard
+            </MudButton>
+        </LayoutView>
+    </NotFound>
 </Router>

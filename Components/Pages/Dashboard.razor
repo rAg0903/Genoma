@@ -5,29 +5,61 @@
     Visão geral do sistema e principais indicadores
 </MudText>
 
+@if (!string.IsNullOrEmpty(erro))
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">@erro</MudAlert>
+}
+
 <MudGrid>
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="pa-4" Elevation="2">
             <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Contactos</MudText>
-            <MudText Typo="Typo.h4">0</MudText>
+            <MudText Typo="Typo.h4">@totalContactos</MudText>
         </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="pa-4" Elevation="2">
             <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Processos Ativos</MudText>
-            <MudText Typo="Typo.h4">0</MudText>
+            <MudText Typo="Typo.h4">@processosAtivos</MudText>
         </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="pa-4" Elevation="2">
             <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Faturas Pendentes</MudText>
-            <MudText Typo="Typo.h4">0</MudText>
+            <MudText Typo="Typo.h4">@faturasPendentes</MudText>
         </MudPaper>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
         <MudPaper Class="pa-4" Elevation="2">
             <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Faturado</MudText>
-            <MudText Typo="Typo.h4">0 €</MudText>
+            <MudText Typo="Typo.h4">@totalFaturado.ToString("N2") €</MudText>
         </MudPaper>
     </MudItem>
 </MudGrid>
+
+@code {
+    [Inject] private GenomaContext DB { get; set; } = default!;
+
+    private int totalContactos;
+    private int processosAtivos;
+    private int faturasPendentes;
+    private decimal totalFaturado;
+    private string? erro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            totalContactos = await DB.Pacientes.CountAsync(p => p.Ativo);
+            processosAtivos = await DB.Processos.CountAsync(p => p.Ativo);
+            faturasPendentes = await DB.Facturacao.CountAsync(f => f.NumeroFatura == null);
+            totalFaturado = await DB.Facturacao
+                .Where(f => f.NumeroFatura != null)
+                .SumAsync(f => f.PrecoTeste);
+        }
+        catch (Exception ex)
+        {
+            erro = $"Indicadores indisponíveis: {ex.Message}";
+        }
+    }
+}
