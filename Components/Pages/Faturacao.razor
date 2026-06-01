@@ -1,0 +1,274 @@
+@page "/faturacao"
+
+<MudText Typo="Typo.h4" Class="mb-2">Faturação</MudText>
+<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
+    Gestão de faturas e pagamentos
+</MudText>
+
+@if (!string.IsNullOrEmpty(erro))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
+}
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Registos</MudText>
+            <MudText Typo="Typo.h5">@totalRegistos</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Pendentes</MudText>
+            <MudText Typo="Typo.h5" Color="Color.Warning">@pendentes</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Faturadas</MudText>
+            <MudText Typo="Typo.h5" Color="Color.Success">@faturadas</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6" md="3">
+        <MudPaper Class="pa-4" Elevation="2">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Faturado</MudText>
+            <MudText Typo="Typo.h5">@totalFaturado.ToString("N2") €</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudPaper Elevation="2" Class="pa-4">
+    <MudStack Row="true" Class="mb-4" AlignItems="AlignItems.Center" Spacing="2">
+        <MudTextField @bind-Value="pesquisa"
+                      Placeholder="Pesquisar por paciente, processo ou n.º fatura..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      OnKeyUp="Filtrar"
+                      Class="flex-grow-1" />
+        <MudToggleGroup T="string" Value="filtroEstado" ValueChanged="OnFiltroChanged" Color="Color.Primary" CheckMark="true">
+            <MudToggleItem Value="@("todas")">Todas</MudToggleItem>
+            <MudToggleItem Value="@("pendentes")">Pendentes</MudToggleItem>
+            <MudToggleItem Value="@("faturadas")">Faturadas</MudToggleItem>
+        </MudToggleGroup>
+    </MudStack>
+
+    <MudTable Items="@faturasFiltradas" Hover="true" Striped="true" Loading="@carregando">
+        <HeaderContent>
+            <MudTh>Processo</MudTh>
+            <MudTh>Paciente</MudTh>
+            <MudTh>Preço (€)</MudTh>
+            <MudTh>N.º Fatura</MudTh>
+            <MudTh>Data Fatura</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh>Ações</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Processo?.NumeroProcesso</MudTd>
+            <MudTd>@context.Processo?.Paciente?.Nome</MudTd>
+            <MudTd>@context.PrecoTeste.ToString("N2")</MudTd>
+            <MudTd>@(context.NumeroFatura ?? "—")</MudTd>
+            <MudTd>@(context.DataFatura?.ToString("dd/MM/yyyy") ?? "—")</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(context.NumeroFatura == null ? Color.Warning : Color.Success)">
+                    @(context.NumeroFatura == null ? "Pendente" : "Faturada")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               Color="Color.Primary" Size="Size.Small"
+                               OnClick="@(() => AbrirEdicao(context))" />
+                @if (context.Processo?.PacienteId != null)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Person"
+                                   title="Ver contacto"
+                                   Color="Color.Default" Size="Size.Small"
+                                   Href="@($"/contactos/{context.Processo.PacienteId}")" />
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>Nenhum registo de faturação encontrado.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<MudDialog @bind-Visible="dialogoAberto" Options="dialogoOpcoes">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Editar Faturação</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (faturaEditar != null)
+        {
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField Value="@faturaEditar.Processo?.NumeroProcesso" Label="Processo" ReadOnly="true" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField Value="@faturaEditar.Processo?.Paciente?.Nome" Label="Paciente" ReadOnly="true" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="faturaEditar.PrecoTeste" Label="Preço teste (€)" Min="0" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="faturaEditar.NumeroFatura" Label="N.º Fatura" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudDatePicker @bind-Date="dataFaturaEditar" Label="Data fatura" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="faturaEditar.EntidadeMultibanco" Label="Entidade MB" MaxLength="5" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="faturaEditar.ReferenciaMultibanco" Label="Referência MB" MaxLength="9" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSwitch @bind-Value="faturaEditar.Comissao" Label="Comissão" Color="Color.Primary" />
+                </MudItem>
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="FecharDialogo">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GuardarFatura">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] private GenomaContext DB { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<Facturacao> todas = new();
+    private List<Facturacao> faturasFiltradas = new();
+    private Facturacao? faturaEditar;
+    private DateTime? dataFaturaEditar;
+
+    private string pesquisa = string.Empty;
+    private string filtroEstado = "todas";
+    private string? erro;
+    private bool carregando = true;
+    private bool dialogoAberto;
+
+    private int totalRegistos;
+    private int pendentes;
+    private int faturadas;
+    private decimal totalFaturado;
+
+    private DialogOptions dialogoOpcoes = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar()
+    {
+        carregando = true;
+        erro = null;
+        try
+        {
+            todas = await DB.Facturacao
+                .AsNoTracking()
+                .Include(f => f.Processo!)
+                    .ThenInclude(p => p.Paciente)
+                .Where(f => f.Processo!.Ativo)
+                .OrderByDescending(f => f.CreatedAt)
+                .ToListAsync();
+
+            totalRegistos = todas.Count;
+            pendentes = todas.Count(f => f.NumeroFatura == null);
+            faturadas = todas.Count(f => f.NumeroFatura != null);
+            totalFaturado = todas.Where(f => f.NumeroFatura != null).Sum(f => f.PrecoTeste);
+
+            AplicarFiltros();
+        }
+        catch (Exception ex)
+        {
+            erro = ex.Message;
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private void Filtrar() => AplicarFiltros();
+
+    private void OnFiltroChanged(string value)
+    {
+        filtroEstado = value;
+        AplicarFiltros();
+    }
+
+    private void AplicarFiltros()
+    {
+        var query = todas.AsEnumerable();
+
+        query = filtroEstado switch
+        {
+            "pendentes" => query.Where(f => f.NumeroFatura == null),
+            "faturadas" => query.Where(f => f.NumeroFatura != null),
+            _ => query
+        };
+
+        if (!string.IsNullOrWhiteSpace(pesquisa))
+        {
+            query = query.Where(f =>
+                (f.NumeroFatura?.Contains(pesquisa, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (f.Processo?.NumeroProcesso.Contains(pesquisa, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (f.Processo?.Paciente?.Nome.Contains(pesquisa, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        faturasFiltradas = query.ToList();
+    }
+
+    private void AbrirEdicao(Facturacao fatura)
+    {
+        faturaEditar = new Facturacao
+        {
+            Id = fatura.Id,
+            ProcessoId = fatura.ProcessoId,
+            PrecoTeste = fatura.PrecoTeste,
+            NumeroFatura = fatura.NumeroFatura,
+            DataFatura = fatura.DataFatura,
+            EntidadeMultibanco = fatura.EntidadeMultibanco,
+            ReferenciaMultibanco = fatura.ReferenciaMultibanco,
+            Comissao = fatura.Comissao,
+            Processo = fatura.Processo
+        };
+        dataFaturaEditar = fatura.DataFatura;
+        dialogoAberto = true;
+    }
+
+    private void FecharDialogo()
+    {
+        dialogoAberto = false;
+        faturaEditar = null;
+    }
+
+    private async Task GuardarFatura()
+    {
+        if (faturaEditar == null) return;
+
+        try
+        {
+            var existente = await DB.Facturacao.FindAsync(faturaEditar.Id);
+            if (existente == null) return;
+
+            existente.PrecoTeste = faturaEditar.PrecoTeste;
+            existente.NumeroFatura = faturaEditar.NumeroFatura;
+            existente.DataFatura = dataFaturaEditar;
+            existente.EntidadeMultibanco = faturaEditar.EntidadeMultibanco;
+            existente.ReferenciaMultibanco = faturaEditar.ReferenciaMultibanco;
+            existente.Comissao = faturaEditar.Comissao;
+            existente.UpdatedAt = DateTime.Now;
+
+            await DB.SaveChangesAsync();
+            Snackbar.Add("Faturação atualizada.", Severity.Success);
+            FecharDialogo();
+            await Carregar();
+        }
+        catch (Exception ex)
+        {
+            erro = ex.Message;
+        }
+    }
+}

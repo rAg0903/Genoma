@@ -137,6 +137,15 @@ else
                     <MudItem xs="12" md="4">
                         <MudDatePicker @bind-Date="dataFatura" Label="Data fatura" />
                     </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="entidadeMultibanco" Label="Entidade MB" MaxLength="5" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="referenciaMultibanco" Label="Referência MB" MaxLength="9" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudSwitch @bind-Value="comissao" Label="Comissão" Color="Color.Primary" />
+                    </MudItem>
                 </MudGrid>
             }
         </MudTabPanel>
@@ -198,6 +207,9 @@ else
     private decimal precoTeste;
     private string? numeroFatura;
     private DateTime? dataFatura;
+    private string? entidadeMultibanco;
+    private string? referenciaMultibanco;
+    private bool comissao;
 
     private string? notasProcesso;
     private string? erro;
@@ -281,6 +293,9 @@ else
             precoTeste = processo.Facturacao.PrecoTeste;
             numeroFatura = processo.Facturacao.NumeroFatura;
             dataFatura = processo.Facturacao.DataFatura;
+            entidadeMultibanco = processo.Facturacao.EntidadeMultibanco;
+            referenciaMultibanco = processo.Facturacao.ReferenciaMultibanco;
+            comissao = processo.Facturacao.Comissao;
         }
     }
 
@@ -418,6 +433,9 @@ else
             facturacao.PrecoTeste = precoTeste;
             facturacao.NumeroFatura = numeroFatura;
             facturacao.DataFatura = dataFatura;
+            facturacao.EntidadeMultibanco = entidadeMultibanco;
+            facturacao.ReferenciaMultibanco = referenciaMultibanco;
+            facturacao.Comissao = comissao;
             facturacao.UpdatedAt = DateTime.Now;
         }
     }
