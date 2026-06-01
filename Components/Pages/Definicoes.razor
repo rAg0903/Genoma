@@ -1,0 +1,312 @@
+@page "/definicoes"
+
+<MudText Typo="Typo.h4" Class="mb-2">Definições</MudText>
+<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
+    Configuração de testes, empresas e postos de colheita
+</MudText>
+
+@if (!string.IsNullOrEmpty(erro))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
+}
+
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" panel-class="pa-4">
+    <MudTabPanel Text="Testes" Icon="@Icons.Material.Filled.Biotech">
+        <MudStack Row="true" Class="mb-4">
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@(() => AbrirDialogoTeste())">Novo Teste</MudButton>
+        </MudStack>
+        <MudTable Items="@testes" Hover="true" Striped="true" Loading="@carregando">
+            <HeaderContent>
+                <MudTh>Nome</MudTh>
+                <MudTh>Preço (€)</MudTh>
+                <MudTh>Descrição</MudTh>
+                <MudTh>Ações</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Nome</MudTd>
+                <MudTd>@context.Preco.ToString("N2")</MudTd>
+                <MudTd>@(context.Descricao ?? "—")</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                                   OnClick="@(() => AbrirDialogoTeste(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                   OnClick="@(() => EliminarTeste(context.Id))" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent><MudText>Sem testes registados.</MudText></NoRecordsContent>
+        </MudTable>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Empresas" Icon="@Icons.Material.Filled.Business">
+        <MudStack Row="true" Class="mb-4">
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@(() => AbrirDialogoEmpresa())">Nova Empresa</MudButton>
+        </MudStack>
+        <MudTable Items="@empresas" Hover="true" Striped="true" Loading="@carregando">
+            <HeaderContent>
+                <MudTh>Nome</MudTh>
+                <MudTh>Telefone</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Ações</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Nome</MudTd>
+                <MudTd>@(context.Telefone ?? "—")</MudTd>
+                <MudTd>@(context.Email ?? "—")</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                                   OnClick="@(() => AbrirDialogoEmpresa(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                   OnClick="@(() => EliminarEmpresa(context.Id))" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent><MudText>Sem empresas registadas.</MudText></NoRecordsContent>
+        </MudTable>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Postos" Icon="@Icons.Material.Filled.LocalHospital">
+        <MudStack Row="true" Class="mb-4">
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@(() => AbrirDialogoPosto())">Novo Posto</MudButton>
+        </MudStack>
+        <MudTable Items="@postos" Hover="true" Striped="true" Loading="@carregando">
+            <HeaderContent>
+                <MudTh>Nome</MudTh>
+                <MudTh>Empresa</MudTh>
+                <MudTh>Código</MudTh>
+                <MudTh>Localização</MudTh>
+                <MudTh>Ações</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Nome</MudTd>
+                <MudTd>@(context.Empresa?.Nome ?? "—")</MudTd>
+                <MudTd>@(context.CodigoPosto ?? "—")</MudTd>
+                <MudTd>@(context.Localizacao ?? "—")</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                                   OnClick="@(() => AbrirDialogoPosto(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                   OnClick="@(() => EliminarPosto(context.Id))" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent><MudText>Sem postos registados.</MudText></NoRecordsContent>
+        </MudTable>
+    </MudTabPanel>
+</MudTabs>
+
+<MudDialog @bind-Visible="dialogoTesteAberto" Options="dialogoOpcoes">
+    <TitleContent><MudText Typo="Typo.h6">@(testeEditar?.Id == null ? "Novo Teste" : "Editar Teste")</MudText></TitleContent>
+    <DialogContent>
+        @if (testeEditar != null)
+        {
+            <MudTextField @bind-Value="testeEditar.Nome" Label="Nome *" Class="mb-3" />
+            <MudNumericField @bind-Value="testeEditar.Preco" Label="Preço (€)" Min="0" Class="mb-3" />
+            <MudTextField @bind-Value="testeEditar.Descricao" Label="Descrição" Lines="3" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => dialogoTesteAberto = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GuardarTeste">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="dialogoEmpresaAberto" Options="dialogoOpcoes">
+    <TitleContent><MudText Typo="Typo.h6">@(empresaEditar?.Id == null || !empresas.Any(e => e.Id == empresaEditar.Id) ? "Nova Empresa" : "Editar Empresa")</MudText></TitleContent>
+    <DialogContent>
+        @if (empresaEditar != null)
+        {
+            <MudTextField @bind-Value="empresaEditar.Nome" Label="Nome *" Class="mb-3" />
+            <MudTextField @bind-Value="empresaEditar.Morada" Label="Morada" Class="mb-3" />
+            <MudTextField @bind-Value="empresaEditar.CodigoPostal" Label="Código Postal" Class="mb-3" />
+            <MudTextField @bind-Value="empresaEditar.Telefone" Label="Telefone" Class="mb-3" />
+            <MudTextField @bind-Value="empresaEditar.Email" Label="Email" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => dialogoEmpresaAberto = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GuardarEmpresa">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="dialogoPostoAberto" Options="dialogoOpcoes">
+    <TitleContent><MudText Typo="Typo.h6">@(postoEditar?.Id == null || !postos.Any(p => p.Id == postoEditar.Id) ? "Novo Posto" : "Editar Posto")</MudText></TitleContent>
+    <DialogContent>
+        @if (postoEditar != null)
+        {
+            <MudTextField @bind-Value="postoEditar.Nome" Label="Nome *" Class="mb-3" />
+            <MudSelect @bind-Value="postoEditar.EntidadeId" Label="Empresa" Clearable="true" Class="mb-3">
+                @foreach (var e in empresas)
+                {
+                    <MudSelectItem Value="@e.Id">@e.Nome</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="postoEditar.CodigoPosto" Label="Código Posto" Class="mb-3" />
+            <MudTextField @bind-Value="postoEditar.Localizacao" Label="Localização" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => dialogoPostoAberto = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GuardarPosto">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Inject] private GenomaContext DB { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private List<Teste> testes = new();
+    private List<Empresa> empresas = new();
+    private List<Posto> postos = new();
+
+    private Teste? testeEditar;
+    private Empresa? empresaEditar;
+    private Posto? postoEditar;
+
+    private bool dialogoTesteAberto;
+    private bool dialogoEmpresaAberto;
+    private bool dialogoPostoAberto;
+    private bool carregando = true;
+    private string? erro;
+
+    private DialogOptions dialogoOpcoes = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar()
+    {
+        carregando = true;
+        try
+        {
+            testes = await DB.Testes.AsNoTracking().Where(t => t.Ativo).OrderBy(t => t.Nome).ToListAsync();
+            empresas = await DB.Empresas.AsNoTracking().Where(e => e.Ativo).OrderBy(e => e.Nome).ToListAsync();
+            postos = await DB.Postos.AsNoTracking().Include(p => p.Empresa).OrderBy(p => p.Nome).ToListAsync();
+        }
+        catch (Exception ex) { erro = ex.Message; }
+        finally { carregando = false; }
+    }
+
+    private void AbrirDialogoTeste(Teste? t = null)
+    {
+        testeEditar = t == null
+            ? new Teste { Ativo = true }
+            : new Teste { Id = t.Id, Nome = t.Nome, Preco = t.Preco, Descricao = t.Descricao, Ativo = t.Ativo };
+        dialogoTesteAberto = true;
+    }
+
+    private async Task GuardarTeste()
+    {
+        if (testeEditar == null || string.IsNullOrWhiteSpace(testeEditar.Nome)) return;
+        try
+        {
+            var existente = await DB.Testes.FindAsync(testeEditar.Id);
+            if (existente == null)
+            {
+                testeEditar.Id = Guid.NewGuid().ToString();
+                DB.Testes.Add(testeEditar);
+            }
+            else
+            {
+                existente.Nome = testeEditar.Nome;
+                existente.Preco = testeEditar.Preco;
+                existente.Descricao = testeEditar.Descricao;
+            }
+            await DB.SaveChangesAsync();
+            dialogoTesteAberto = false;
+            Snackbar.Add("Teste guardado.", Severity.Success);
+            await Carregar();
+        }
+        catch (Exception ex) { erro = ex.Message; }
+    }
+
+    private async Task EliminarTeste(string id)
+    {
+        var t = await DB.Testes.FindAsync(id);
+        if (t != null) { t.Ativo = false; await DB.SaveChangesAsync(); await Carregar(); }
+    }
+
+    private void AbrirDialogoEmpresa(Empresa? e = null)
+    {
+        empresaEditar = e == null
+            ? new Empresa { Ativo = true }
+            : new Empresa { Id = e.Id, Nome = e.Nome, Morada = e.Morada, CodigoPostal = e.CodigoPostal, Telefone = e.Telefone, Email = e.Email, Ativo = e.Ativo };
+        dialogoEmpresaAberto = true;
+    }
+
+    private async Task GuardarEmpresa()
+    {
+        if (empresaEditar == null || string.IsNullOrWhiteSpace(empresaEditar.Nome)) return;
+        try
+        {
+            var existente = await DB.Empresas.FindAsync(empresaEditar.Id);
+            if (existente == null)
+            {
+                empresaEditar.Id = Guid.NewGuid().ToString();
+                empresaEditar.CreatedAt = DateTime.Now;
+                DB.Empresas.Add(empresaEditar);
+            }
+            else
+            {
+                existente.Nome = empresaEditar.Nome;
+                existente.Morada = empresaEditar.Morada;
+                existente.CodigoPostal = empresaEditar.CodigoPostal;
+                existente.Telefone = empresaEditar.Telefone;
+                existente.Email = empresaEditar.Email;
+            }
+            await DB.SaveChangesAsync();
+            dialogoEmpresaAberto = false;
+            Snackbar.Add("Empresa guardada.", Severity.Success);
+            await Carregar();
+        }
+        catch (Exception ex) { erro = ex.Message; }
+    }
+
+    private async Task EliminarEmpresa(string id)
+    {
+        var e = await DB.Empresas.FindAsync(id);
+        if (e != null) { e.Ativo = false; await DB.SaveChangesAsync(); await Carregar(); }
+    }
+
+    private void AbrirDialogoPosto(Posto? p = null)
+    {
+        postoEditar = p == null
+            ? new Posto()
+            : new Posto { Id = p.Id, Nome = p.Nome, EntidadeId = p.EntidadeId, CodigoPosto = p.CodigoPosto, Localizacao = p.Localizacao };
+        dialogoPostoAberto = true;
+    }
+
+    private async Task GuardarPosto()
+    {
+        if (postoEditar == null || string.IsNullOrWhiteSpace(postoEditar.Nome)) return;
+        try
+        {
+            var existente = await DB.Postos.FindAsync(postoEditar.Id);
+            if (existente == null)
+            {
+                postoEditar.Id = Guid.NewGuid().ToString();
+                DB.Postos.Add(postoEditar);
+            }
+            else
+            {
+                existente.Nome = postoEditar.Nome;
+                existente.EntidadeId = postoEditar.EntidadeId;
+                existente.CodigoPosto = postoEditar.CodigoPosto;
+                existente.Localizacao = postoEditar.Localizacao;
+            }
+            await DB.SaveChangesAsync();
+            dialogoPostoAberto = false;
+            Snackbar.Add("Posto guardado.", Severity.Success);
+            await Carregar();
+        }
+        catch (Exception ex) { erro = ex.Message; }
+    }
+
+    private async Task EliminarPosto(string id)
+    {
+        var p = await DB.Postos.FindAsync(id);
+        if (p != null) { DB.Postos.Remove(p); await DB.SaveChangesAsync(); await Carregar(); }
+    }
+}

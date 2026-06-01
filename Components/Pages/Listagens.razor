@@ -1,0 +1,102 @@
+@page "/listagens"
+
+<MudText Typo="Typo.h4" Class="mb-2">Listagens</MudText>
+<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
+    Consultas e relatórios do sistema
+</MudText>
+
+@if (!string.IsNullOrEmpty(erro))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
+}
+
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" panel-class="pa-4">
+    <MudTabPanel Text="Contactos" Icon="@Icons.Material.Filled.People">
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@contactos.Count contacto(s) ativo(s)</MudText>
+        <MudTable Items="@contactos" Hover="true" Striped="true" Dense="true" Loading="@carregando">
+            <HeaderContent>
+                <MudTh>Nome</MudTh>
+                <MudTh>NIF</MudTh>
+                <MudTh>Telemóvel</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Criado em</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Nome</MudTd>
+                <MudTd>@(context.Nif ?? "—")</MudTd>
+                <MudTd>@(context.Telemovel ?? "—")</MudTd>
+                <MudTd>@(context.Email ?? "—")</MudTd>
+                <MudTd>@context.CreatedAt.ToString("dd/MM/yyyy")</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Processos" Icon="@Icons.Material.Filled.Assignment">
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@processos.Count processo(s) ativo(s)</MudText>
+        <MudTable Items="@processos" Hover="true" Striped="true" Dense="true" Loading="@carregando">
+            <HeaderContent>
+                <MudTh>N.º Processo</MudTh>
+                <MudTh>Paciente</MudTh>
+                <MudTh>Data Entrada</MudTh>
+                <MudTh>Notas</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.NumeroProcesso</MudTd>
+                <MudTd>@(context.Paciente?.Nome ?? "—")</MudTd>
+                <MudTd>@context.DataEntrada.ToString("dd/MM/yyyy")</MudTd>
+                <MudTd>@(context.Notas ?? "—")</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Faturação" Icon="@Icons.Material.Filled.Receipt">
+        <MudStack Row="true" Class="mb-3" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@faturas.Count registo(s)</MudText>
+            <MudSpacer />
+            <MudChip T="string" Color="Color.Info">Total faturado: @totalFaturado.ToString("N2") €</MudChip>
+        </MudStack>
+        <MudTable Items="@faturas" Hover="true" Striped="true" Dense="true" Loading="@carregando">
+            <HeaderContent>
+                <MudTh>Processo</MudTh>
+                <MudTh>Paciente</MudTh>
+                <MudTh>Preço (€)</MudTh>
+                <MudTh>N.º Fatura</MudTh>
+                <MudTh>Estado</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Processo?.NumeroProcesso</MudTd>
+                <MudTd>@context.Processo?.Paciente?.Nome</MudTd>
+                <MudTd>@context.PrecoTeste.ToString("N2")</MudTd>
+                <MudTd>@(context.NumeroFatura ?? "—")</MudTd>
+                <MudTd>@(context.NumeroFatura == null ? "Pendente" : "Faturada")</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [Inject] private GenomaContext DB { get; set; } = default!;
+
+    private List<Paciente> contactos = new();
+    private List<Processo> processos = new();
+    private List<Facturacao> faturas = new();
+    private decimal totalFaturado;
+    private string? erro;
+    private bool carregando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            contactos = await DB.Pacientes.AsNoTracking().Where(p => p.Ativo).OrderBy(p => p.Nome).ToListAsync();
+            processos = await DB.Processos.AsNoTracking().Include(p => p.Paciente).Where(p => p.Ativo)
+                .OrderByDescending(p => p.DataEntrada).ToListAsync();
+            faturas = await DB.Facturacao.AsNoTracking()
+                .Include(f => f.Processo!).ThenInclude(p => p.Paciente)
+                .Where(f => f.Processo!.Ativo).OrderByDescending(f => f.CreatedAt).ToListAsync();
+            totalFaturado = faturas.Where(f => f.NumeroFatura != null).Sum(f => f.PrecoTeste);
+        }
+        catch (Exception ex) { erro = ex.Message; }
+        finally { carregando = false; }
+    }
+}
