@@ -55,6 +55,11 @@
             <MudToggleItem Value="@("pendentes")">Pendentes</MudToggleItem>
             <MudToggleItem Value="@("faturadas")">Faturadas</MudToggleItem>
         </MudToggleGroup>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Download"
+                   OnClick="ExportarCsv">
+            Exportar CSV
+        </MudButton>
     </div>
 
     <MudTable Items="@faturasFiltradas" Hover="true" Striped="true" Loading="@carregando"
@@ -90,6 +95,9 @@
                 </MudChip>
             </MudTd>
             <MudTd Class="genoma-actions-cell">
+                <MudIconButton Icon="@Icons.Material.Outlined.Receipt" title="Ver fatura"
+                               Color="Color.Default" Size="Size.Small"
+                               OnClick="@(() => AbrirDocumento(context))" />
                 <MudIconButton Icon="@Icons.Material.Outlined.Edit" title="Editar fatura"
                                Color="Color.Primary" Size="Size.Small"
                                OnClick="@(() => AbrirEdicao(context))" />
@@ -116,67 +124,98 @@
 
 <MudDialog @bind-Visible="dialogoAberto" Options="dialogoOpcoes">
     <TitleContent>
-        <MudText Typo="Typo.h6">Editar Faturação</MudText>
+        <MudText Typo="Typo.h6">@(abaDialogoIndex == 0 ? "Documento de Faturação" : "Editar Faturação")</MudText>
     </TitleContent>
     <DialogContent>
         @if (faturaEditar != null)
         {
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudTextField Value="@faturaEditar.Processo?.NumeroProcesso" Label="Processo" ReadOnly="true" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField Value="@faturaEditar.Processo?.Paciente?.Nome" Label="Paciente" ReadOnly="true" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="faturaEditar.PrecoTeste" Label="Preço teste (€)" Min="0" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="faturaEditar.ValorFactura" Label="Valor factura (€)" Min="0" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudTextField @bind-Value="faturaEditar.NumeroFatura" Label="N.º Fatura" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudDatePicker @bind-Date="dataFaturaEditar" Label="Data fatura" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudTextField @bind-Value="faturaEditar.EntidadeMultibanco" Label="Entidade MB" MaxLength="5" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudTextField @bind-Value="faturaEditar.ReferenciaMultibanco" Label="Referência MB" MaxLength="9" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudSwitch @bind-Value="faturaEditar.Pago" Label="Pago" Color="Color.Success" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudSwitch @bind-Value="faturaEditar.NaoGeraComissao" Label="Não gera comissão" Color="Color.Primary" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudSwitch @bind-Value="faturaEditar.Comissao" Label="Comissão" Color="Color.Primary" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudDatePicker @bind-Date="dataEnvioEmailEditar" Label="Data envio email" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudDatePicker @bind-Date="dataEnvioSmsEditar" Label="Data envio SMS" />
-                </MudItem>
-            </MudGrid>
+            <MudTabs @bind-ActivePanelIndex="abaDialogoIndex" Rounded="true" ApplyEffectsToContainer="true">
+                <MudTabPanel Text="Documento" Icon="@Icons.Material.Outlined.Receipt">
+                    <div class="pt-3">
+                    <div class="genoma-fatura-dialog-actions">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Outlined.Print"
+                                   OnClick="ImprimirFatura">
+                            Imprimir / PDF
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Outlined.Edit"
+                                   OnClick="@(() => abaDialogoIndex = 1)">
+                            Editar dados
+                        </MudButton>
+                    </div>
+                    <div class="genoma-fatura-dialog-preview">
+                        <FaturaDocumento Fatura="faturaEditar" Emitente="empresaEmitente" ElementId="genoma-fatura-doc" />
+                    </div>
+                    </div>
+                </MudTabPanel>
+                <MudTabPanel Text="Editar" Icon="@Icons.Material.Outlined.Edit">
+                    <div class="pt-3">
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudTextField Value="@faturaEditar.Processo?.NumeroProcesso" Label="Processo" ReadOnly="true" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField Value="@faturaEditar.Processo?.Paciente?.Nome" Label="Paciente" ReadOnly="true" />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudNumericField @bind-Value="faturaEditar.PrecoTeste" Label="Preço teste (€)" Min="0" />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudNumericField @bind-Value="faturaEditar.ValorFactura" Label="Valor factura (€)" Min="0" />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudTextField @bind-Value="faturaEditar.NumeroFatura" Label="N.º Fatura" />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudDatePicker @bind-Date="dataFaturaEditar" Label="Data fatura" />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudTextField @bind-Value="faturaEditar.EntidadeMultibanco" Label="Entidade MB" MaxLength="5" />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudTextField @bind-Value="faturaEditar.ReferenciaMultibanco" Label="Referência MB" MaxLength="9" />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudSwitch @bind-Value="faturaEditar.Pago" Label="Pago" Color="Color.Success" />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudSwitch @bind-Value="faturaEditar.NaoGeraComissao" Label="Não gera comissão" Color="Color.Primary" />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudSwitch @bind-Value="faturaEditar.Comissao" Label="Comissão" Color="Color.Primary" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudDatePicker @bind-Date="dataEnvioEmailEditar" Label="Data envio email" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudDatePicker @bind-Date="dataEnvioSmsEditar" Label="Data envio SMS" />
+                        </MudItem>
+                    </MudGrid>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
         }
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Outlined" OnClick="FecharDialogo">Cancelar</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GuardarFatura">Guardar</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="FecharDialogo">Fechar</MudButton>
+        @if (abaDialogoIndex == 1)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GuardarFatura">Guardar</MudButton>
+        }
     </DialogActions>
 </MudDialog>
 
 @code {
     [Inject] private GenomaContext DB { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private CsvExportService Csv { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
 
     private List<Facturacao> todas = new();
     private List<Facturacao> faturasFiltradas = new();
     private Facturacao? faturaEditar;
+    private Empresa? empresaEmitente;
     private DateTime? dataFaturaEditar, dataEnvioEmailEditar, dataEnvioSmsEditar;
 
     private string pesquisa = string.Empty;
@@ -184,15 +223,23 @@
     private string? erro;
     private bool carregando = true;
     private bool dialogoAberto;
+    private int abaDialogoIndex;
 
     private int totalRegistos;
     private int pendentes;
     private int faturadas;
     private decimal totalFaturado;
 
-    private DialogOptions dialogoOpcoes = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
+    private DialogOptions dialogoOpcoes = new() { MaxWidth = MaxWidth.Large, FullWidth = true };
 
-    protected override async Task OnInitializedAsync() => await Carregar();
+    protected override async Task OnInitializedAsync()
+    {
+        empresaEmitente = await DB.Empresas.AsNoTracking()
+            .Where(e => e.Ativo)
+            .OrderBy(e => e.Nome)
+            .FirstOrDefaultAsync();
+        await Carregar();
+    }
 
     private async Task Carregar()
     {
@@ -204,6 +251,8 @@
                 .AsNoTracking()
                 .Include(f => f.Processo!)
                     .ThenInclude(p => p.Paciente)
+                .Include(f => f.Processo!)
+                    .ThenInclude(p => p.Teste)
                 .Where(f => f.Processo!.Ativo)
                 .OrderByDescending(f => f.CreatedAt)
                 .ToListAsync();
@@ -255,9 +304,30 @@
         faturasFiltradas = query.ToList();
     }
 
-    private void AbrirFatura(TableRowClickEventArgs<Facturacao> args) => AbrirEdicao(args.Item);
+    private Task ExportarCsv() =>
+        Csv.ExportAsync(CsvExportService.NomeFicheiro("faturacao"), CsvExportRows.Faturacao(faturasFiltradas));
+
+    private void AbrirFatura(TableRowClickEventArgs<Facturacao> args)
+    {
+        if (args.Item is null) return;
+        AbrirDocumento(args.Item);
+    }
+
+    private void AbrirDocumento(Facturacao fatura)
+    {
+        PrepararFaturaEdicao(fatura);
+        abaDialogoIndex = 0;
+        dialogoAberto = true;
+    }
 
     private void AbrirEdicao(Facturacao fatura)
+    {
+        PrepararFaturaEdicao(fatura);
+        abaDialogoIndex = 1;
+        dialogoAberto = true;
+    }
+
+    private void PrepararFaturaEdicao(Facturacao fatura)
     {
         faturaEditar = new Facturacao
         {
@@ -279,7 +349,18 @@
         dataFaturaEditar = fatura.DataFatura;
         dataEnvioEmailEditar = fatura.DataEnvioEmail;
         dataEnvioSmsEditar = fatura.DataEnvioSms;
-        dialogoAberto = true;
+    }
+
+    private async Task ImprimirFatura()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("genoma.printElement", "genoma-fatura-doc");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Não foi possível imprimir: {ex.Message}", Severity.Warning);
+        }
     }
 
     private void FecharDialogo()

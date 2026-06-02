@@ -1,0 +1,16 @@
+<svg width="32" height="32" viewBox="0 0 456 456" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <g fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="228" y1="108" x2="108" y2="228" stroke-width="20" />
+        <polyline points="348,108 228,228 108,348" fill="none" stroke-width="20" />
+        <line x1="348" y1="228" x2="228" y2="348" stroke-width="20" />
+        <circle cx="108" cy="108" r="26" />
+        <circle cx="228" cy="108" r="26" />
+        <circle cx="348" cy="108" r="26" />
+        <circle cx="108" cy="228" r="26" />
+        <circle cx="228" cy="228" r="26" />
+        <circle cx="348" cy="228" r="26" />
+        <circle cx="108" cy="348" r="26" />
+        <circle cx="228" cy="348" r="26" />
+        <circle cx="348" cy="348" r="26" />
+    </g>
+</svg>

@@ -43,6 +43,11 @@
                       Class="genoma-toolbar-search"
                       Variant="Variant.Outlined"
                       Margin="Margin.Dense" />
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Download"
+                   OnClick="ExportarCsv">
+            Exportar CSV
+        </MudButton>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
@@ -90,6 +95,7 @@
 @code {
     [Inject] private GenomaContext DB { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private CsvExportService Csv { get; set; } = default!;
 
     [SupplyParameterFromQuery(Name = "q")]
     public string? Q { get; set; }
@@ -166,11 +172,17 @@
                 .ToList();
     }
 
-    private void AbrirContacto(TableRowClickEventArgs<Paciente> args) =>
+    private void AbrirContacto(TableRowClickEventArgs<Paciente> args)
+    {
+        if (args.Item is null) return;
         Nav.NavigateTo("/contactos/" + args.Item.Id);
+    }
 
     private void NovoContacto() => Nav.NavigateTo("/contactos/novo");
     private void EditarContacto(string id) => Nav.NavigateTo($"/contactos/{id}");
+
+    private Task ExportarCsv() =>
+        Csv.ExportAsync(CsvExportService.NomeFicheiro("contactos"), CsvExportRows.Contactos(contactosFiltrados));
 
     private async Task EliminarContacto(string id)
     {

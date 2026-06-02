@@ -30,6 +30,11 @@
 <MudPaper Elevation="0" Class="genoma-panel">
     <div class="genoma-toolbar mb-4">
         <div class="genoma-toolbar-spacer"></div>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Download"
+                   OnClick="ExportarCsv">
+            Exportar CSV
+        </MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                    OnClick="@(() => AbrirDialogo())">Novo Item</MudButton>
     </div>
@@ -113,6 +118,7 @@
 @code {
     [Inject] private GenomaContext DB { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private CsvExportService Csv { get; set; } = default!;
 
     private List<StockItem> stocks = new();
     private List<Teste> testes = new();
@@ -139,6 +145,9 @@
     }
 
     private void AbrirStock(TableRowClickEventArgs<StockItem> args) => AbrirDialogo(args.Item);
+
+    private Task ExportarCsv() =>
+        Csv.ExportAsync(CsvExportService.NomeFicheiro("stocks"), CsvExportRows.Stocks(stocks));
 
     private void AbrirDialogo(StockItem? item = null)
     {

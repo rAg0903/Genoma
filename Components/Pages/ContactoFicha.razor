@@ -193,8 +193,11 @@ else
         finally { aGuardar = false; }
     }
 
-    private void AbrirProcessoContacto(TableRowClickEventArgs<Processo> args) =>
+    private void AbrirProcessoContacto(TableRowClickEventArgs<Processo> args)
+    {
+        if (args.Item is null) return;
         Nav.NavigateTo("/processos/" + args.Item.Id);
+    }
 
     private void Voltar() => Nav.NavigateTo("/contactos");
 }

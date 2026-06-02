@@ -1,0 +1,174 @@
+<div class="genoma-fatura @Class" id="@ElementId">
+    <header class="genoma-fatura-header">
+        <div class="genoma-fatura-brand">
+            <div class="genoma-fatura-logo" aria-hidden="true">
+                <img src="images/genoma-logo.svg" alt="" />
+            </div>
+            <div class="genoma-fatura-brand-text">
+                <div class="genoma-fatura-brand-name">GENOMA</div>
+                <div class="genoma-fatura-brand-tag">Diagnóstico Genético</div>
+            </div>
+        </div>
+
+        <div class="genoma-fatura-emitente">
+            <div class="genoma-fatura-label">Emitente</div>
+            <div class="genoma-fatura-emitente-nome">@(Emitente?.Nome ?? "GENOMA")</div>
+            @if (!string.IsNullOrWhiteSpace(Emitente?.Morada))
+            {
+                <div>@Emitente.Morada</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Emitente?.CodigoPostal))
+            {
+                <div>@Emitente.CodigoPostal</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Emitente?.Telefone))
+            {
+                <div>Tel. @Emitente.Telefone</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Emitente?.Email))
+            {
+                <div>@Emitente.Email</div>
+            }
+        </div>
+
+        <div class="genoma-fatura-meta">
+            <div class="genoma-fatura-titulo">FATURA</div>
+            <dl class="genoma-fatura-meta-list">
+                <div>
+                    <dt>N.º</dt>
+                    <dd>@(string.IsNullOrWhiteSpace(Fatura.NumeroFatura) ? "—" : Fatura.NumeroFatura)</dd>
+                </div>
+                <div>
+                    <dt>Data</dt>
+                    <dd>@(Fatura.DataFatura?.ToString("dd/MM/yyyy") ?? DateTime.Today.ToString("dd/MM/yyyy"))</dd>
+                </div>
+                <div>
+                    <dt>Processo</dt>
+                    <dd>@(Fatura.Processo?.NumeroProcesso ?? "—")</dd>
+                </div>
+                <div>
+                    <dt>Estado</dt>
+                    <dd>
+                        <span class="genoma-fatura-estado @(Fatura.Pago ? "pago" : "pendente")">
+                            @(Fatura.Pago ? "Pago" : "Por pagar")
+                        </span>
+                    </dd>
+                </div>
+            </dl>
+        </div>
+    </header>
+
+    <section class="genoma-fatura-cliente">
+        <div class="genoma-fatura-label">Cliente</div>
+        <div class="genoma-fatura-cliente-nome">@(Fatura.Processo?.Paciente?.Nome ?? "—")</div>
+        <div class="genoma-fatura-cliente-detalhes">
+            @if (!string.IsNullOrWhiteSpace(Fatura.Processo?.Paciente?.Nif))
+            {
+                <span>NIF @Fatura.Processo.Paciente.Nif</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Fatura.Processo?.Paciente?.Morada))
+            {
+                <span>@Fatura.Processo.Paciente.Morada</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Fatura.Processo?.Paciente?.CodigoPostal) || !string.IsNullOrWhiteSpace(Fatura.Processo?.Paciente?.Localidade))
+            {
+                <span>@($"{Fatura.Processo?.Paciente?.CodigoPostal} {Fatura.Processo?.Paciente?.Localidade}".Trim())</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Fatura.Processo?.Paciente?.Email))
+            {
+                <span>@Fatura.Processo.Paciente.Email</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Fatura.Processo?.Paciente?.Telemovel))
+            {
+                <span>@Fatura.Processo.Paciente.Telemovel</span>
+            }
+        </div>
+    </section>
+
+    <table class="genoma-fatura-tabela">
+        <thead>
+            <tr>
+                <th>Descrição</th>
+                <th class="col-qtd">Qtd.</th>
+                <th class="col-preco">Preço unit.</th>
+                <th class="col-total">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <strong>@DescricaoLinha</strong>
+                    @if (!string.IsNullOrWhiteSpace(Fatura.Processo?.Teste?.TipoTeste))
+                    {
+                        <div class="genoma-fatura-linha-sub">@Fatura.Processo.Teste.TipoTeste</div>
+                    }
+                </td>
+                <td class="col-qtd">1</td>
+                <td class="col-preco">@PrecoUnitario.ToString("N2") €</td>
+                <td class="col-total">@TotalDocumento.ToString("N2") €</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="genoma-fatura-rodape-grid">
+        @if (TemMultibanco)
+        {
+            <div class="genoma-fatura-multibanco">
+                <div class="genoma-fatura-label">Pagamento Multibanco</div>
+                <div class="genoma-fatura-mb-grid">
+                    <div>
+                        <span>Entidade</span>
+                        <strong>@Fatura.EntidadeMultibanco</strong>
+                    </div>
+                    <div>
+                        <span>Referência</span>
+                        <strong>@Fatura.ReferenciaMultibanco</strong>
+                    </div>
+                    <div>
+                        <span>Montante</span>
+                        <strong>@TotalDocumento.ToString("N2") €</strong>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="genoma-fatura-totais">
+            <div class="genoma-fatura-total-linha">
+                <span>Subtotal</span>
+                <span>@TotalDocumento.ToString("N2") €</span>
+            </div>
+            <div class="genoma-fatura-total-linha genoma-fatura-total-final">
+                <span>Total a pagar</span>
+                <span>@TotalDocumento.ToString("N2") €</span>
+            </div>
+        </div>
+    </div>
+
+    <footer class="genoma-fatura-nota">
+        Documento gerado pelo sistema GENOMA em @DateTime.Now.ToString("dd/MM/yyyy HH:mm").
+        @if (!Fatura.Pago && TemMultibanco)
+        {
+            <span> Utilize os dados Multibanco indicados para efectuar o pagamento.</span>
+        }
+    </footer>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Facturacao Fatura { get; set; } = default!;
+    [Parameter] public Empresa? Emitente { get; set; }
+    [Parameter] public string ElementId { get; set; } = "genoma-fatura-doc";
+    [Parameter] public string? Class { get; set; }
+
+    private decimal PrecoUnitario =>
+        Fatura.ValorFactura ?? Fatura.PrecoTeste;
+
+    private decimal TotalDocumento => PrecoUnitario;
+
+    private string DescricaoLinha =>
+        Fatura.Processo?.Teste?.Nome
+        ?? (Fatura.PrecoTeste > 0 ? "Teste genético" : "Serviço de diagnóstico genético");
+
+    private bool TemMultibanco =>
+        !string.IsNullOrWhiteSpace(Fatura.EntidadeMultibanco)
+        && !string.IsNullOrWhiteSpace(Fatura.ReferenciaMultibanco);
+}

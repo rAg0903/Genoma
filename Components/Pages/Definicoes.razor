@@ -16,6 +16,11 @@
     <MudTabPanel Text="Testes" Icon="@Icons.Material.Filled.Biotech">
         <MudStack Row="true" Class="mb-4">
             <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Download"
+                       OnClick="ExportarTestesCsv">
+                Exportar CSV
+            </MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                        OnClick="@(() => AbrirDialogoTeste())">Novo Teste</MudButton>
         </MudStack>
@@ -52,6 +57,11 @@
     <MudTabPanel Text="Empresas" Icon="@Icons.Material.Filled.Business">
         <MudStack Row="true" Class="mb-4">
             <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Download"
+                       OnClick="ExportarEmpresasCsv">
+                Exportar CSV
+            </MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                        OnClick="@(() => AbrirDialogoEmpresa())">Nova Empresa</MudButton>
         </MudStack>
@@ -82,6 +92,11 @@
     <MudTabPanel Text="Postos" Icon="@Icons.Material.Filled.LocalHospital">
         <MudStack Row="true" Class="mb-4">
             <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Download"
+                       OnClick="ExportarPostosCsv">
+                Exportar CSV
+            </MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                        OnClick="@(() => AbrirDialogoPosto())">Novo Posto</MudButton>
         </MudStack>
@@ -282,6 +297,7 @@
 @code {
     [Inject] private GenomaContext DB { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private CsvExportService Csv { get; set; } = default!;
 
     private List<Teste> testes = new();
     private List<Empresa> empresas = new();
@@ -354,6 +370,15 @@
         if (te.IncluiFraccaoFetal) partes.Add("FF");
         return partes.Count > 0 ? string.Join(", ", partes) : "—";
     }
+
+    private Task ExportarTestesCsv() =>
+        Csv.ExportAsync(CsvExportService.NomeFicheiro("testes"), CsvExportRows.Testes(testes));
+
+    private Task ExportarEmpresasCsv() =>
+        Csv.ExportAsync(CsvExportService.NomeFicheiro("empresas"), CsvExportRows.Empresas(empresas));
+
+    private Task ExportarPostosCsv() =>
+        Csv.ExportAsync(CsvExportService.NomeFicheiro("postos"), CsvExportRows.Postos(postos));
 
     private async Task AbrirDialogoTeste(Teste? t = null)
     {
