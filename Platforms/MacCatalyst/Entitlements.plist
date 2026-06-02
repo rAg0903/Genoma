@@ -9,6 +9,9 @@
         <!-- When App Sandbox is enabled, this value is required to open outgoing network connections. -->
         <key>com.apple.security.network.client</key>
         <true/>
+        <!-- Permite guardar CSV na pasta Transferências do utilizador -->
+        <key>com.apple.security.files.downloads.read-write</key>
+        <true/>
     </dict>
 </plist>
 

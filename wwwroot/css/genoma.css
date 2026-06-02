@@ -1225,3 +1225,335 @@ html, body, #app {
         width: min(88vw, 280px) !important;
     }
 }
+
+/* ── Documento de fatura (sempre aspecto papel) ── */
+.genoma-fatura {
+    --fatura-ink: #1a1c1e;
+    --fatura-muted: #6c757d;
+    --fatura-border: #dee2e6;
+    --fatura-accent: #1a1c1e;
+    --fatura-soft: #f8f9fa;
+    background: #ffffff;
+    color: var(--fatura-ink);
+    border: 1px solid var(--fatura-border);
+    border-radius: 12px;
+    padding: 2rem 2.25rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.genoma-fatura-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fatura-muted);
+    margin-bottom: 0.35rem;
+}
+
+.genoma-fatura-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 1.5rem 2rem;
+    align-items: start;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--fatura-accent);
+    margin-bottom: 1.5rem;
+}
+
+.genoma-fatura-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+}
+
+.genoma-fatura-logo {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    background: var(--fatura-accent);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.genoma-fatura-logo img {
+    width: 32px;
+    height: 32px;
+    display: block;
+    filter: brightness(0) invert(1);
+}
+
+.genoma-fatura-brand-name {
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1.1;
+}
+
+.genoma-fatura-brand-tag {
+    font-size: 0.8125rem;
+    color: var(--fatura-muted);
+    margin-top: 0.15rem;
+}
+
+.genoma-fatura-emitente {
+    min-width: 180px;
+    font-size: 0.8125rem;
+    color: var(--fatura-muted);
+    line-height: 1.55;
+}
+
+.genoma-fatura-emitente-nome {
+    font-weight: 600;
+    color: var(--fatura-ink);
+    font-size: 0.9375rem;
+    margin-bottom: 0.25rem;
+}
+
+.genoma-fatura-meta {
+    text-align: right;
+    min-width: 180px;
+}
+
+.genoma-fatura-titulo {
+    font-size: 1.625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--fatura-accent);
+    margin-bottom: 0.75rem;
+}
+
+.genoma-fatura-meta-list {
+    margin: 0;
+    display: grid;
+    gap: 0.35rem;
+}
+
+.genoma-fatura-meta-list > div {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.genoma-fatura-meta-list dt {
+    margin: 0;
+    color: var(--fatura-muted);
+    font-weight: 500;
+}
+
+.genoma-fatura-meta-list dd {
+    margin: 0;
+    font-weight: 600;
+    min-width: 5.5rem;
+    text-align: right;
+}
+
+.genoma-fatura-estado {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.genoma-fatura-estado.pago {
+    background: #d4edda;
+    color: #155724;
+}
+
+.genoma-fatura-estado.pendente {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.genoma-fatura-cliente {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.125rem;
+    background: var(--fatura-soft);
+    border-radius: 8px;
+    border: 1px solid var(--fatura-border);
+}
+
+.genoma-fatura-cliente-nome {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+
+.genoma-fatura-cliente-detalhes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.25rem;
+    color: var(--fatura-muted);
+    font-size: 0.8125rem;
+}
+
+.genoma-fatura-tabela {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+}
+
+.genoma-fatura-tabela th {
+    text-align: left;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fatura-muted);
+    padding: 0.65rem 0.75rem;
+    border-bottom: 2px solid var(--fatura-border);
+}
+
+.genoma-fatura-tabela td {
+    padding: 1rem 0.75rem;
+    border-bottom: 1px solid var(--fatura-border);
+    vertical-align: top;
+}
+
+.genoma-fatura-tabela .col-qtd,
+.genoma-fatura-tabela .col-preco,
+.genoma-fatura-tabela .col-total {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.genoma-fatura-tabela .col-qtd { width: 4rem; }
+.genoma-fatura-tabela .col-preco { width: 7rem; }
+.genoma-fatura-tabela .col-total { width: 7rem; font-weight: 600; }
+
+.genoma-fatura-linha-sub {
+    font-size: 0.8125rem;
+    color: var(--fatura-muted);
+    margin-top: 0.2rem;
+    font-weight: 400;
+}
+
+.genoma-fatura-rodape-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1.5rem;
+    align-items: start;
+    margin-bottom: 1.25rem;
+}
+
+.genoma-fatura-multibanco {
+    padding: 1rem 1.125rem;
+    border: 1px dashed var(--fatura-border);
+    border-radius: 8px;
+    background: #fafbfc;
+}
+
+.genoma-fatura-mb-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 1.25rem;
+}
+
+.genoma-fatura-mb-grid span {
+    display: block;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fatura-muted);
+    margin-bottom: 0.15rem;
+}
+
+.genoma-fatura-mb-grid strong {
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+}
+
+.genoma-fatura-totais {
+    min-width: 240px;
+    padding: 0.75rem 0;
+}
+
+.genoma-fatura-total-linha {
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    padding: 0.45rem 0;
+    color: var(--fatura-muted);
+}
+
+.genoma-fatura-total-final {
+    margin-top: 0.35rem;
+    padding-top: 0.65rem;
+    border-top: 2px solid var(--fatura-accent);
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--fatura-ink);
+}
+
+.genoma-fatura-nota {
+    font-size: 0.75rem;
+    color: var(--fatura-muted);
+    border-top: 1px solid var(--fatura-border);
+    padding-top: 1rem;
+    line-height: 1.55;
+}
+
+.genoma-fatura-dialog-preview {
+    overflow: auto;
+    max-height: min(70vh, 720px);
+    padding: 0.25rem;
+}
+
+.genoma-fatura-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 899px) {
+    .genoma-fatura-header {
+        grid-template-columns: 1fr;
+    }
+
+    .genoma-fatura-meta {
+        text-align: left;
+    }
+
+    .genoma-fatura-meta-list > div {
+        justify-content: space-between;
+    }
+
+    .genoma-fatura-rodape-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .genoma-fatura-mb-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media print {
+    @page {
+        size: A4;
+        margin: 14mm;
+    }
+
+    body > *:not(.genoma-fatura-print-root) {
+        display: none !important;
+    }
+
+    .genoma-fatura-print-root {
+        display: block !important;
+        position: static !important;
+    }
+
+    .genoma-fatura {
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+        max-width: none;
+    }
+}

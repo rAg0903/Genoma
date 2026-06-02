@@ -21,7 +21,7 @@ public class CsvExportService
                 return;
             }
 
-            var pasta = ObterPastaExportacao();
+            var (pasta, pastaLabel) = ObterPastaExportacao();
             Directory.CreateDirectory(pasta);
 
             var caminho = CaminhoUnico(pasta, filename);
@@ -29,7 +29,7 @@ public class CsvExportService
             await File.WriteAllTextAsync(caminho, conteudo, encoding);
 
             RevelarNoFinder(caminho);
-            _snackbar.Add($"CSV guardado em Transferências: {Path.GetFileName(caminho)}", Severity.Success);
+            _snackbar.Add($"CSV guardado ({pastaLabel}): {Path.GetFileName(caminho)}", Severity.Success);
         }
         catch (Exception ex)
         {
@@ -37,17 +37,41 @@ public class CsvExportService
         }
     }
 
-    private static string ObterPastaExportacao()
+    private static (string Pasta, string Label) ObterPastaExportacao()
     {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var downloads = Path.Combine(home, "Downloads");
-        if (Directory.Exists(downloads))
-            return downloads;
+        if (OperatingSystem.IsMacOS() || OperatingSystem.IsMacCatalyst())
+        {
+            var user = Environment.GetEnvironmentVariable("USER");
+            if (!string.IsNullOrEmpty(user))
+            {
+                var downloads = Path.Combine("/Users", user, "Downloads");
+                if (PastaGravavel(downloads))
+                    return (downloads, "Transferências");
+            }
+        }
 
-        return Path.Combine(
+        var exportacoes = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "GENOMA",
             "Exportacoes");
+
+        return (exportacoes, "GENOMA → Exportações");
+    }
+
+    private static bool PastaGravavel(string pasta)
+    {
+        try
+        {
+            Directory.CreateDirectory(pasta);
+            var teste = Path.Combine(pasta, $".genoma_{Guid.NewGuid():N}");
+            File.WriteAllText(teste, "ok");
+            File.Delete(teste);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static string CaminhoUnico(string pasta, string filename)

@@ -253,8 +253,11 @@
         processosFiltrados = q.ToList();
     }
 
-    private void AbrirProcesso(TableRowClickEventArgs<Processo> args) =>
+    private void AbrirProcesso(TableRowClickEventArgs<Processo> args)
+    {
+        if (args.Item is null) return;
         Nav.NavigateTo("/processos/" + args.Item.Id);
+    }
 
     private Task ExportarCsv() =>
         Csv.ExportAsync(CsvExportService.NomeFicheiro("processos"), CsvExportRows.Processos(processosFiltrados));

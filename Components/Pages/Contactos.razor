@@ -172,8 +172,11 @@
                 .ToList();
     }
 
-    private void AbrirContacto(TableRowClickEventArgs<Paciente> args) =>
+    private void AbrirContacto(TableRowClickEventArgs<Paciente> args)
+    {
+        if (args.Item is null) return;
         Nav.NavigateTo("/contactos/" + args.Item.Id);
+    }
 
     private void NovoContacto() => Nav.NavigateTo("/contactos/novo");
     private void EditarContacto(string id) => Nav.NavigateTo($"/contactos/{id}");
