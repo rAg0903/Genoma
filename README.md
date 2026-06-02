@@ -23,20 +23,38 @@ Aplicação desktop multiplataforma construída com **.NET MAUI Blazor Hybrid**,
 | Módulo | Descrição |
 |--------|-----------|
 | **Dashboard** | KPIs, gráficos (processos por estado, evolução de exames), listas recentes |
-| **Contactos** | Lista com pesquisa, ficha (Identificação + tab Processos) |
-| **Processos** | Pesquisa avançada, ficha completa (`ProcessoEditor`), kits, colheita, resultados, anexos PDF, anulação |
-| **Faturação** | Listagem, filtros, edição e ligação a processos/contactos |
-| **Stocks** | Inventário com alertas de stock baixo e ajuste rápido (+/−) |
+| **Contactos** | Lista com pesquisa, ficha (Identificação + tab Processos), exportação CSV |
+| **Processos** | Pesquisa avançada, ficha completa (`ProcessoEditor`), kits, colheita, resultados, anexos PDF, anulação, exportação CSV |
+| **Faturação** | Listagem, filtros, edição, **documento de fatura** (logo GENOMA, impressão/PDF) e ligação a processos/contactos |
+| **Stocks** | Inventário com alertas de stock baixo, ajuste rápido (+/−) e exportação CSV |
 | **Listagens** | Relatórios com exportação **CSV** (contactos, processos, faturação) |
-| **Definições** | Testes (cromossomas, empresas/kit), empresas e postos de colheita |
+| **Definições** | Testes (cromossomas, empresas/kit), empresas e postos de colheita — com exportação CSV |
 | **Pesquisa global** | Barra superior — pesquisa unificada em contactos e processos |
 
 ### Interface
 
 - Layout com **sidebar** recolhível, breadcrumb e barra superior
+- **Logo GENOMA** na sidebar, favicon e ícone da aplicação (`GENOMA.app`)
 - **Modo escuro** e layout responsivo (desktop / telemóvel)
 - **Notificações** (processos pendentes, stock baixo, faturas por pagar)
 - Tema visual unificado (`genoma.css` + `GenomaTheme`)
+
+### Exportação CSV
+
+Exportação nativa em C# (`CsvExportService`) — disponível em **Contactos**, **Processos**, **Faturação**, **Stocks**, **Listagens** e **Definições** (testes, empresas, postos).
+
+- Ficheiros com nome `{modulo}_{yyyy-MM-dd}.csv`, separador `;` e BOM UTF-8
+- **Mac:** grava na pasta **Transferências** (`~/Downloads`) com entitlement de sandbox
+- Fallback automático para `Documentos/GENOMA/Exportações` se Transferências não estiver acessível
+- Após exportar, o Finder abre na localização do ficheiro
+
+### Documento de fatura
+
+Em **Faturação**, cada registo pode abrir um **documento profissional** com:
+
+- Cabeçalho com **símbolo GENOMA** e dados do emitente (primeira empresa activa em Definições)
+- Dados do cliente, linha de serviço (teste), totais e referência **Multibanco**
+- Botão **Imprimir / PDF** (diálogo de impressão do sistema)
 
 > **Marketing** e **Login/Autenticação** estão planeados para versões futuras.
 
@@ -127,6 +145,7 @@ dotnet publish -f net9.0-maccatalyst -c Debug -r maccatalyst-arm64
 App funcional:
 
 - **`bin/Debug/net9.0-maccatalyst/maccatalyst-arm64/GENOMA.app`**
+- Bundle ID: `com.genoma.app`
 
 Abrir:
 
@@ -146,13 +165,17 @@ Genoma/
 ├── Components/
 │   ├── Layout/           # MainLayout (sidebar, topbar, tema)
 │   ├── Pages/            # Páginas Blazor
+│   ├── FaturaDocumento.razor
 │   └── ProcessoEditor.razor
 ├── Data/                 # GenomaContext (EF Core)
 ├── Models/               # Entidades C#
-├── Services/             # AnexoService, StockService, PreferenciasAppService
-├── scripts/              # SQL (schema + migrations v2–v5)
-├── wwwroot/css/genoma.css
-├── wwwroot/js/genoma.js
+├── Services/             # AnexoService, StockService, CsvExportService, PreferenciasAppService
+├── Resources/AppIcon/    # Ícone GENOMA (SVG/PNG)
+├── scripts/              # SQL (schema + migrations v2–v5) + publish-mac.sh
+├── wwwroot/
+│   ├── css/genoma.css
+│   ├── js/genoma.js
+│   └── images/genoma-logo.svg
 ├── GenomaTheme.cs
 └── MauiProgram.cs
 ```
@@ -166,7 +189,8 @@ Genoma/
 3. Criar **Processo** — escolher teste, posto, kit e dados clínicos
 4. Registar **Colheita** e **Resultados** na ficha do processo
 5. Anexar **PDF** de resultados
-6. Gerir **Faturação** e **Stock** (desconto automático ao atribuir teste)
+6. Gerir **Faturação** (documento, Multibanco, impressão) e **Stock** (desconto automático ao atribuir teste)
+7. Exportar relatórios em **CSV** quando necessário
 
 ---
 
