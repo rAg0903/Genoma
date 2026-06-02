@@ -112,17 +112,29 @@ Abrir `Genoma.sln` no Visual Studio 2022 e executar (Windows / Android / etc.).
 
 ### 6. Criar aplicação instalável (Mac)
 
-Gera `GENOMA.app` e instalador `.pkg`:
+> **Importante:** a build **Release** (`-c Release`) falha ao arrancar neste Mac (erro AOT do .NET MAUI). Usa **Debug** para gerar o executável.
 
 ```bash
-dotnet publish -f net9.0-maccatalyst -c Release
+./scripts/publish-mac.sh
 ```
 
-Saída principal:
+Ou manualmente:
 
-- App: `bin/Release/net9.0-maccatalyst/GENOMA.app`
-- Instalador: `bin/Release/net9.0-maccatalyst/publish/GENOMA-1.0.pkg`
+```bash
+dotnet publish -f net9.0-maccatalyst -c Debug -r maccatalyst-arm64
+```
 
+App funcional:
+
+- **`bin/Debug/net9.0-maccatalyst/maccatalyst-arm64/GENOMA.app`**
+
+Abrir:
+
+```bash
+open bin/Debug/net9.0-maccatalyst/maccatalyst-arm64/GENOMA.app
+```
+
+> Não uses a pasta `bin/Release/...` — essa versão fecha ao abrir.
 > A app **não inclui** o MariaDB — a base de dados tem de estar a correr localmente.
 
 ---

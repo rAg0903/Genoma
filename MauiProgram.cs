@@ -28,6 +28,7 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<IAnexoService, AnexoService>();
         builder.Services.AddSingleton<PreferenciasAppService>();
+        builder.Services.AddScoped<CsvExportService>();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();

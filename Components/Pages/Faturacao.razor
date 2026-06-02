@@ -55,6 +55,11 @@
             <MudToggleItem Value="@("pendentes")">Pendentes</MudToggleItem>
             <MudToggleItem Value="@("faturadas")">Faturadas</MudToggleItem>
         </MudToggleGroup>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Download"
+                   OnClick="ExportarCsv">
+            Exportar CSV
+        </MudButton>
     </div>
 
     <MudTable Items="@faturasFiltradas" Hover="true" Striped="true" Loading="@carregando"
@@ -173,6 +178,7 @@
 @code {
     [Inject] private GenomaContext DB { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private CsvExportService Csv { get; set; } = default!;
 
     private List<Facturacao> todas = new();
     private List<Facturacao> faturasFiltradas = new();
@@ -254,6 +260,9 @@
 
         faturasFiltradas = query.ToList();
     }
+
+    private Task ExportarCsv() =>
+        Csv.ExportAsync(CsvExportService.NomeFicheiro("faturacao"), CsvExportRows.Faturacao(faturasFiltradas));
 
     private void AbrirFatura(TableRowClickEventArgs<Facturacao> args) => AbrirEdicao(args.Item);
 

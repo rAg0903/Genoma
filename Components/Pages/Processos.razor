@@ -78,6 +78,11 @@
     <MudStack Row="true" Class="mb-4" AlignItems="AlignItems.Center">
         <MudText Typo="Typo.caption">@processosFiltrados.Count processo(s)</MudText>
         <MudSpacer />
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Download"
+                   OnClick="ExportarCsv">
+            Exportar CSV
+        </MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="/processos/novo">
             Novo Processo
         </MudButton>
@@ -130,6 +135,7 @@
     [Inject] private GenomaContext DB { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private CsvExportService Csv { get; set; } = default!;
 
     [SupplyParameterFromQuery(Name = "q")]
     public string? Q { get; set; }
@@ -158,6 +164,7 @@
                 .Include(p => p.Paciente)
                 .Include(p => p.Teste)
                 .Include(p => p.ProcessoKit)
+                .Include(p => p.Colheita)
                 .Include(p => p.ResultadoClinico)
                 .Include(p => p.InformacaoClinica)
                 .Where(p => p.Ativo)
@@ -248,6 +255,9 @@
 
     private void AbrirProcesso(TableRowClickEventArgs<Processo> args) =>
         Nav.NavigateTo("/processos/" + args.Item.Id);
+
+    private Task ExportarCsv() =>
+        Csv.ExportAsync(CsvExportService.NomeFicheiro("processos"), CsvExportRows.Processos(processosFiltrados));
 
     private void LimparFiltros()
     {
