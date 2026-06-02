@@ -1,16 +1,19 @@
 @page "/processos/novo"
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Href="/processos" />
-    <MudText Typo="Typo.h4">Novo Processo</MudText>
-</MudStack>
+<div class="genoma-page-header genoma-page-header--back">
+    <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack" Class="genoma-back-btn" Href="/processos" title="Voltar" />
+    <div>
+        <h1 class="genoma-page-title">Novo Processo</h1>
+        <p class="genoma-page-subtitle">Criar um novo processo clínico</p>
+    </div>
+</div>
 
 @if (!string.IsNullOrEmpty(erro))
 {
     <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
 }
 
-<MudPaper Elevation="2" Class="pa-4">
+<MudPaper Elevation="0" Class="genoma-panel">
     <MudGrid>
         <MudItem xs="12" md="6">
             <MudSelect @bind-Value="pacienteId" Label="Paciente *" Required="true">
@@ -50,15 +53,18 @@
         </MudItem>
     </MudGrid>
 
-    <MudStack Row="true" Class="mt-4" Spacing="2">
+    <div class="genoma-form-actions">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Guardar" Disabled="aGuardar">
             Criar Processo
         </MudButton>
         <MudButton Variant="Variant.Outlined" Href="/processos">Cancelar</MudButton>
-    </MudStack>
+    </div>
 </MudPaper>
 
 @code {
+    [SupplyParameterFromQuery(Name = "pacienteId")]
+    public string? PacienteIdQuery { get; set; }
+
     [Inject] private GenomaContext DB { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
@@ -81,6 +87,9 @@
         pacientes = await DB.Pacientes.AsNoTracking().Where(p => p.Ativo).OrderBy(p => p.Nome).ToListAsync();
         testes = await DB.Testes.AsNoTracking().Where(t => t.Ativo).OrderBy(t => t.Nome).ToListAsync();
         postos = await DB.Postos.AsNoTracking().OrderBy(p => p.Nome).ToListAsync();
+
+        if (!string.IsNullOrEmpty(PacienteIdQuery))
+            pacienteId = PacienteIdQuery;
 
         var count = await DB.Processos.CountAsync() + 1;
         numeroProcesso = $"P{DateTime.Now:yyyyMMdd}-{count:D4}";
@@ -132,10 +141,20 @@
             DB.InformacaoClinica.Add(new InformacaoClinica { Id = Guid.NewGuid().ToString(), ProcessoId = processoId });
             DB.Colheitas.Add(new Colheita { Id = Guid.NewGuid().ToString(), ProcessoId = processoId, PostoId = postoId });
             DB.Facturacao.Add(new Facturacao { Id = Guid.NewGuid().ToString(), ProcessoId = processoId, PrecoTeste = precoTeste });
+            DB.ProcessoKits.Add(new ProcessoKit
+            {
+                Id = Guid.NewGuid().ToString(), ProcessoId = processoId,
+                NumeroKit = numeroProcesso, TrackingNumber = numeroProcesso,
+                LocalizacaoKit = CromossomaOpcoes.LocalizacoesKit[0]
+            });
+            DB.ResultadosClinicos.Add(new ResultadoClinico
+            {
+                Id = Guid.NewGuid().ToString(), ProcessoId = processoId, SemAnomalias = true
+            });
 
             await DB.SaveChangesAsync();
             Snackbar.Add("Processo criado.", Severity.Success);
-            Nav.NavigateTo($"/contactos/{pacienteId}");
+            Nav.NavigateTo($"/processos/{processoId}");
         }
         catch (Exception ex)
         {

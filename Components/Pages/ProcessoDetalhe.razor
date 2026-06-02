@@ -1,0 +1,73 @@
+@page "/processos/{Id}"
+
+<div class="genoma-page-header genoma-page-header--back">
+    <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack" Class="genoma-back-btn" Href="/processos" title="Voltar" />
+    <div>
+        <h1 class="genoma-page-title">@numeroProcesso</h1>
+        @if (!string.IsNullOrEmpty(pacienteNome))
+        {
+            <p class="genoma-page-subtitle">@pacienteNome</p>
+        }
+    </div>
+    @if (processoAnulado)
+    {
+        <MudChip T="string" Size="Size.Small" Color="Color.Error">Anulado</MudChip>
+    }
+    @if (!string.IsNullOrEmpty(pacienteNome))
+    {
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Outlined.Person"
+                   Href="@($"/contactos/{pacienteId}")">Ver contacto</MudButton>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(erro))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
+}
+
+@if (carregando)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (Id != null)
+{
+    <ProcessoEditor ProcessoId="@Id" OnGuardado="OnProcessoGuardado" />
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+
+    [Inject] private GenomaContext DB { get; set; } = default!;
+
+    private string numeroProcesso = "Processo";
+    private string? pacienteNome, pacienteId;
+    private bool processoAnulado;
+    private string? erro;
+    private bool carregando = true;
+
+    protected override async Task OnParametersSetAsync() => await CarregarCabecalho();
+
+    private async Task CarregarCabecalho()
+    {
+        if (string.IsNullOrEmpty(Id)) return;
+        carregando = true;
+        try
+        {
+            var p = await DB.Processos.AsNoTracking()
+                .Include(x => x.Paciente)
+                .FirstOrDefaultAsync(x => x.Id == Id && x.Ativo);
+            if (p == null) { erro = "Processo não encontrado."; return; }
+            numeroProcesso = p.NumeroProcesso;
+            pacienteId = p.PacienteId;
+            pacienteNome = p.Paciente?.Nome;
+            processoAnulado = p.Anulado;
+        }
+        catch (Exception ex) { erro = ex.Message; }
+        finally { carregando = false; }
+    }
+
+    private async Task OnProcessoGuardado()
+    {
+        await CarregarCabecalho();
+    }
+}

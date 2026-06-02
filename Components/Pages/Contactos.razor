@@ -1,9 +1,11 @@
 ﻿@page "/contactos"
 
-<MudText Typo="Typo.h4" Class="mb-2">Contactos</MudText>
-<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
-    Gestão de pacientes e clientes
-</MudText>
+<div class="genoma-page-header">
+    <div>
+        <h1 class="genoma-page-title">Contactos</h1>
+        <p class="genoma-page-subtitle">Gestão de pacientes e clientes</p>
+    </div>
+</div>
 
 @if (!string.IsNullOrEmpty(erro))
 {
@@ -15,39 +17,43 @@
     </MudAlert>
 }
 
-<MudGrid Class="mb-4">
+<MudGrid Class="genoma-stat-grid mb-4" Spacing="3">
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total</MudText>
-            <MudText Typo="Typo.h5">@totalContactos</MudText>
-        </MudPaper>
+        <div class="genoma-stat-card">
+            <div class="genoma-stat-label">Total</div>
+            <div class="genoma-stat-value">@totalContactos</div>
+        </div>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Novos este mês</MudText>
-            <MudText Typo="Typo.h5">@novosEsteMes</MudText>
-        </MudPaper>
+        <div class="genoma-stat-card">
+            <div class="genoma-stat-label">Novos este mês</div>
+            <div class="genoma-stat-value">@novosEsteMes</div>
+        </div>
     </MudItem>
 </MudGrid>
 
-<MudPaper Elevation="2" Class="pa-4">
-    <MudStack Row="true" Class="mb-4" AlignItems="AlignItems.Center">
+<MudPaper Elevation="0" Class="genoma-panel">
+    <div class="genoma-toolbar mb-4">
         <MudTextField @bind-Value="pesquisa"
                       Placeholder="Pesquisar por nome, NIF ou email..."
                       Adornment="Adornment.Start"
                       AdornmentIcon="@Icons.Material.Filled.Search"
                       Immediate="true"
                       OnKeyUp="FiltrarContactos"
-                      Class="flex-grow-1" />
+                      Class="genoma-toolbar-search"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense" />
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
                    OnClick="NovoContacto">
             Novo Contacto
         </MudButton>
-    </MudStack>
+    </div>
 
-    <MudTable Items="@contactosFiltrados" Hover="true" Striped="true" Loading="@carregando">
+    <MudTable Items="@contactosFiltrados" Hover="true" Striped="true" Loading="@carregando"
+              RowClass="genoma-row-clickable" T="Paciente"
+              OnRowClick="AbrirContacto">
         <HeaderContent>
             <MudTh>Nome</MudTh>
             <MudTh>Data Nascimento</MudTh>
@@ -64,12 +70,14 @@
             <MudTd>@context.Telemovel</MudTd>
             <MudTd>@context.Email</MudTd>
             <MudTd>@context.CreatedAt.ToString("dd/MM/yyyy")</MudTd>
-            <MudTd>
-                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+            <MudTd Class="genoma-actions-cell">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit"
                                Color="Color.Primary" Size="Size.Small"
+                               title="Editar"
                                OnClick="@(() => EditarContacto(context.Id))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete"
                                Color="Color.Error" Size="Size.Small"
+                               title="Eliminar"
                                OnClick="@(() => EliminarContacto(context.Id))" />
             </MudTd>
         </RowTemplate>
@@ -82,6 +90,9 @@
 @code {
     [Inject] private GenomaContext DB { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? Q { get; set; }
 
     private List<Paciente> todosContactos = new();
     private List<Paciente> contactosFiltrados = new();
@@ -127,6 +138,20 @@
         {
             carregando = false;
         }
+
+        AplicarPesquisaQuery();
+    }
+
+    protected override void OnParametersSet() => AplicarPesquisaQuery();
+
+    private void AplicarPesquisaQuery()
+    {
+        if (string.IsNullOrWhiteSpace(Q))
+            return;
+
+        pesquisa = Q;
+        if (todosContactos.Count > 0)
+            FiltrarContactos();
     }
 
     private void FiltrarContactos()
@@ -140,6 +165,9 @@
                          || (p.Email != null && p.Email.Contains(pesquisa, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
     }
+
+    private void AbrirContacto(TableRowClickEventArgs<Paciente> args) =>
+        Nav.NavigateTo("/contactos/" + args.Item.Id);
 
     private void NovoContacto() => Nav.NavigateTo("/contactos/novo");
     private void EditarContacto(string id) => Nav.NavigateTo($"/contactos/{id}");

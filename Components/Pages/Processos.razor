@@ -1,73 +1,148 @@
 @page "/processos"
 
-<MudText Typo="Typo.h4" Class="mb-2">Processos</MudText>
-<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
-    Gestão de processos clínicos
-</MudText>
+<div class="genoma-page-header">
+    <div>
+        <h1 class="genoma-page-title">Processos</h1>
+        <p class="genoma-page-subtitle">Gestão e pesquisa avançada de processos clínicos</p>
+    </div>
+</div>
 
 @if (!string.IsNullOrEmpty(erro))
 {
     <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
 }
 
-<MudPaper Elevation="2" Class="pa-4">
+<MudPaper Elevation="0" Class="genoma-panel">
+    <MudExpansionPanels Class="mb-4">
+        <MudExpansionPanel Text="Pesquisa avançada" Expanded="true">
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="filtroProcesso" Label="N.º processo" Immediate="true" OnKeyUp="Filtrar" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="filtroPaciente" Label="Paciente" Immediate="true" OnKeyUp="Filtrar" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect Value="filtroTesteId" ValueChanged="@((string? v) => { filtroTesteId = v; Filtrar(); })" Label="Teste" Clearable="true">
+                        @foreach (var t in testes)
+                        {
+                            <MudSelectItem Value="@t.Id">@t.Nome</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="filtroNumeroKit" Label="N.º kit" Immediate="true" OnKeyUp="Filtrar" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="filtroTracking" Label="Tracking" Immediate="true" OnKeyUp="Filtrar" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="filtroEmpresaKit" Label="Empresa kit" Immediate="true" OnKeyUp="Filtrar" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect Value="filtroLocalizacaoKit" ValueChanged="@((string? v) => { filtroLocalizacaoKit = v; Filtrar(); })" Label="Localização kit" Clearable="true">
+                        @foreach (var loc in CromossomaOpcoes.LocalizacoesKit)
+                        {
+                            <MudSelectItem Value="@loc">@loc</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="filtroIdAmostra" Label="ID amostra" Immediate="true" OnKeyUp="Filtrar" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="filtroMedico" Label="Médico" Immediate="true" OnKeyUp="Filtrar" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="filtroNif" Label="NIF paciente" Immediate="true" OnKeyUp="Filtrar" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="filtroTelefone" Label="Telefone" Immediate="true" OnKeyUp="Filtrar" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="filtroEmail" Label="Email" Immediate="true" OnKeyUp="Filtrar" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="filtroMotivoAnulacao" Label="Motivo anulação" Immediate="true" OnKeyUp="Filtrar" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSwitch Value="filtroApenasAnulados" ValueChanged="@((bool v) => { filtroApenasAnulados = v; Filtrar(); })" Label="Apenas anulados" Color="Color.Warning" />
+                </MudItem>
+            </MudGrid>
+            <MudStack Row="true" Class="mt-2">
+                <MudButton Variant="Variant.Text" OnClick="LimparFiltros">Limpar filtros</MudButton>
+            </MudStack>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+
     <MudStack Row="true" Class="mb-4" AlignItems="AlignItems.Center">
-        <MudTextField @bind-Value="pesquisa"
-                      Placeholder="Pesquisar por n.º processo ou paciente..."
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      Immediate="true"
-                      OnKeyUp="Filtrar"
-                      Class="flex-grow-1" />
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   Href="/processos/novo">
+        <MudText Typo="Typo.caption">@processosFiltrados.Count processo(s)</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="/processos/novo">
             Novo Processo
         </MudButton>
     </MudStack>
 
-    <MudTable Items="@processosFiltrados" Hover="true" Striped="true" Loading="@carregando">
+    <MudTable Items="@processosFiltrados" Hover="true" Striped="true" Loading="@carregando"
+              RowClass="genoma-row-clickable" T="Processo"
+              OnRowClick="AbrirProcesso">
         <HeaderContent>
             <MudTh>N.º Processo</MudTh>
             <MudTh>Paciente</MudTh>
             <MudTh>Teste</MudTh>
+            <MudTh>Kit / Tracking</MudTh>
             <MudTh>Data Entrada</MudTh>
-            <MudTh>Notas</MudTh>
             <MudTh>Ações</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd>@context.NumeroProcesso</MudTd>
+            <MudTd>
+                @context.NumeroProcesso
+                @if (context.Anulado) { <MudChip T="string" Size="Size.Small" Color="Color.Error">Anulado</MudChip> }
+            </MudTd>
             <MudTd>@(context.Paciente?.Nome ?? "—")</MudTd>
             <MudTd>@(context.Teste?.Nome ?? "—")</MudTd>
-            <MudTd>@context.DataEntrada.ToString("dd/MM/yyyy")</MudTd>
-            <MudTd>@(context.Notas ?? "—")</MudTd>
             <MudTd>
+                @(context.ProcessoKit?.NumeroKit ?? "—")
+                @if (!string.IsNullOrEmpty(context.ProcessoKit?.TrackingNumber))
+                {
+                    <br /><MudText Typo="Typo.caption">@context.ProcessoKit.TrackingNumber</MudText>
+                }
+            </MudTd>
+            <MudTd>@context.DataEntrada.ToString("dd/MM/yyyy")</MudTd>
+            <MudTd Class="genoma-actions-cell">
+                <MudIconButton Icon="@Icons.Material.Outlined.Visibility" title="Ficha processo"
+                               Color="Color.Primary" Size="Size.Small" Href="@($"/processos/{context.Id}")" />
                 @if (context.PacienteId != null)
                 {
-                    <MudIconButton Icon="@Icons.Material.Filled.Person"
-                                   title="Ver contacto"
-                                   Color="Color.Primary" Size="Size.Small"
-                                   Href="@($"/contactos/{context.PacienteId}")" />
+                    <MudIconButton Icon="@Icons.Material.Outlined.Person" title="Ver contacto"
+                                   Color="Color.Default" Size="Size.Small" Href="@($"/contactos/{context.PacienteId}")" />
                 }
-                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete" title="Eliminar"
                                Color="Color.Error" Size="Size.Small"
                                OnClick="@(() => Eliminar(context.Id))" />
             </MudTd>
         </RowTemplate>
-        <NoRecordsContent>
-            <MudText>Nenhum processo encontrado.</MudText>
-        </NoRecordsContent>
+        <NoRecordsContent><MudText>Nenhum processo encontrado.</MudText></NoRecordsContent>
     </MudTable>
 </MudPaper>
 
 @code {
     [Inject] private GenomaContext DB { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? Q { get; set; }
 
     private List<Processo> todos = new();
     private List<Processo> processosFiltrados = new();
-    private string pesquisa = string.Empty;
+    private List<Teste> testes = new();
+
+    private string? filtroProcesso, filtroPaciente, filtroTesteId;
+    private string? filtroNumeroKit, filtroTracking, filtroEmpresaKit, filtroLocalizacaoKit, filtroIdAmostra;
+    private string? filtroMedico, filtroNif, filtroTelefone, filtroEmail, filtroMotivoAnulacao;
+    private bool filtroApenasAnulados;
+
     private string? erro;
     private bool carregando = true;
 
@@ -75,38 +150,112 @@
 
     private async Task Carregar()
     {
-        carregando = true;
-        erro = null;
+        carregando = true; erro = null;
         try
         {
-            todos = await DB.Processos
-                .AsNoTracking()
+            testes = await DB.Testes.AsNoTracking().Where(t => t.Ativo).OrderBy(t => t.Nome).ToListAsync();
+            todos = await DB.Processos.AsNoTracking()
                 .Include(p => p.Paciente)
                 .Include(p => p.Teste)
+                .Include(p => p.ProcessoKit)
+                .Include(p => p.ResultadoClinico)
+                .Include(p => p.InformacaoClinica)
                 .Where(p => p.Ativo)
                 .OrderByDescending(p => p.DataEntrada)
                 .ToListAsync();
-            processosFiltrados = todos;
+            Filtrar();
+            AplicarPesquisaQuery();
         }
-        catch (Exception ex)
+        catch (Exception ex) { erro = ex.Message; }
+        finally { carregando = false; }
+    }
+
+    protected override void OnParametersSet() => AplicarPesquisaQuery();
+
+    private void AplicarPesquisaQuery()
+    {
+        if (string.IsNullOrWhiteSpace(Q))
+            return;
+
+        var termo = Q.Trim();
+        if (termo.StartsWith("PROC", StringComparison.OrdinalIgnoreCase))
         {
-            erro = ex.Message;
+            filtroProcesso = termo;
+            filtroPaciente = null;
         }
-        finally
+        else
         {
-            carregando = false;
+            filtroPaciente = termo;
+            filtroProcesso = null;
         }
+
+        if (todos.Count > 0)
+            Filtrar();
     }
 
     private void Filtrar()
     {
-        if (string.IsNullOrWhiteSpace(pesquisa))
-            processosFiltrados = todos;
+        IEnumerable<Processo> q = todos;
+
+        if (filtroApenasAnulados)
+            q = q.Where(p => p.Anulado);
         else
-            processosFiltrados = todos
-                .Where(p => p.NumeroProcesso.Contains(pesquisa, StringComparison.OrdinalIgnoreCase)
-                         || (p.Paciente?.Nome.Contains(pesquisa, StringComparison.OrdinalIgnoreCase) ?? false))
-                .ToList();
+            q = q.Where(p => !p.Anulado);
+
+        if (!string.IsNullOrWhiteSpace(filtroProcesso))
+            q = q.Where(p => p.NumeroProcesso.Contains(filtroProcesso, StringComparison.OrdinalIgnoreCase));
+
+        if (!string.IsNullOrWhiteSpace(filtroPaciente))
+            q = q.Where(p => p.Paciente?.Nome.Contains(filtroPaciente, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (!string.IsNullOrWhiteSpace(filtroTesteId))
+            q = q.Where(p => p.TesteId == filtroTesteId);
+
+        if (!string.IsNullOrWhiteSpace(filtroNumeroKit))
+            q = q.Where(p => p.ProcessoKit?.NumeroKit?.Contains(filtroNumeroKit, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (!string.IsNullOrWhiteSpace(filtroTracking))
+            q = q.Where(p => p.ProcessoKit?.TrackingNumber?.Contains(filtroTracking, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (!string.IsNullOrWhiteSpace(filtroEmpresaKit))
+            q = q.Where(p => p.ProcessoKit?.EmpresaKit?.Contains(filtroEmpresaKit, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (!string.IsNullOrWhiteSpace(filtroLocalizacaoKit))
+            q = q.Where(p => p.ProcessoKit?.LocalizacaoKit == filtroLocalizacaoKit);
+
+        if (!string.IsNullOrWhiteSpace(filtroIdAmostra))
+            q = q.Where(p => p.ResultadoClinico?.IdAmostra?.Contains(filtroIdAmostra, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (!string.IsNullOrWhiteSpace(filtroMedico))
+            q = q.Where(p => p.InformacaoClinica?.MedicoNome?.Contains(filtroMedico, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (!string.IsNullOrWhiteSpace(filtroNif))
+            q = q.Where(p => p.Paciente?.Nif?.Contains(filtroNif, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (!string.IsNullOrWhiteSpace(filtroTelefone))
+            q = q.Where(p =>
+                (p.Paciente?.Telemovel?.Contains(filtroTelefone, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (p.Paciente?.TelefoneFixo?.Contains(filtroTelefone, StringComparison.OrdinalIgnoreCase) ?? false));
+
+        if (!string.IsNullOrWhiteSpace(filtroEmail))
+            q = q.Where(p => p.Paciente?.Email?.Contains(filtroEmail, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (!string.IsNullOrWhiteSpace(filtroMotivoAnulacao))
+            q = q.Where(p => p.MotivoAnulacao?.Contains(filtroMotivoAnulacao, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        processosFiltrados = q.ToList();
+    }
+
+    private void AbrirProcesso(TableRowClickEventArgs<Processo> args) =>
+        Nav.NavigateTo("/processos/" + args.Item.Id);
+
+    private void LimparFiltros()
+    {
+        filtroProcesso = filtroPaciente = filtroTesteId = null;
+        filtroNumeroKit = filtroTracking = filtroEmpresaKit = filtroLocalizacaoKit = filtroIdAmostra = null;
+        filtroMedico = filtroNif = filtroTelefone = filtroEmail = filtroMotivoAnulacao = null;
+        filtroApenasAnulados = false;
+        Filtrar();
     }
 
     private async Task Eliminar(string id)
@@ -122,9 +271,6 @@
                 await Carregar();
             }
         }
-        catch (Exception ex)
-        {
-            erro = ex.Message;
-        }
+        catch (Exception ex) { erro = ex.Message; }
     }
 }

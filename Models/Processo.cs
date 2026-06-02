@@ -41,6 +41,12 @@ public class Processo
     [Column("ativo")]
     public bool Ativo { get; set; } = true;
 
+    [Column("anulado")]
+    public bool Anulado { get; set; }
+
+    [Column("motivo_anulacao")]
+    public string? MotivoAnulacao { get; set; }
+
     // Navegação
     [ForeignKey("PacienteId")]
     public Paciente? Paciente { get; set; }
@@ -54,5 +60,7 @@ public class Processo
     public InformacaoClinica? InformacaoClinica { get; set; }
     public Colheita? Colheita { get; set; }
     public Facturacao? Facturacao { get; set; }
+    public ProcessoKit? ProcessoKit { get; set; }
+    public ResultadoClinico? ResultadoClinico { get; set; }
     public ICollection<AssetsResultados> Assets { get; set; } = new List<AssetsResultados>();
 }

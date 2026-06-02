@@ -1,38 +1,378 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
 
-<MudThemeProvider />
+<MudThemeProvider Theme="GenomaTheme.Theme" @bind-IsDarkMode="modoEscuro" @bind-IsDarkMode:after="AposAlterarModoEscuro" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <MudAppBar Elevation="1" Color="Color.Dark">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" 
-                       Color="Color.Inherit" 
-                       Edge="Edge.Start" 
-                       OnClick="ToggleDrawer" />
-        <MudText Typo="Typo.h6" Class="ml-3">Genoma</MudText>
-    </MudAppBar>
+<MudLayout Class="@LayoutClass">
+    <MudDrawer @bind-Open="drawerOpen"
+               ClipMode="@DrawerClip"
+               Elevation="0"
+               Variant="@DrawerVariant"
+               Width="260px"
+               Class="genoma-drawer">
+        <div class="genoma-drawer-shell">
+            <div class="genoma-drawer-header">
+                <div class="genoma-logo">
+                    <div class="genoma-logo-icon">
+                        <MudIcon Icon="@Icons.Material.Filled.GridView" Size="Size.Small" />
+                    </div>
+                    GENOMA
+                </div>
+            </div>
 
-    <MudDrawer @bind-Open="drawerOpen" Elevation="2">
-        <MudNavMenu>
-            <MudNavLink Href="/" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
-            <MudNavLink Href="/contactos" Icon="@Icons.Material.Filled.People">Contactos</MudNavLink>
-            <MudNavLink Href="/faturacao" Icon="@Icons.Material.Filled.Receipt">Faturação</MudNavLink>
-            <MudNavLink Href="/processos" Icon="@Icons.Material.Filled.Assignment">Processos</MudNavLink>
-            <MudNavLink Href="/stocks" Icon="@Icons.Material.Filled.Inventory">Stocks</MudNavLink>
-            <MudNavLink Href="/listagens" Icon="@Icons.Material.Filled.List">Listagens</MudNavLink>
-            <MudNavLink Href="/definicoes" Icon="@Icons.Material.Filled.Settings">Definições</MudNavLink>
-        </MudNavMenu>
+            <div class="genoma-drawer-body">
+                <MudNavMenu Class="genoma-nav" Color="Color.Inherit">
+                    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.SpaceDashboard" OnClick="FecharDrawerMobile">Dashboard</MudNavLink>
+                    <MudNavLink Href="/contactos" Icon="@Icons.Material.Outlined.People" OnClick="FecharDrawerMobile">Contactos</MudNavLink>
+                    <MudNavLink Href="/processos" Icon="@Icons.Material.Outlined.Assignment" OnClick="FecharDrawerMobile">Processos</MudNavLink>
+                    <MudNavLink Href="/faturacao" Icon="@Icons.Material.Outlined.ReceiptLong" OnClick="FecharDrawerMobile">Faturação</MudNavLink>
+
+                    <MudNavGroup Title="Stocks"
+                                 Icon="@Icons.Material.Outlined.Inventory2"
+                                 ExpandIcon="@Icons.Material.Outlined.ExpandMore"
+                                 Expanded="false"
+                                 HeaderClass="genoma-nav-group-header">
+                        <MudNavLink Href="/stocks" Icon="@Icons.Material.Outlined.Warehouse" OnClick="FecharDrawerMobile">Inventário</MudNavLink>
+                    </MudNavGroup>
+
+                    <MudNavGroup Title="Listagens"
+                                 Icon="@Icons.Material.Outlined.ListAlt"
+                                 ExpandIcon="@Icons.Material.Outlined.ExpandMore"
+                                 Expanded="false"
+                                 HeaderClass="genoma-nav-group-header">
+                        <MudNavLink Href="/listagens" Icon="@Icons.Material.Outlined.TableChart" OnClick="FecharDrawerMobile">Relatórios</MudNavLink>
+                    </MudNavGroup>
+
+                    <MudNavGroup Title="Definições"
+                                 Icon="@Icons.Material.Outlined.Settings"
+                                 ExpandIcon="@Icons.Material.Outlined.ExpandMore"
+                                 Expanded="false"
+                                 HeaderClass="genoma-nav-group-header">
+                        <MudNavLink Href="/definicoes" Icon="@Icons.Material.Outlined.Tune" OnClick="FecharDrawerMobile">Configuração</MudNavLink>
+                    </MudNavGroup>
+                </MudNavMenu>
+            </div>
+
+            <div class="genoma-drawer-footer">
+                <div class="genoma-user-card">
+                    <MudAvatar Size="Size.Small" Class="genoma-avatar-sidebar">UA</MudAvatar>
+                    <div class="genoma-user-meta">
+                        <div class="genoma-user-name">Utilizador Atual</div>
+                        <div class="genoma-user-email">utilizador@genoma.pt</div>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Outlined.Logout"
+                                   Size="Size.Small"
+                                   Class="genoma-logout-btn"
+                                   title="Terminar sessão"
+                                   OnClick="TerminarSessao" />
+                </div>
+                <div class="genoma-version">© @DateTime.Now.Year Genoma v2.0</div>
+            </div>
+        </div>
     </MudDrawer>
 
-    <MudMainContent>
-        @Body
+    <MudMainContent Class="genoma-main">
+        <div class="genoma-topbar">
+            <div class="genoma-topbar-left">
+                <MudIconButton Icon="@(drawerOpen ? Icons.Material.Outlined.MenuOpen : Icons.Material.Outlined.Menu)"
+                               Size="Size.Medium"
+                               Class="genoma-menu-btn"
+                               title="@(drawerOpen ? "Ocultar menu lateral" : "Mostrar menu lateral")"
+                               OnClick="ToggleDrawer" />
+                <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                    <div class="genoma-breadcrumb">
+                        Aplicação &gt; <strong>@paginaAtual</strong>
+                    </div>
+                </MudHidden>
+                <MudHidden Breakpoint="Breakpoint.MdAndUp">
+                    <div class="genoma-mobile-title">@paginaAtual</div>
+                </MudHidden>
+            </div>
+
+            <div class="genoma-topbar-search">
+                <MudTextField @bind-Value="pesquisaGlobal"
+                              Placeholder="Pesquisar..."
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Outlined.Search"
+                              OnAdornmentClick="ExecutarPesquisaGlobal"
+                              OnKeyDown="OnPesquisaKeyDown"
+                              Class="genoma-search"
+                              FullWidth="true" />
+            </div>
+
+            <div class="genoma-topbar-actions">
+                <MudIconButton Icon="@(modoEscuro ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
+                               Size="Size.Medium"
+                               title="@(modoEscuro ? "Modo claro" : "Modo escuro")"
+                               OnClick="AlternarModoEscuro" />
+                <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" MaxHeight="360">
+                    <ActivatorContent>
+                        <div class="genoma-notify-wrap">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Notifications" Size="Size.Medium" title="Notificações" />
+                            @if (notificacoes.Count > 0)
+                            {
+                                <span class="genoma-notify-dot"></span>
+                            }
+                        </div>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudText Typo="Typo.subtitle2" Class="px-4 py-2">Notificações</MudText>
+                        <MudDivider />
+                        @if (!notificacoes.Any())
+                        {
+                            <MudMenuItem Disabled="true">Sem notificações</MudMenuItem>
+                        }
+                        else
+                        {
+                            @foreach (var n in notificacoes)
+                            {
+                                <MudMenuItem OnClick="@(() => AbrirNotificacao(n.Url))">
+                                    <div>
+                                        <MudText Typo="Typo.body2"><strong>@n.Titulo</strong></MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@n.Descricao</MudText>
+                                    </div>
+                                </MudMenuItem>
+                            }
+                        }
+                    </ChildContent>
+                </MudMenu>
+                <div class="genoma-topbar-user">
+                    <MudAvatar Size="Size.Small" Class="genoma-avatar-topbar">AD</MudAvatar>
+                    <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                        <div>
+                            <div class="genoma-topbar-user-name">Utilizador Atual</div>
+                            <div class="genoma-topbar-user-role">Administrador</div>
+                        </div>
+                    </MudHidden>
+                </div>
+            </div>
+        </div>
+
+        <div class="genoma-content">
+            @Body
+        </div>
     </MudMainContent>
 </MudLayout>
 
 @code {
-    bool drawerOpen = true;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private GenomaContext DB { get; set; } = default!;
+    [Inject] private PreferenciasAppService Preferencias { get; set; } = default!;
+    [Inject] private IDialogService Dialog { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private IBrowserViewportService Viewport { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
 
-    void ToggleDrawer() => drawerOpen = !drawerOpen;
+    private bool drawerOpen;
+    private bool modoEscuro;
+    private bool isMobile;
+    private bool viewportInicializado;
+    private Guid? viewportSubscriptionId;
+    private string paginaAtual = "Dashboard";
+    private string pesquisaGlobal = string.Empty;
+    private List<NotificacaoUi> notificacoes = new();
+
+    private string LayoutClass =>
+        $"genoma-layout{(modoEscuro ? " genoma-dark" : "")}{(drawerOpen && !isMobile ? " drawer-open" : "")}";
+
+    private DrawerVariant DrawerVariant =>
+        isMobile ? DrawerVariant.Temporary : DrawerVariant.Persistent;
+
+    private DrawerClipMode DrawerClip =>
+        isMobile ? DrawerClipMode.Always : DrawerClipMode.Never;
+
+    protected override async Task OnInitializedAsync()
+    {
+        modoEscuro = Preferencias.IsDarkMode;
+        drawerOpen = Preferencias.DrawerOpen;
+        Nav.LocationChanged += OnLocationChanged;
+        AtualizarPagina(Nav.Uri);
+        await CarregarNotificacoes();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || viewportInicializado)
+            return;
+
+        viewportInicializado = true;
+        viewportSubscriptionId = Guid.NewGuid();
+        await Viewport.SubscribeAsync(viewportSubscriptionId.Value, async args =>
+        {
+            await AtualizarViewport(args.Breakpoint);
+            await InvokeAsync(StateHasChanged);
+        }, null, fireImmediately: true);
+
+        await AplicarClasseModoEscuro();
+    }
+
+    private Task AtualizarViewport(Breakpoint breakpoint)
+    {
+        var eraMobile = isMobile;
+        isMobile = breakpoint < Breakpoint.Md;
+
+        if (isMobile)
+            drawerOpen = false;
+        else if (eraMobile)
+            drawerOpen = Preferencias.DrawerOpen;
+
+        return Task.CompletedTask;
+    }
+
+    private async Task CarregarNotificacoes()
+    {
+        notificacoes = new();
+        try
+        {
+            var processosPendentes = await DB.Processos.AsNoTracking()
+                .Include(p => p.Colheita)
+                .CountAsync(p => p.Ativo && !p.Anulado && p.Colheita == null);
+
+            if (processosPendentes > 0)
+            {
+                notificacoes.Add(new NotificacaoUi(
+                    "Processos pendentes",
+                    $"{processosPendentes} processo(s) aguardam colheita",
+                    "/processos"));
+            }
+
+            var stockBaixo = await DB.StockItems.AsNoTracking()
+                .CountAsync(s => s.Ativo && s.Quantidade <= s.QuantidadeMinima);
+
+            if (stockBaixo > 0)
+            {
+                notificacoes.Add(new NotificacaoUi(
+                    "Stock baixo",
+                    $"{stockBaixo} item(ns) abaixo do mínimo",
+                    "/stocks"));
+            }
+
+            var faturasPendentes = await DB.Facturacao.AsNoTracking()
+                .Include(f => f.Processo)
+                .CountAsync(f => f.Processo!.Ativo && !f.Pago);
+
+            if (faturasPendentes > 0)
+            {
+                notificacoes.Add(new NotificacaoUi(
+                    "Pagamentos pendentes",
+                    $"{faturasPendentes} fatura(s) por pagar",
+                    "/faturacao"));
+            }
+        }
+        catch
+        {
+            // Notificações são opcionais se a BD não estiver disponível
+        }
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        AtualizarPagina(e.Location);
+        await FecharDrawerMobile();
+        await CarregarNotificacoes();
+    }
+
+    private void AtualizarPagina(string uri)
+    {
+        var path = new Uri(uri).AbsolutePath.TrimEnd('/');
+        paginaAtual = path switch
+        {
+            "" or "/" => "Dashboard",
+            "/contactos" => "Contactos",
+            "/processos" => "Processos",
+            "/faturacao" => "Faturação",
+            "/stocks" => "Stocks",
+            "/listagens" => "Listagens",
+            "/definicoes" => "Definições",
+            "/pesquisa" => "Pesquisa",
+            _ when path.StartsWith("/contactos/") => "Contactos",
+            _ when path.StartsWith("/processos/") => "Processos",
+            _ => "Genoma"
+        };
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleDrawer()
+    {
+        drawerOpen = !drawerOpen;
+        if (!isMobile)
+            Preferencias.DrawerOpen = drawerOpen;
+        await Task.CompletedTask;
+    }
+
+    private async Task FecharDrawerMobile()
+    {
+        var breakpoint = await Viewport.GetCurrentBreakpointAsync();
+        if (breakpoint < Breakpoint.Md)
+            drawerOpen = false;
+    }
+
+    private void OnPesquisaKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or "NumpadEnter")
+            ExecutarPesquisaGlobal();
+    }
+
+    private void ExecutarPesquisaGlobal()
+    {
+        if (string.IsNullOrWhiteSpace(pesquisaGlobal))
+            return;
+
+        Nav.NavigateTo($"/pesquisa?q={Uri.EscapeDataString(pesquisaGlobal.Trim())}");
+    }
+
+    private async Task AlternarModoEscuro()
+    {
+        modoEscuro = !modoEscuro;
+        Preferencias.IsDarkMode = modoEscuro;
+        await AplicarClasseModoEscuro();
+    }
+
+    private async Task AposAlterarModoEscuro()
+    {
+        Preferencias.IsDarkMode = modoEscuro;
+        await AplicarClasseModoEscuro();
+    }
+
+    private async Task AplicarClasseModoEscuro()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("genoma.setDarkMode", modoEscuro);
+        }
+        catch
+        {
+            // JS pode ainda não estar pronto no primeiro render
+        }
+    }
+
+    private void AbrirNotificacao(string url) => Nav.NavigateTo(url);
+
+    private async Task TerminarSessao()
+    {
+        var confirmar = await Dialog.ShowMessageBoxAsync(
+            "Terminar sessão",
+            "Deseja terminar a sessão actual?",
+            yesText: "Terminar",
+            cancelText: "Cancelar");
+
+        if (confirmar != true)
+            return;
+
+        pesquisaGlobal = string.Empty;
+        Snackbar.Add("Sessão terminada.", Severity.Success);
+        Nav.NavigateTo("/");
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        if (viewportSubscriptionId.HasValue)
+            _ = Viewport.UnsubscribeAsync(viewportSubscriptionId.Value);
+    }
 }

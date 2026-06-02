@@ -23,6 +23,15 @@ public class Posto
     [Column("localizacao")]
     public string? Localizacao { get; set; }
 
+    [Column("morada")]
+    public string? Morada { get; set; }
+
+    [Column("telefone")]
+    public string? Telefone { get; set; }
+
+    [Column("horario")]
+    public string? Horario { get; set; }
+
     [ForeignKey("EntidadeId")]
     public Empresa? Empresa { get; set; }
 }

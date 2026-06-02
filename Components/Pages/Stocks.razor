@@ -1,40 +1,45 @@
 @page "/stocks"
 
-<MudText Typo="Typo.h4" Class="mb-2">Stocks</MudText>
-<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
-    Inventário de kits e reagentes
-</MudText>
+<div class="genoma-page-header">
+    <div>
+        <h1 class="genoma-page-title">Stocks</h1>
+        <p class="genoma-page-subtitle">Inventário de kits e reagentes</p>
+    </div>
+</div>
 
 @if (!string.IsNullOrEmpty(erro))
 {
     <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
 }
 
-<MudGrid Class="mb-4">
+<MudGrid Class="genoma-stat-grid mb-4" Spacing="3">
     <MudItem xs="12" sm="4">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Itens ativos</MudText>
-            <MudText Typo="Typo.h5">@stocks.Count</MudText>
-        </MudPaper>
+        <div class="genoma-stat-card">
+            <div class="genoma-stat-label">Itens ativos</div>
+            <div class="genoma-stat-value">@stocks.Count</div>
+        </div>
     </MudItem>
     <MudItem xs="12" sm="4">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Stock baixo</MudText>
-            <MudText Typo="Typo.h5" Color="Color.Warning">@stocks.Count(s => s.Quantidade <= s.QuantidadeMinima)</MudText>
-        </MudPaper>
+        <div class="genoma-stat-card">
+            <div class="genoma-stat-label">Stock baixo</div>
+            <div class="genoma-stat-value warning">@stocks.Count(s => s.Quantidade <= s.QuantidadeMinima)</div>
+        </div>
     </MudItem>
 </MudGrid>
 
-<MudPaper Elevation="2" Class="pa-4">
-    <MudStack Row="true" Class="mb-4">
-        <MudSpacer />
+<MudPaper Elevation="0" Class="genoma-panel">
+    <div class="genoma-toolbar mb-4">
+        <div class="genoma-toolbar-spacer"></div>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                    OnClick="@(() => AbrirDialogo())">Novo Item</MudButton>
-    </MudStack>
+    </div>
 
-    <MudTable Items="@stocks" Hover="true" Striped="true" Loading="@carregando">
+    <MudTable Items="@stocks" Hover="true" Striped="true" Loading="@carregando"
+              RowClass="genoma-row-clickable" T="StockItem"
+              OnRowClick="AbrirStock">
         <HeaderContent>
             <MudTh>Nome</MudTh>
+            <MudTh>Localização</MudTh>
             <MudTh>Teste ligado</MudTh>
             <MudTh>Quantidade</MudTh>
             <MudTh>Mínimo</MudTh>
@@ -43,6 +48,9 @@
         </HeaderContent>
         <RowTemplate>
             <MudTd>@context.Nome</MudTd>
+            <MudTd>
+                @(context.Localizacao == "Laboratorio" ? $"Lab: {context.LaboratorioNome ?? "—"}" : "Armazém")
+            </MudTd>
             <MudTd>@(context.Teste?.Nome ?? "—")</MudTd>
             <MudTd>@context.Quantidade</MudTd>
             <MudTd>@context.QuantidadeMinima</MudTd>
@@ -52,16 +60,18 @@
                     @(context.Quantidade <= context.QuantidadeMinima ? "Baixo" : "OK")
                 </MudChip>
             </MudTd>
-            <MudTd>
-                <MudIconButton Icon="@Icons.Material.Filled.Add" title="Repor +1"
+            <MudTd Class="genoma-actions-cell">
+                <MudIconButton Icon="@Icons.Material.Outlined.Add" title="Repor +1"
                                Color="Color.Success" Size="Size.Small"
                                OnClick="@(() => AjustarStock(context.Id, 1))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Remove" title="Retirar -1"
+                <MudIconButton Icon="@Icons.Material.Outlined.Remove" title="Retirar -1"
                                Color="Color.Warning" Size="Size.Small"
                                OnClick="@(() => AjustarStock(context.Id, -1))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit" title="Editar"
+                               Color="Color.Primary" Size="Size.Small"
                                OnClick="@(() => AbrirDialogo(context))" />
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                <MudIconButton Icon="@Icons.Material.Outlined.Delete" title="Eliminar"
+                               Color="Color.Error" Size="Size.Small"
                                OnClick="@(() => Eliminar(context.Id))" />
             </MudTd>
         </RowTemplate>
@@ -82,12 +92,20 @@
                     <MudSelectItem Value="@t.Id">@t.Nome</MudSelectItem>
                 }
             </MudSelect>
+            <MudSelect @bind-Value="itemEditar.Localizacao" Label="Localização" Class="mb-3">
+                <MudSelectItem Value="@("Armazem")">Armazém Genoma</MudSelectItem>
+                <MudSelectItem Value="@("Laboratorio")">Laboratório externo</MudSelectItem>
+            </MudSelect>
+            @if (itemEditar.Localizacao == "Laboratorio")
+            {
+                <MudTextField @bind-Value="itemEditar.LaboratorioNome" Label="Nome do laboratório" Class="mb-3" />
+            }
             <MudNumericField @bind-Value="itemEditar.Quantidade" Label="Quantidade" Min="0" Class="mb-3" />
             <MudNumericField @bind-Value="itemEditar.QuantidadeMinima" Label="Quantidade mínima" Min="0" />
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => dialogoAberto = false)">Cancelar</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="@(() => dialogoAberto = false)">Cancelar</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Guardar">Guardar</MudButton>
     </DialogActions>
 </MudDialog>
@@ -120,6 +138,8 @@
         finally { carregando = false; }
     }
 
+    private void AbrirStock(TableRowClickEventArgs<StockItem> args) => AbrirDialogo(args.Item);
+
     private void AbrirDialogo(StockItem? item = null)
     {
         itemEditar = item == null
@@ -128,7 +148,8 @@
             {
                 Id = item.Id, Nome = item.Nome, Descricao = item.Descricao,
                 Quantidade = item.Quantidade, QuantidadeMinima = item.QuantidadeMinima,
-                TesteId = item.TesteId, Ativo = item.Ativo
+                TesteId = item.TesteId, Ativo = item.Ativo,
+                Localizacao = item.Localizacao, LaboratorioNome = item.LaboratorioNome
             };
         dialogoAberto = true;
     }
@@ -152,6 +173,9 @@
                 existente.TesteId = itemEditar.TesteId;
                 existente.Quantidade = itemEditar.Quantidade;
                 existente.QuantidadeMinima = itemEditar.QuantidadeMinima;
+                existente.Localizacao = itemEditar.Localizacao;
+                existente.LaboratorioNome = itemEditar.Localizacao == "Laboratorio"
+                    ? itemEditar.LaboratorioNome : null;
             }
             await DB.SaveChangesAsync();
             dialogoAberto = false;

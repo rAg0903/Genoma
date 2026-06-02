@@ -26,6 +26,12 @@ public class StockItem
     [Column("teste_id")]
     public string? TesteId { get; set; }
 
+    [Column("localizacao")]
+    public string Localizacao { get; set; } = "Armazem";
+
+    [Column("laboratorio_nome")]
+    public string? LaboratorioNome { get; set; }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 

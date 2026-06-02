@@ -1,16 +1,18 @@
 @page "/definicoes"
 
-<MudText Typo="Typo.h4" Class="mb-2">Definições</MudText>
-<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
-    Configuração de testes, empresas e postos de colheita
-</MudText>
+<div class="genoma-page-header">
+    <div>
+        <h1 class="genoma-page-title">Definições</h1>
+        <p class="genoma-page-subtitle">Configuração de testes, empresas e postos de colheita</p>
+    </div>
+</div>
 
 @if (!string.IsNullOrEmpty(erro))
 {
     <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
 }
 
-<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" panel-class="pa-4">
+<MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" panel-class="pa-4">
     <MudTabPanel Text="Testes" Icon="@Icons.Material.Filled.Biotech">
         <MudStack Row="true" Class="mb-4">
             <MudSpacer />
@@ -20,18 +22,26 @@
         <MudTable Items="@testes" Hover="true" Striped="true" Loading="@carregando">
             <HeaderContent>
                 <MudTh>Nome</MudTh>
-                <MudTh>Preço (€)</MudTh>
-                <MudTh>Descrição</MudTh>
+                <MudTh>Tipo</MudTh>
+                <MudTh>Resposta (dias)</MudTh>
+                <MudTh>Cromossomas</MudTh>
+                <MudTh>Preço venda (€)</MudTh>
+                <MudTh>Empresas/Kit</MudTh>
                 <MudTh>Ações</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd>@context.Nome</MudTd>
+                <MudTd>@(context.TipoTeste ?? "—")</MudTd>
+                <MudTd>@(context.TempoRespostaDias?.ToString() ?? "—")</MudTd>
+                <MudTd>@ResumoCromossomasTeste(context)</MudTd>
                 <MudTd>@context.Preco.ToString("N2")</MudTd>
-                <MudTd>@(context.Descricao ?? "—")</MudTd>
-                <MudTd>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                <MudTd>@ContarEmpresasTeste(context.Id)</MudTd>
+                <MudTd Class="genoma-actions-cell">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" title="Editar"
+                                   Color="Color.Primary" Size="Size.Small"
                                    OnClick="@(() => AbrirDialogoTeste(context))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" title="Eliminar"
+                                   Color="Color.Error" Size="Size.Small"
                                    OnClick="@(() => EliminarTeste(context.Id))" />
                 </MudTd>
             </RowTemplate>
@@ -56,10 +66,12 @@
                 <MudTd>@context.Nome</MudTd>
                 <MudTd>@(context.Telefone ?? "—")</MudTd>
                 <MudTd>@(context.Email ?? "—")</MudTd>
-                <MudTd>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                <MudTd Class="genoma-actions-cell">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" title="Editar"
+                                   Color="Color.Primary" Size="Size.Small"
                                    OnClick="@(() => AbrirDialogoEmpresa(context))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" title="Eliminar"
+                                   Color="Color.Error" Size="Size.Small"
                                    OnClick="@(() => EliminarEmpresa(context.Id))" />
                 </MudTd>
             </RowTemplate>
@@ -86,10 +98,12 @@
                 <MudTd>@(context.Empresa?.Nome ?? "—")</MudTd>
                 <MudTd>@(context.CodigoPosto ?? "—")</MudTd>
                 <MudTd>@(context.Localizacao ?? "—")</MudTd>
-                <MudTd>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                <MudTd Class="genoma-actions-cell">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" title="Editar"
+                                   Color="Color.Primary" Size="Size.Small"
                                    OnClick="@(() => AbrirDialogoPosto(context))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" title="Eliminar"
+                                   Color="Color.Error" Size="Size.Small"
                                    OnClick="@(() => EliminarPosto(context.Id))" />
                 </MudTd>
             </RowTemplate>
@@ -98,19 +112,127 @@
     </MudTabPanel>
 </MudTabs>
 
-<MudDialog @bind-Visible="dialogoTesteAberto" Options="dialogoOpcoes">
-    <TitleContent><MudText Typo="Typo.h6">@(testeEditar?.Id == null ? "Novo Teste" : "Editar Teste")</MudText></TitleContent>
+<MudDialog @bind-Visible="dialogoTesteAberto" Options="dialogoTesteOpcoes">
+    <TitleContent><MudText Typo="Typo.h6">@(testeEditar?.Id == null || !testes.Any(t => t.Id == testeEditar.Id) ? "Inserir teste" : "Editar teste")</MudText></TitleContent>
     <DialogContent>
         @if (testeEditar != null)
         {
-            <MudTextField @bind-Value="testeEditar.Nome" Label="Nome *" Class="mb-3" />
-            <MudNumericField @bind-Value="testeEditar.Preco" Label="Preço (€)" Min="0" Class="mb-3" />
-            <MudTextField @bind-Value="testeEditar.Descricao" Label="Descrição" Lines="3" />
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="testeEditar.Nome" Label="Nome *" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect @bind-Value="testeEditar.TipoTeste" Label="Tipo de teste" Clearable="true">
+                        @foreach (var tt in CromossomaOpcoes.TiposTeste)
+                        {
+                            <MudSelectItem Value="@tt">@tt</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="testeEditar.TempoRespostaDias" Label="Tempo resposta (dias)" Min="0" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="testeEditar.TempoMinimoGestacaoSemanas" Label="Tempo mín. gestação (sem.)" Min="0" Max="45" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="testeEditar.PrecoCompra" Label="Preço compra (€)" Min="0" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="testeEditar.Preco" Label="Preço venda (€)" Min="0" />
+                </MudItem>
+                <MudItem xs="12" md="8">
+                    <MudTextField @bind-Value="testeEditar.Descricao" Label="Descrição" Lines="2" />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Cromossomas analisados por este teste</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                Seleciona apenas os cromossomas que o teste analisa. Nos resultados do processo só aparecem estes.
+            </MudText>
+            <div class="genoma-preset-group">
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => AplicarPresetCromossomas(CromossomaOpcoes.PresetNipt21))">NIPT 21 (13, 18, 21)</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => AplicarPresetCromossomas(CromossomaOpcoes.PresetNiptBasico))">NIPT básico (+22, 23)</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => AplicarPresetCromossomas(CromossomaOpcoes.PresetTodos))">Todos (1–23)</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="LimparCromossomasAnalisados">Limpar</MudButton>
+            </div>
+            <MudGrid Class="mb-2">
+                @foreach (var n in CromossomaOpcoes.Numeros)
+                {
+                    <MudItem xs="4" sm="3" md="2" lg="1">
+                        <MudCheckBox T="bool" Value="@cromossomasAnalisadosEditar.Contains(n)"
+                                     ValueChanged="@((bool v) => ToggleCromossomaAnalisado(n, v))"
+                                     Label="@($"C{n}")" Dense="true" />
+                    </MudItem>
+                }
+            </MudGrid>
+            <MudText Typo="Typo.caption">@cromossomasAnalisadosEditar.Count cromossoma(s) selecionado(s)</MudText>
+
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.subtitle1" Class="mb-2">Empresa + tipo de kit + detalhes</MudText>
+            <MudStack Row="true" Class="mb-2">
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => AbrirDialogoTesteEmpresa())">
+                    Adicionar empresa
+                </MudButton>
+            </MudStack>
+            <MudTable Items="@testeEmpresasEditar" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Empresa</MudTh>
+                    <MudTh>Tipo kit</MudTh>
+                    <MudTh>Detalhes MaterniTY</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@(empresas.FirstOrDefault(e => e.Id == context.EmpresaId)?.Nome ?? "—")</MudTd>
+                    <MudTd>@(context.TipoKit ?? "—")</MudTd>
+                    <MudTd>@ResumoDetalhesKit(context)</MudTd>
+                    <MudTd Class="genoma-actions-cell">
+                        <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small" title="Editar"
+                                       OnClick="@(() => AbrirDialogoTesteEmpresa(context))" />
+                        <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Error" title="Eliminar"
+                                       OnClick="@(() => RemoverTesteEmpresa(context))" />
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent><MudText Typo="Typo.caption">Sem empresas associadas a este teste.</MudText></NoRecordsContent>
+            </MudTable>
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => dialogoTesteAberto = false)">Cancelar</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="@(() => dialogoTesteAberto = false)">Cancelar</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GuardarTeste">Guardar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="dialogoTesteEmpresaAberto" Options="dialogoOpcoes">
+    <TitleContent><MudText Typo="Typo.h6">Empresa e kit</MudText></TitleContent>
+    <DialogContent>
+        @if (testeEmpresaEditar != null)
+        {
+            <MudSelect @bind-Value="testeEmpresaEditar.EmpresaId" Label="Empresa *" Class="mb-3">
+                @foreach (var e in empresas)
+                {
+                    <MudSelectItem Value="@e.Id">@e.Nome</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect @bind-Value="testeEmpresaEditar.TipoKit" Label="Tipo de kit" Clearable="true" Class="mb-3">
+                @foreach (var tk in CromossomaOpcoes.TiposKit)
+                {
+                    <MudSelectItem Value="@tk">@tk</MudSelectItem>
+                }
+            </MudSelect>
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Detalhes (configuração do teste)</MudText>
+            <MudSwitch @bind-Value="testeEmpresaEditar.AnalisaCromossomas" Label="Cromossomas 1–23" Color="Color.Primary" Class="mb-1" />
+            <MudSwitch @bind-Value="testeEmpresaEditar.AnalisaGemeos" Label="Gémeos" Color="Color.Primary" Class="mb-1" />
+            <MudSwitch @bind-Value="testeEmpresaEditar.AnalisaDelecoes" Label="Deleções / duplicações" Color="Color.Primary" Class="mb-1" />
+            <MudSwitch @bind-Value="testeEmpresaEditar.AnalisaMicrodelecoes" Label="Microdeleções / microduplicações" Color="Color.Primary" Class="mb-1" />
+            <MudSwitch @bind-Value="testeEmpresaEditar.IncluiFraccaoFetal" Label="Inclui fração fetal" Color="Color.Primary" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" OnClick="@(() => dialogoTesteEmpresaAberto = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ConfirmarTesteEmpresa">OK</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -127,7 +249,7 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => dialogoEmpresaAberto = false)">Cancelar</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="@(() => dialogoEmpresaAberto = false)">Cancelar</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GuardarEmpresa">Guardar</MudButton>
     </DialogActions>
 </MudDialog>
@@ -145,11 +267,14 @@
                 }
             </MudSelect>
             <MudTextField @bind-Value="postoEditar.CodigoPosto" Label="Código Posto" Class="mb-3" />
-            <MudTextField @bind-Value="postoEditar.Localizacao" Label="Localização" />
+            <MudTextField @bind-Value="postoEditar.Morada" Label="Morada" Class="mb-3" />
+            <MudTextField @bind-Value="postoEditar.Telefone" Label="Telefone" Class="mb-3" />
+            <MudTextField @bind-Value="postoEditar.Horario" Label="Horário" Class="mb-3" />
+            <MudTextField @bind-Value="postoEditar.Localizacao" Label="Localização / notas" />
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => dialogoPostoAberto = false)">Cancelar</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="@(() => dialogoPostoAberto = false)">Cancelar</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GuardarPosto">Guardar</MudButton>
     </DialogActions>
 </MudDialog>
@@ -163,16 +288,21 @@
     private List<Posto> postos = new();
 
     private Teste? testeEditar;
+    private List<TesteEmpresa> testeEmpresasEditar = new();
+    private HashSet<int> cromossomasAnalisadosEditar = new();
+    private TesteEmpresa? testeEmpresaEditar;
     private Empresa? empresaEditar;
     private Posto? postoEditar;
 
     private bool dialogoTesteAberto;
+    private bool dialogoTesteEmpresaAberto;
     private bool dialogoEmpresaAberto;
     private bool dialogoPostoAberto;
     private bool carregando = true;
     private string? erro;
 
     private DialogOptions dialogoOpcoes = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+    private DialogOptions dialogoTesteOpcoes = new() { MaxWidth = MaxWidth.Large, FullWidth = true };
 
     protected override async Task OnInitializedAsync() => await Carregar();
 
@@ -182,6 +312,7 @@
         try
         {
             testes = await DB.Testes.AsNoTracking().Where(t => t.Ativo).OrderBy(t => t.Nome).ToListAsync();
+            testeEmpresasCache = await DB.TesteEmpresas.AsNoTracking().ToListAsync();
             empresas = await DB.Empresas.AsNoTracking().Where(e => e.Ativo).OrderBy(e => e.Nome).ToListAsync();
             postos = await DB.Postos.AsNoTracking().Include(p => p.Empresa).OrderBy(p => p.Nome).ToListAsync();
         }
@@ -189,13 +320,101 @@
         finally { carregando = false; }
     }
 
-    private void AbrirDialogoTeste(Teste? t = null)
+    private int ContarEmpresasTeste(string testeId) =>
+        testeEmpresasCache.Count(te => te.TesteId == testeId);
+
+    private List<TesteEmpresa> testeEmpresasCache = new();
+
+    private static string ResumoCromossomasTeste(Teste t)
     {
-        testeEditar = t == null
-            ? new Teste { Ativo = true }
-            : new Teste { Id = t.Id, Nome = t.Nome, Preco = t.Preco, Descricao = t.Descricao, Ativo = t.Ativo };
+        var lista = t.CromossomasAnalisados;
+        if (lista.Count == 0) return "—";
+        if (lista.Count == 23) return "1–23";
+        return string.Join(", ", lista.OrderBy(n => n).Select(n => n.ToString()));
+    }
+
+    private void AplicarPresetCromossomas(int[] preset) =>
+        cromossomasAnalisadosEditar = preset.ToHashSet();
+
+    private void LimparCromossomasAnalisados() => cromossomasAnalisadosEditar.Clear();
+
+    private void ToggleCromossomaAnalisado(int n, bool selected)
+    {
+        if (selected) cromossomasAnalisadosEditar.Add(n);
+        else cromossomasAnalisadosEditar.Remove(n);
+    }
+
+    private static string ResumoDetalhesKit(TesteEmpresa te)
+    {
+        var partes = new List<string>();
+        if (te.AnalisaCromossomas) partes.Add("Crom.1-23");
+        if (te.AnalisaGemeos) partes.Add("Gémeos");
+        if (te.AnalisaDelecoes) partes.Add("Del/Dup");
+        if (te.AnalisaMicrodelecoes) partes.Add("Micro");
+        if (te.IncluiFraccaoFetal) partes.Add("FF");
+        return partes.Count > 0 ? string.Join(", ", partes) : "—";
+    }
+
+    private async Task AbrirDialogoTeste(Teste? t = null)
+    {
+        if (t == null)
+        {
+            testeEditar = new Teste { Ativo = true };
+            testeEmpresasEditar = new();
+            cromossomasAnalisadosEditar = new();
+        }
+        else
+        {
+            testeEditar = new Teste
+            {
+                Id = t.Id, Nome = t.Nome, Preco = t.Preco, PrecoCompra = t.PrecoCompra,
+                Descricao = t.Descricao, Ativo = t.Ativo, TipoTeste = t.TipoTeste,
+                TempoRespostaDias = t.TempoRespostaDias,
+                TempoMinimoGestacaoSemanas = t.TempoMinimoGestacaoSemanas,
+                CromossomasAnalisadosJson = t.CromossomasAnalisadosJson
+            };
+            cromossomasAnalisadosEditar = t.CromossomasAnalisados.ToHashSet();
+            testeEmpresasEditar = await DB.TesteEmpresas.AsNoTracking()
+                .Where(x => x.TesteId == t.Id)
+                .Select(x => new TesteEmpresa
+                {
+                    Id = x.Id, TesteId = x.TesteId, EmpresaId = x.EmpresaId, TipoKit = x.TipoKit,
+                    AnalisaCromossomas = x.AnalisaCromossomas, AnalisaGemeos = x.AnalisaGemeos,
+                    AnalisaDelecoes = x.AnalisaDelecoes, AnalisaMicrodelecoes = x.AnalisaMicrodelecoes,
+                    IncluiFraccaoFetal = x.IncluiFraccaoFetal
+                }).ToListAsync();
+        }
         dialogoTesteAberto = true;
     }
+
+    private void AbrirDialogoTesteEmpresa(TesteEmpresa? te = null)
+    {
+        testeEmpresaEditar = te == null
+            ? new TesteEmpresa { TesteId = testeEditar?.Id ?? "" }
+            : new TesteEmpresa
+            {
+                Id = te.Id, TesteId = te.TesteId, EmpresaId = te.EmpresaId, TipoKit = te.TipoKit,
+                AnalisaCromossomas = te.AnalisaCromossomas, AnalisaGemeos = te.AnalisaGemeos,
+                AnalisaDelecoes = te.AnalisaDelecoes, AnalisaMicrodelecoes = te.AnalisaMicrodelecoes,
+                IncluiFraccaoFetal = te.IncluiFraccaoFetal
+            };
+        dialogoTesteEmpresaAberto = true;
+    }
+
+    private void ConfirmarTesteEmpresa()
+    {
+        if (testeEmpresaEditar == null || string.IsNullOrWhiteSpace(testeEmpresaEditar.EmpresaId)) return;
+        var idx = testeEmpresasEditar.FindIndex(x => x.Id == testeEmpresaEditar.Id);
+        if (string.IsNullOrEmpty(testeEmpresaEditar.Id))
+            testeEmpresaEditar.Id = Guid.NewGuid().ToString();
+        if (idx >= 0)
+            testeEmpresasEditar[idx] = testeEmpresaEditar;
+        else
+            testeEmpresasEditar.Add(testeEmpresaEditar);
+        dialogoTesteEmpresaAberto = false;
+    }
+
+    private void RemoverTesteEmpresa(TesteEmpresa te) => testeEmpresasEditar.Remove(te);
 
     private async Task GuardarTeste()
     {
@@ -212,8 +431,39 @@
             {
                 existente.Nome = testeEditar.Nome;
                 existente.Preco = testeEditar.Preco;
+                existente.PrecoCompra = testeEditar.PrecoCompra;
                 existente.Descricao = testeEditar.Descricao;
+                existente.TipoTeste = testeEditar.TipoTeste;
+                existente.TempoRespostaDias = testeEditar.TempoRespostaDias;
+                existente.TempoMinimoGestacaoSemanas = testeEditar.TempoMinimoGestacaoSemanas;
             }
+
+            var alvo = existente ?? testeEditar;
+            alvo.CromossomasAnalisados = cromossomasAnalisadosEditar.OrderBy(n => n).ToList();
+
+            foreach (var te in testeEmpresasEditar)
+            {
+                te.TesteId = testeEditar.Id;
+                var existenteTe = await DB.TesteEmpresas.FindAsync(te.Id);
+                if (existenteTe == null)
+                    DB.TesteEmpresas.Add(te);
+                else
+                {
+                    existenteTe.EmpresaId = te.EmpresaId;
+                    existenteTe.TipoKit = te.TipoKit;
+                    existenteTe.AnalisaCromossomas = te.AnalisaCromossomas;
+                    existenteTe.AnalisaGemeos = te.AnalisaGemeos;
+                    existenteTe.AnalisaDelecoes = te.AnalisaDelecoes;
+                    existenteTe.AnalisaMicrodelecoes = te.AnalisaMicrodelecoes;
+                    existenteTe.IncluiFraccaoFetal = te.IncluiFraccaoFetal;
+                }
+            }
+
+            var idsManter = testeEmpresasEditar.Select(x => x.Id).ToHashSet();
+            var antigos = await DB.TesteEmpresas.Where(x => x.TesteId == testeEditar.Id).ToListAsync();
+            foreach (var rem in antigos.Where(x => !idsManter.Contains(x.Id)))
+                DB.TesteEmpresas.Remove(rem);
+
             await DB.SaveChangesAsync();
             dialogoTesteAberto = false;
             Snackbar.Add("Teste guardado.", Severity.Success);
@@ -274,7 +524,8 @@
     {
         postoEditar = p == null
             ? new Posto()
-            : new Posto { Id = p.Id, Nome = p.Nome, EntidadeId = p.EntidadeId, CodigoPosto = p.CodigoPosto, Localizacao = p.Localizacao };
+            : new Posto { Id = p.Id, Nome = p.Nome, EntidadeId = p.EntidadeId, CodigoPosto = p.CodigoPosto,
+                Localizacao = p.Localizacao, Morada = p.Morada, Telefone = p.Telefone, Horario = p.Horario };
         dialogoPostoAberto = true;
     }
 
@@ -295,6 +546,9 @@
                 existente.EntidadeId = postoEditar.EntidadeId;
                 existente.CodigoPosto = postoEditar.CodigoPosto;
                 existente.Localizacao = postoEditar.Localizacao;
+                existente.Morada = postoEditar.Morada;
+                existente.Telefone = postoEditar.Telefone;
+                existente.Horario = postoEditar.Horario;
             }
             await DB.SaveChangesAsync();
             dialogoPostoAberto = false;

@@ -19,5 +19,8 @@ public class GenomaContext : DbContext
     public DbSet<Utilizador> Utilizadores { get; set; }
     public DbSet<Perfil> Perfis { get; set; }
     public DbSet<Teste> Testes { get; set; }
+    public DbSet<TesteEmpresa> TesteEmpresas { get; set; }
     public DbSet<StockItem> StockItems { get; set; }
+    public DbSet<ProcessoKit> ProcessoKits { get; set; }
+    public DbSet<ResultadoClinico> ResultadosClinicos { get; set; }
 }

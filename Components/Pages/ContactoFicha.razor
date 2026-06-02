@@ -1,14 +1,16 @@
 @page "/contactos/novo"
 @page "/contactos/{Id}"
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="Voltar" />
-    <MudText Typo="Typo.h4">@(IsNovo ? "Novo Contacto" : paciente.Nome)</MudText>
-    @if (processoId != null)
-    {
-        <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ml-2">@numeroProcesso</MudChip>
-    }
-</MudStack>
+<div class="genoma-page-header genoma-page-header--back">
+    <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack" Class="genoma-back-btn" OnClick="Voltar" title="Voltar" />
+    <div>
+        <h1 class="genoma-page-title">@(IsNovo ? "Novo Contacto" : paciente.Nome)</h1>
+        @if (!IsNovo)
+        {
+            <p class="genoma-page-subtitle">Ficha de contacto</p>
+        }
+    </div>
+</div>
 
 @if (!string.IsNullOrEmpty(erro))
 {
@@ -21,221 +23,98 @@
 }
 else
 {
-    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" panel-class="pa-4">
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" panel-class="pa-4">
         <MudTabPanel Text="Identificação" Icon="@Icons.Material.Filled.Person">
             <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="paciente.Nome" Label="Nome *" Required="true" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudDatePicker @bind-Date="dataNascimento" Label="Data de Nascimento" />
-                </MudItem>
-                <MudItem xs="12" md="4">
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="paciente.Nome" Label="Nome *" Required="true" /></MudItem>
+                <MudItem xs="12" md="6"><MudDatePicker @bind-Date="dataNascimento" Label="Data de Nascimento" /></MudItem>
+                <MudItem xs="12" md="3">
                     <MudSelect @bind-Value="paciente.Genero" Label="Género" Clearable="true">
                         <MudSelectItem Value="@("F")">Feminino</MudSelectItem>
                         <MudSelectItem Value="@("M")">Masculino</MudSelectItem>
                     </MudSelect>
                 </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudTextField @bind-Value="paciente.Nif" Label="NIF" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudTextField @bind-Value="paciente.Telemovel" Label="Telemóvel" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="paciente.Email" Label="Email" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="paciente.Morada" Label="Morada" />
-                </MudItem>
-                <MudItem xs="12" md="3">
-                    <MudNumericField @bind-Value="paciente.Altura" Label="Altura (cm)" Min="0" />
-                </MudItem>
-                <MudItem xs="12" md="3">
-                    <MudNumericField @bind-Value="paciente.Peso" Label="Peso (kg)" Min="0" />
-                </MudItem>
+                <MudItem xs="12" md="3"><MudTextField @bind-Value="paciente.Nif" Label="NIF" /></MudItem>
+                <MudItem xs="12" md="3"><MudTextField @bind-Value="paciente.BiCc" Label="BI / CC" /></MudItem>
+                <MudItem xs="12" md="3"><MudTextField @bind-Value="paciente.SistemaSaude" Label="Sistema de saúde" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="paciente.Telemovel" Label="Telemóvel" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="paciente.TelefoneFixo" Label="Telefone fixo" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="paciente.Email" Label="Email" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="paciente.Morada" Label="Morada" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="paciente.Morada2" Label="Morada (linha 2)" /></MudItem>
+                <MudItem xs="12" md="3"><MudTextField @bind-Value="paciente.CodigoPostal" Label="Código postal" /></MudItem>
+                <MudItem xs="12" md="3"><MudTextField @bind-Value="paciente.Localidade" Label="Localidade" /></MudItem>
+                <MudItem xs="12" md="3"><MudTextField @bind-Value="paciente.Distrito" Label="Distrito" /></MudItem>
+                <MudItem xs="12" md="3"><MudTextField @bind-Value="paciente.Pais" Label="País" /></MudItem>
+                <MudItem xs="12" md="3"><MudNumericField @bind-Value="paciente.Altura" Label="Altura (cm)" Min="0" /></MudItem>
+                <MudItem xs="12" md="3"><MudNumericField @bind-Value="paciente.Peso" Label="Peso (kg)" Min="0" /></MudItem>
+                @if (!IsNovo)
+                {
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Registado em @paciente.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                        </MudText>
+                    </MudItem>
+                }
             </MudGrid>
         </MudTabPanel>
 
-        <MudTabPanel Text="Gravidez" Icon="@Icons.Material.Filled.PregnantWoman">
-            @if (processoId == null)
-            {
-                <MudAlert Severity="Severity.Info" Class="mb-4">
-                    Este contacto ainda não tem processo clínico.
-                </MudAlert>
-                @if (!IsNovo)
-                {
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CriarProcesso" Disabled="aGuardar">
-                        Criar Processo
-                    </MudButton>
-                }
-            }
-            else
-            {
-                <MudGrid>
-                    <MudItem xs="12" md="6">
-                        <MudSelect Value="testeId" ValueChanged="@((string? id) => OnTesteAlterado(id))" Label="Teste genético" Clearable="true">
-                            @foreach (var t in testes)
-                            {
-                                <MudSelectItem Value="@t.Id">@t.Nome (@t.Preco.ToString("N2") €)</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudSelect @bind-Value="postoId" Label="Posto de colheita" Clearable="true">
-                            @foreach (var p in postos)
-                            {
-                                <MudSelectItem Value="@p.Id">@p.Nome</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" md="3">
-                        <MudNumericField @bind-Value="semanasGravidez" Label="Semanas" Min="0" Max="45" />
-                    </MudItem>
-                    <MudItem xs="12" md="3">
-                        <MudNumericField @bind-Value="diasGravidez" Label="Dias" Min="0" Max="6" />
-                    </MudItem>
-                    <MudItem xs="12" md="6">
-                        <MudSelect @bind-Value="tipoGravidez" Label="Tipo de gravidez" Clearable="true">
-                            <MudSelectItem Value="@("Única")">Única</MudSelectItem>
-                            <MudSelectItem Value="@("Gemelar")">Gemelar</MudSelectItem>
-                            <MudSelectItem Value="@("Tripla")">Tripla</MudSelectItem>
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudSwitch @bind-Value="querSaberSexo" Label="Quer saber sexo" Color="Color.Primary" />
-                    </MudItem>
-                    <MudItem xs="12">
-                        <MudTextField @bind-Value="motivoPrescricao" Label="Motivo prescrição" Lines="3" />
-                    </MudItem>
-                </MudGrid>
-            }
-        </MudTabPanel>
-
-        <MudTabPanel Text="Colheita" Icon="@Icons.Material.Filled.Science">
-            @if (processoId == null)
-            {
-                <MudAlert Severity="Severity.Info">Cria um processo na tab Gravidez primeiro.</MudAlert>
-            }
-            else
-            {
-                <MudGrid>
-                    <MudItem xs="12" md="4">
-                        <MudDatePicker @bind-Date="dataPrevistaColheita" Label="Data prevista" />
-                    </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudSelect @bind-Value="periodoColheita" Label="Período" Clearable="true">
-                            <MudSelectItem Value="@("Manhã")">Manhã</MudSelectItem>
-                            <MudSelectItem Value="@("Tarde")">Tarde</MudSelectItem>
-                        </MudSelect>
-                    </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudDatePicker @bind-Date="dataEfetivaColheita" Label="Data efetiva" />
-                    </MudItem>
-                </MudGrid>
-            }
-        </MudTabPanel>
-
-        <MudTabPanel Text="Faturação" Icon="@Icons.Material.Filled.Receipt">
-            @if (processoId == null)
-            {
-                <MudAlert Severity="Severity.Info">Cria um processo na tab Gravidez primeiro.</MudAlert>
-            }
-            else
-            {
-                @if (!string.IsNullOrEmpty(testeNome))
-                {
-                    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
-                        Teste: <strong>@testeNome</strong> — preço sugerido aplicado na tab Faturação.
-                    </MudAlert>
-                }
-                <MudGrid>
-                    <MudItem xs="12" md="4">
-                        <MudNumericField @bind-Value="precoTeste" Label="Preço teste (€)" Min="0" />
-                    </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudTextField @bind-Value="numeroFatura" Label="N.º Fatura" />
-                    </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudDatePicker @bind-Date="dataFatura" Label="Data fatura" />
-                    </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudTextField @bind-Value="entidadeMultibanco" Label="Entidade MB" MaxLength="5" />
-                    </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudTextField @bind-Value="referenciaMultibanco" Label="Referência MB" MaxLength="9" />
-                    </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudSwitch @bind-Value="comissao" Label="Comissão" Color="Color.Primary" />
-                    </MudItem>
-                </MudGrid>
-            }
-        </MudTabPanel>
-
-        <MudTabPanel Text="Marketing" Icon="@Icons.Material.Filled.Campaign" Disabled="true">
-            <MudAlert Severity="Severity.Warning" Icon="@Icons.Material.Filled.Lock">
-                Módulo Marketing disponível na versão 2.0
-            </MudAlert>
-        </MudTabPanel>
-
-        <MudTabPanel Text="Notas" Icon="@Icons.Material.Filled.Notes">
-            @if (processoId == null)
-            {
-                <MudAlert Severity="Severity.Info">Notas do processo disponíveis após criar processo.</MudAlert>
-            }
-            else
-            {
-                <MudTextField @bind-Value="notasProcesso" Label="Notas do processo" Lines="5" />
-            }
-        </MudTabPanel>
-
-        <MudTabPanel Text="Anexos" Icon="@Icons.Material.Filled.AttachFile">
-            @if (processoId == null)
-            {
-                <MudAlert Severity="Severity.Info">Cria um processo para adicionar anexos.</MudAlert>
-            }
-            else
-            {
+        @if (!IsNovo)
+        {
+            <MudTabPanel Text="Processos" Icon="@Icons.Material.Filled.Assignment">
                 <MudStack Row="true" Class="mb-4">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Upload"
-                               OnClick="AdicionarAnexo" Disabled="aGuardar">
-                        Adicionar PDF
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                               Href="@($"/processos/novo?pacienteId={paciente.Id}")">
+                        Novo processo
                     </MudButton>
                 </MudStack>
-                @if (!anexos.Any())
+                @if (!processosDoContacto.Any())
                 {
-                    <MudAlert Severity="Severity.Info">Sem anexos neste processo.</MudAlert>
+                    <MudAlert Severity="Severity.Info">Este contacto ainda não tem processos clínicos.</MudAlert>
                 }
                 else
                 {
-                    <MudTable Items="@anexos" Dense="true" Hover="true">
+                    <MudTable Items="@processosDoContacto" Hover="true" Dense="true"
+                              RowClass="genoma-row-clickable" T="Processo"
+                              OnRowClick="AbrirProcessoContacto">
                         <HeaderContent>
-                            <MudTh>Ficheiro</MudTh>
-                            <MudTh>Data</MudTh>
-                            <MudTh>Ações</MudTh>
+                            <MudTh>N.º Processo</MudTh>
+                            <MudTh>Teste</MudTh>
+                            <MudTh>Data entrada</MudTh>
+                            <MudTh>Estado</MudTh>
+                            <MudTh></MudTh>
                         </HeaderContent>
                         <RowTemplate>
-                            <MudTd>@AnexoService.ObterNomeFicheiro(context.UrlFicheiro)</MudTd>
-                            <MudTd>@context.DataUpload.ToString("dd/MM/yyyy HH:mm")</MudTd>
+                            <MudTd>@context.NumeroProcesso</MudTd>
+                            <MudTd>@(context.Teste?.Nome ?? "—")</MudTd>
+                            <MudTd>@context.DataEntrada.ToString("dd/MM/yyyy")</MudTd>
                             <MudTd>
-                                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small"
-                                               title="Abrir" OnClick="@(() => AbrirAnexo(context))" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                               title="Eliminar" OnClick="@(() => EliminarAnexo(context.Id))" />
+                                @if (context.Anulado)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Error">Anulado</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Activo</MudChip>
+                                }
+                            </MudTd>
+                            <MudTd>
+                                <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew" Color="Color.Primary" Size="Size.Small"
+                                               title="Abrir ficha processo" Href="@($"/processos/{context.Id}")" />
                             </MudTd>
                         </RowTemplate>
                     </MudTable>
                 }
-            }
-        </MudTabPanel>
+            </MudTabPanel>
+        }
     </MudTabs>
 
-    <MudStack Row="true" Class="mt-4" Spacing="2">
+    <div class="genoma-form-actions">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Guardar" Disabled="aGuardar">
-            @(aGuardar ? "A guardar..." : "Guardar")
+            @(aGuardar ? "A guardar..." : "Guardar contacto")
         </MudButton>
         <MudButton Variant="Variant.Outlined" OnClick="Voltar">Cancelar</MudButton>
-    </MudStack>
+    </div>
 }
 
 @code {
@@ -244,233 +123,36 @@ else
     [Inject] private GenomaContext DB { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
-    [Inject] private IAnexoService AnexoService { get; set; } = default!;
-
-    private List<Teste> testes = new();
-    private List<Posto> postos = new();
-    private List<AssetsResultados> anexos = new();
-    private string? testeId;
-    private string? testeIdOriginal;
-    private string? testeNome;
-    private string? postoId;
 
     private Paciente paciente = new();
-    private string? processoId;
-    private string numeroProcesso = string.Empty;
+    private List<Processo> processosDoContacto = new();
     private DateTime? dataNascimento = DateTime.Today.AddYears(-30);
-
-    private int? semanasGravidez;
-    private int? diasGravidez;
-    private string? tipoGravidez;
-    private bool querSaberSexo;
-    private string? motivoPrescricao;
-
-    private DateTime? dataPrevistaColheita;
-    private string? periodoColheita;
-    private DateTime? dataEfetivaColheita;
-
-    private decimal precoTeste;
-    private string? numeroFatura;
-    private DateTime? dataFatura;
-    private string? entidadeMultibanco;
-    private string? referenciaMultibanco;
-    private bool comissao;
-
-    private string? notasProcesso;
     private string? erro;
-    private bool carregando = true;
-    private bool aGuardar;
-
+    private bool carregando = true, aGuardar;
     private bool IsNovo => string.IsNullOrEmpty(Id);
 
     protected override async Task OnInitializedAsync()
     {
-        if (IsNovo)
-        {
-            paciente = new Paciente { Ativo = true };
-            carregando = false;
-            return;
-        }
-
-        await CarregarContacto();
+        if (IsNovo) { paciente = new Paciente { Ativo = true }; carregando = false; return; }
+        await Carregar();
     }
 
-    private async Task CarregarContacto()
+    private async Task Carregar()
     {
-        carregando = true;
-        erro = null;
-
+        carregando = true; erro = null;
         try
         {
-            paciente = await DB.Pacientes
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Id == Id && p.Ativo)
+            paciente = await DB.Pacientes.AsNoTracking().FirstOrDefaultAsync(p => p.Id == Id && p.Ativo)
                 ?? throw new InvalidOperationException("Contacto não encontrado.");
-
             dataNascimento = paciente.DataNascimento;
-
-            var processo = await DB.Processos
-                .AsNoTracking()
-                .Include(p => p.InformacaoClinica)
-                .Include(p => p.Colheita)
-                .Include(p => p.Facturacao)
+            processosDoContacto = await DB.Processos.AsNoTracking()
                 .Include(p => p.Teste)
-                .Include(p => p.Assets)
                 .Where(p => p.PacienteId == Id && p.Ativo)
                 .OrderByDescending(p => p.DataEntrada)
-                .FirstOrDefaultAsync();
-
-            testes = await DB.Testes.AsNoTracking().Where(t => t.Ativo).OrderBy(t => t.Nome).ToListAsync();
-            postos = await DB.Postos.AsNoTracking().OrderBy(p => p.Nome).ToListAsync();
-
-            if (processo != null)
-                PreencherCamposProcesso(processo);
-        }
-        catch (Exception ex)
-        {
-            erro = ex.Message;
-        }
-        finally
-        {
-            carregando = false;
-        }
-    }
-
-    private void PreencherCamposProcesso(Processo processo)
-    {
-        processoId = processo.Id;
-        numeroProcesso = processo.NumeroProcesso;
-        notasProcesso = processo.Notas;
-        testeId = processo.TesteId;
-        testeIdOriginal = processo.TesteId;
-        testeNome = processo.Teste?.Nome;
-        postoId = processo.PostoId;
-        anexos = processo.Assets.ToList();
-
-        if (processo.InformacaoClinica != null)
-        {
-            semanasGravidez = processo.InformacaoClinica.SemanasGravidez;
-            diasGravidez = processo.InformacaoClinica.DiasGravidez;
-            tipoGravidez = processo.InformacaoClinica.TipoGravidez;
-            querSaberSexo = processo.InformacaoClinica.QuerSaberSexo;
-            motivoPrescricao = processo.InformacaoClinica.MotivoPrescricao;
-        }
-
-        if (processo.Colheita != null)
-        {
-            dataPrevistaColheita = processo.Colheita.DataPrevista;
-            periodoColheita = processo.Colheita.Periodo;
-            dataEfetivaColheita = processo.Colheita.DataEfetiva;
-        }
-
-        if (processo.Facturacao != null)
-        {
-            precoTeste = processo.Facturacao.PrecoTeste;
-            numeroFatura = processo.Facturacao.NumeroFatura;
-            dataFatura = processo.Facturacao.DataFatura;
-            entidadeMultibanco = processo.Facturacao.EntidadeMultibanco;
-            referenciaMultibanco = processo.Facturacao.ReferenciaMultibanco;
-            comissao = processo.Facturacao.Comissao;
-        }
-    }
-
-    private void OnTesteAlterado(string? id)
-    {
-        testeId = id;
-        var teste = testes.FirstOrDefault(t => t.Id == id);
-        testeNome = teste?.Nome;
-        if (teste != null)
-            precoTeste = teste.Preco;
-    }
-
-    private async Task AdicionarAnexo()
-    {
-        if (processoId == null) return;
-        aGuardar = true;
-        try
-        {
-            var resultado = await AnexoService.SelecionarEGuardarAsync(processoId);
-            if (resultado == null) return;
-
-            DB.AssetsResultados.Add(new AssetsResultados
-            {
-                Id = Guid.NewGuid().ToString(),
-                ProcessoId = processoId,
-                UrlFicheiro = resultado.Value.CaminhoRelativo,
-                TipoFicheiro = "PDF",
-                DataUpload = DateTime.Now
-            });
-            await DB.SaveChangesAsync();
-            anexos = await DB.AssetsResultados.AsNoTracking()
-                .Where(a => a.ProcessoId == processoId).ToListAsync();
-            Snackbar.Add("Anexo adicionado.", Severity.Success);
+                .ToListAsync();
         }
         catch (Exception ex) { erro = ex.Message; }
-        finally { aGuardar = false; }
-    }
-
-    private async Task AbrirAnexo(AssetsResultados anexo)
-    {
-        try { await AnexoService.AbrirAnexoAsync(anexo.UrlFicheiro); }
-        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
-    }
-
-    private async Task EliminarAnexo(string id)
-    {
-        var anexo = await DB.AssetsResultados.FindAsync(id);
-        if (anexo == null) return;
-        DB.AssetsResultados.Remove(anexo);
-        await DB.SaveChangesAsync();
-        anexos = anexos.Where(a => a.Id != id).ToList();
-    }
-
-    private async Task CriarProcesso()
-    {
-        if (IsNovo) return;
-
-        aGuardar = true;
-        try
-        {
-            var count = await DB.Processos.CountAsync() + 1;
-            processoId = Guid.NewGuid().ToString();
-            numeroProcesso = $"P{DateTime.Now:yyyyMMdd}-{count:D4}";
-
-            DB.Processos.Add(new Processo
-            {
-                Id = processoId,
-                NumeroProcesso = numeroProcesso,
-                PacienteId = paciente.Id,
-                DataEntrada = DateTime.Now,
-                Ativo = true
-            });
-            DB.InformacaoClinica.Add(new InformacaoClinica
-            {
-                Id = Guid.NewGuid().ToString(),
-                ProcessoId = processoId
-            });
-            DB.Colheitas.Add(new Colheita
-            {
-                Id = Guid.NewGuid().ToString(),
-                ProcessoId = processoId
-            });
-            DB.Facturacao.Add(new Facturacao
-            {
-                Id = Guid.NewGuid().ToString(),
-                ProcessoId = processoId
-            });
-
-            await DB.SaveChangesAsync();
-            Snackbar.Add($"Processo {numeroProcesso} criado.", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            erro = ex.Message;
-            processoId = null;
-        }
-        finally
-        {
-            aGuardar = false;
-        }
+        finally { carregando = false; }
     }
 
     private async Task Guardar()
@@ -480,14 +162,10 @@ else
             Snackbar.Add("O nome é obrigatório.", Severity.Warning);
             return;
         }
-
-        aGuardar = true;
-        erro = null;
-
+        aGuardar = true; erro = null;
         try
         {
             paciente.DataNascimento = dataNascimento ?? DateTime.Today;
-
             if (IsNovo)
             {
                 paciente.Id = Guid.NewGuid().ToString();
@@ -496,96 +174,27 @@ else
             }
             else
             {
-                var existente = await DB.Pacientes.FindAsync(paciente.Id)
+                var ex = await DB.Pacientes.FindAsync(paciente.Id)
                     ?? throw new InvalidOperationException("Contacto não encontrado.");
-
-                existente.Nome = paciente.Nome;
-                existente.DataNascimento = paciente.DataNascimento;
-                existente.Genero = paciente.Genero;
-                existente.Nif = paciente.Nif;
-                existente.Telemovel = paciente.Telemovel;
-                existente.Email = paciente.Email;
-                existente.Morada = paciente.Morada;
-                existente.Altura = paciente.Altura;
-                existente.Peso = paciente.Peso;
-
-                if (processoId != null)
-                    await GuardarProcesso();
+                ex.Nome = paciente.Nome; ex.DataNascimento = paciente.DataNascimento;
+                ex.Genero = paciente.Genero; ex.Nif = paciente.Nif; ex.BiCc = paciente.BiCc;
+                ex.SistemaSaude = paciente.SistemaSaude; ex.Telemovel = paciente.Telemovel;
+                ex.TelefoneFixo = paciente.TelefoneFixo; ex.Email = paciente.Email;
+                ex.Morada = paciente.Morada; ex.Morada2 = paciente.Morada2;
+                ex.CodigoPostal = paciente.CodigoPostal; ex.Localidade = paciente.Localidade;
+                ex.Distrito = paciente.Distrito; ex.Pais = paciente.Pais;
+                ex.Altura = paciente.Altura; ex.Peso = paciente.Peso;
             }
-
             await DB.SaveChangesAsync();
-            Snackbar.Add("Guardado com sucesso.", Severity.Success);
-            Nav.NavigateTo("/contactos");
+            Snackbar.Add("Contacto guardado.", Severity.Success);
+            Nav.NavigateTo(IsNovo ? $"/contactos/{paciente.Id}" : "/contactos");
         }
-        catch (Exception ex)
-        {
-            erro = $"Erro ao guardar: {ex.Message}";
-        }
-        finally
-        {
-            aGuardar = false;
-        }
+        catch (Exception ex) { erro = ex.Message; }
+        finally { aGuardar = false; }
     }
 
-    private async Task GuardarProcesso()
-    {
-        var processo = await DB.Processos.FindAsync(processoId);
-        if (processo == null) return;
-
-        processo.Notas = notasProcesso;
-        processo.PostoId = postoId;
-
-        if (testeId != testeIdOriginal)
-        {
-            if (!string.IsNullOrEmpty(testeIdOriginal))
-                await StockService.ReporPorTesteAsync(DB, testeIdOriginal);
-
-            if (!string.IsNullOrEmpty(testeId))
-            {
-                var (ok, msg) = await StockService.DescontarPorTesteAsync(DB, testeId);
-                if (!ok)
-                    throw new InvalidOperationException(msg ?? "Stock insuficiente para o teste selecionado.");
-            }
-
-            processo.TesteId = testeId;
-            testeIdOriginal = testeId;
-        }
-        else
-        {
-            processo.TesteId = testeId;
-        }
-
-        var ic = await DB.InformacaoClinica.FirstOrDefaultAsync(x => x.ProcessoId == processoId);
-        if (ic != null)
-        {
-            ic.SemanasGravidez = semanasGravidez;
-            ic.DiasGravidez = diasGravidez;
-            ic.TipoGravidez = tipoGravidez;
-            ic.QuerSaberSexo = querSaberSexo;
-            ic.MotivoPrescricao = motivoPrescricao;
-        }
-
-        var colheita = await DB.Colheitas.FirstOrDefaultAsync(x => x.ProcessoId == processoId);
-        if (colheita != null)
-        {
-            colheita.DataPrevista = dataPrevistaColheita;
-            colheita.Periodo = periodoColheita;
-            colheita.DataEfetiva = dataEfetivaColheita;
-            colheita.PostoId = postoId;
-        }
-
-        var facturacao = await DB.Facturacao.FirstOrDefaultAsync(x => x.ProcessoId == processoId);
-        if (facturacao != null)
-        {
-            facturacao.PrecoTeste = precoTeste;
-            facturacao.NumeroFatura = numeroFatura;
-            facturacao.DataFatura = dataFatura;
-            facturacao.EntidadeMultibanco = entidadeMultibanco;
-            facturacao.ReferenciaMultibanco = referenciaMultibanco;
-            facturacao.Comissao = comissao;
-            facturacao.UpdatedAt = DateTime.Now;
-        }
-    }
+    private void AbrirProcessoContacto(TableRowClickEventArgs<Processo> args) =>
+        Nav.NavigateTo("/processos/" + args.Item.Id);
 
     private void Voltar() => Nav.NavigateTo("/contactos");
 }

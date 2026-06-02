@@ -1,0 +1,6 @@
+-- Genoma v5 — postos completos
+USE genoma_db;
+
+ALTER TABLE postos ADD COLUMN IF NOT EXISTS morada VARCHAR(500) NULL;
+ALTER TABLE postos ADD COLUMN IF NOT EXISTS telefone VARCHAR(50) NULL;
+ALTER TABLE postos ADD COLUMN IF NOT EXISTS horario VARCHAR(255) NULL;

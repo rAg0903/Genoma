@@ -1,63 +1,71 @@
 @page "/faturacao"
 
-<MudText Typo="Typo.h4" Class="mb-2">Faturação</MudText>
-<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
-    Gestão de faturas e pagamentos
-</MudText>
+<div class="genoma-page-header">
+    <div>
+        <h1 class="genoma-page-title">Faturação</h1>
+        <p class="genoma-page-subtitle">Gestão de faturas e pagamentos</p>
+    </div>
+</div>
 
 @if (!string.IsNullOrEmpty(erro))
 {
     <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
 }
 
-<MudGrid Class="mb-4">
+<MudGrid Class="genoma-stat-grid mb-4" Spacing="3">
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Registos</MudText>
-            <MudText Typo="Typo.h5">@totalRegistos</MudText>
-        </MudPaper>
+        <div class="genoma-stat-card">
+            <div class="genoma-stat-label">Total Registos</div>
+            <div class="genoma-stat-value">@totalRegistos</div>
+        </div>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Pendentes</MudText>
-            <MudText Typo="Typo.h5" Color="Color.Warning">@pendentes</MudText>
-        </MudPaper>
+        <div class="genoma-stat-card">
+            <div class="genoma-stat-label">Pendentes</div>
+            <div class="genoma-stat-value warning">@pendentes</div>
+        </div>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Faturadas</MudText>
-            <MudText Typo="Typo.h5" Color="Color.Success">@faturadas</MudText>
-        </MudPaper>
+        <div class="genoma-stat-card">
+            <div class="genoma-stat-label">Faturadas</div>
+            <div class="genoma-stat-value success">@faturadas</div>
+        </div>
     </MudItem>
     <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Faturado</MudText>
-            <MudText Typo="Typo.h5">@totalFaturado.ToString("N2") €</MudText>
-        </MudPaper>
+        <div class="genoma-stat-card">
+            <div class="genoma-stat-label">Total Faturado</div>
+            <div class="genoma-stat-value">@totalFaturado.ToString("N2") €</div>
+        </div>
     </MudItem>
 </MudGrid>
 
-<MudPaper Elevation="2" Class="pa-4">
-    <MudStack Row="true" Class="mb-4" AlignItems="AlignItems.Center" Spacing="2">
+<MudPaper Elevation="0" Class="genoma-panel">
+    <div class="genoma-toolbar mb-4">
         <MudTextField @bind-Value="pesquisa"
                       Placeholder="Pesquisar por paciente, processo ou n.º fatura..."
                       Adornment="Adornment.Start"
                       AdornmentIcon="@Icons.Material.Filled.Search"
                       Immediate="true"
                       OnKeyUp="Filtrar"
-                      Class="flex-grow-1" />
+                      Class="genoma-toolbar-search"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense" />
         <MudToggleGroup T="string" Value="filtroEstado" ValueChanged="OnFiltroChanged" Color="Color.Primary" CheckMark="true">
             <MudToggleItem Value="@("todas")">Todas</MudToggleItem>
             <MudToggleItem Value="@("pendentes")">Pendentes</MudToggleItem>
             <MudToggleItem Value="@("faturadas")">Faturadas</MudToggleItem>
         </MudToggleGroup>
-    </MudStack>
+    </div>
 
-    <MudTable Items="@faturasFiltradas" Hover="true" Striped="true" Loading="@carregando">
+    <MudTable Items="@faturasFiltradas" Hover="true" Striped="true" Loading="@carregando"
+              RowClass="genoma-row-clickable" T="Facturacao"
+              OnRowClick="AbrirFatura">
         <HeaderContent>
             <MudTh>Processo</MudTh>
             <MudTh>Paciente</MudTh>
             <MudTh>Preço (€)</MudTh>
+            <MudTh>Valor factura</MudTh>
+            <MudTh>Pago</MudTh>
             <MudTh>N.º Fatura</MudTh>
             <MudTh>Data Fatura</MudTh>
             <MudTh>Estado</MudTh>
@@ -67,6 +75,12 @@
             <MudTd>@context.Processo?.NumeroProcesso</MudTd>
             <MudTd>@context.Processo?.Paciente?.Nome</MudTd>
             <MudTd>@context.PrecoTeste.ToString("N2")</MudTd>
+            <MudTd>@(context.ValorFactura?.ToString("N2") ?? "—")</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@(context.Pago ? Color.Success : Color.Default)">
+                    @(context.Pago ? "Sim" : "Não")
+                </MudChip>
+            </MudTd>
             <MudTd>@(context.NumeroFatura ?? "—")</MudTd>
             <MudTd>@(context.DataFatura?.ToString("dd/MM/yyyy") ?? "—")</MudTd>
             <MudTd>
@@ -75,13 +89,19 @@
                     @(context.NumeroFatura == null ? "Pendente" : "Faturada")
                 </MudChip>
             </MudTd>
-            <MudTd>
-                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+            <MudTd Class="genoma-actions-cell">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit" title="Editar fatura"
                                Color="Color.Primary" Size="Size.Small"
                                OnClick="@(() => AbrirEdicao(context))" />
+                @if (context.ProcessoId != null)
+                {
+                    <MudIconButton Icon="@Icons.Material.Outlined.Assignment" title="Ficha processo"
+                                   Color="Color.Default" Size="Size.Small"
+                                   Href="@($"/processos/{context.ProcessoId}")" />
+                }
                 @if (context.Processo?.PacienteId != null)
                 {
-                    <MudIconButton Icon="@Icons.Material.Filled.Person"
+                    <MudIconButton Icon="@Icons.Material.Outlined.Person"
                                    title="Ver contacto"
                                    Color="Color.Default" Size="Size.Small"
                                    Href="@($"/contactos/{context.Processo.PacienteId}")" />
@@ -112,6 +132,9 @@
                     <MudNumericField @bind-Value="faturaEditar.PrecoTeste" Label="Preço teste (€)" Min="0" />
                 </MudItem>
                 <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="faturaEditar.ValorFactura" Label="Valor factura (€)" Min="0" />
+                </MudItem>
+                <MudItem xs="12" md="4">
                     <MudTextField @bind-Value="faturaEditar.NumeroFatura" Label="N.º Fatura" />
                 </MudItem>
                 <MudItem xs="12" md="4">
@@ -124,13 +147,25 @@
                     <MudTextField @bind-Value="faturaEditar.ReferenciaMultibanco" Label="Referência MB" MaxLength="9" />
                 </MudItem>
                 <MudItem xs="12" md="4">
+                    <MudSwitch @bind-Value="faturaEditar.Pago" Label="Pago" Color="Color.Success" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSwitch @bind-Value="faturaEditar.NaoGeraComissao" Label="Não gera comissão" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" md="4">
                     <MudSwitch @bind-Value="faturaEditar.Comissao" Label="Comissão" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudDatePicker @bind-Date="dataEnvioEmailEditar" Label="Data envio email" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudDatePicker @bind-Date="dataEnvioSmsEditar" Label="Data envio SMS" />
                 </MudItem>
             </MudGrid>
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="FecharDialogo">Cancelar</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="FecharDialogo">Cancelar</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GuardarFatura">Guardar</MudButton>
     </DialogActions>
 </MudDialog>
@@ -142,7 +177,7 @@
     private List<Facturacao> todas = new();
     private List<Facturacao> faturasFiltradas = new();
     private Facturacao? faturaEditar;
-    private DateTime? dataFaturaEditar;
+    private DateTime? dataFaturaEditar, dataEnvioEmailEditar, dataEnvioSmsEditar;
 
     private string pesquisa = string.Empty;
     private string filtroEstado = "todas";
@@ -220,6 +255,8 @@
         faturasFiltradas = query.ToList();
     }
 
+    private void AbrirFatura(TableRowClickEventArgs<Facturacao> args) => AbrirEdicao(args.Item);
+
     private void AbrirEdicao(Facturacao fatura)
     {
         faturaEditar = new Facturacao
@@ -227,14 +264,21 @@
             Id = fatura.Id,
             ProcessoId = fatura.ProcessoId,
             PrecoTeste = fatura.PrecoTeste,
+            ValorFactura = fatura.ValorFactura,
             NumeroFatura = fatura.NumeroFatura,
             DataFatura = fatura.DataFatura,
             EntidadeMultibanco = fatura.EntidadeMultibanco,
             ReferenciaMultibanco = fatura.ReferenciaMultibanco,
             Comissao = fatura.Comissao,
+            NaoGeraComissao = fatura.NaoGeraComissao,
+            Pago = fatura.Pago,
+            DataEnvioEmail = fatura.DataEnvioEmail,
+            DataEnvioSms = fatura.DataEnvioSms,
             Processo = fatura.Processo
         };
         dataFaturaEditar = fatura.DataFatura;
+        dataEnvioEmailEditar = fatura.DataEnvioEmail;
+        dataEnvioSmsEditar = fatura.DataEnvioSms;
         dialogoAberto = true;
     }
 
@@ -254,11 +298,16 @@
             if (existente == null) return;
 
             existente.PrecoTeste = faturaEditar.PrecoTeste;
+            existente.ValorFactura = faturaEditar.ValorFactura;
             existente.NumeroFatura = faturaEditar.NumeroFatura;
             existente.DataFatura = dataFaturaEditar;
             existente.EntidadeMultibanco = faturaEditar.EntidadeMultibanco;
             existente.ReferenciaMultibanco = faturaEditar.ReferenciaMultibanco;
             existente.Comissao = faturaEditar.Comissao;
+            existente.NaoGeraComissao = faturaEditar.NaoGeraComissao;
+            existente.Pago = faturaEditar.Pago;
+            existente.DataEnvioEmail = dataEnvioEmailEditar;
+            existente.DataEnvioSms = dataEnvioSmsEditar;
             existente.UpdatedAt = DateTime.Now;
 
             await DB.SaveChangesAsync();

@@ -1,65 +1,314 @@
 ﻿@page "/"
 
-<MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
-<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-6">
-    Visão geral do sistema e principais indicadores
-</MudText>
+<div class="genoma-dash-header">
+    <div>
+        <h1 class="genoma-dash-title">Dashboard</h1>
+        <div class="genoma-dash-subtitle">Visão geral do sistema e principais indicadores</div>
+    </div>
+    <div class="genoma-status-pill">
+        <span class="genoma-status-dot"></span>
+        Sistema operacional
+    </div>
+</div>
 
 @if (!string.IsNullOrEmpty(erro))
 {
-    <MudAlert Severity="Severity.Warning" Class="mb-4">@erro</MudAlert>
+    <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Outlined">@erro</MudAlert>
 }
 
-<MudGrid>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Contactos</MudText>
-            <MudText Typo="Typo.h4">@totalContactos</MudText>
-        </MudPaper>
+<MudGrid Spacing="3" Class="genoma-dash-grid">
+    <MudItem xs="12" sm="6" lg="3">
+        <div class="genoma-kpi">
+            <div class="genoma-kpi-top">
+                <div class="genoma-kpi-icon blue">
+                    <MudIcon Icon="@Icons.Material.Outlined.People" />
+                </div>
+            </div>
+            <div class="genoma-kpi-label">Total Contactos</div>
+            <div class="genoma-kpi-value">@totalContactos</div>
+            <div class="genoma-kpi-sub positive">+@contactosEsteMes este mês</div>
+        </div>
     </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Processos Ativos</MudText>
-            <MudText Typo="Typo.h4">@processosAtivos</MudText>
-        </MudPaper>
+    <MudItem xs="12" sm="6" lg="3">
+        <div class="genoma-kpi">
+            <div class="genoma-kpi-top">
+                <div class="genoma-kpi-icon yellow">
+                    <MudIcon Icon="@Icons.Material.Outlined.Assignment" />
+                </div>
+            </div>
+            <div class="genoma-kpi-label">Processos Ativos</div>
+            <div class="genoma-kpi-value">@processosAtivos</div>
+            <div class="genoma-kpi-sub">@totalProcessos total</div>
+        </div>
     </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Faturas Pendentes</MudText>
-            <MudText Typo="Typo.h4">@faturasPendentes</MudText>
-        </MudPaper>
+    <MudItem xs="12" sm="6" lg="3">
+        <div class="genoma-kpi">
+            <div class="genoma-kpi-top">
+                <div class="genoma-kpi-icon purple">
+                    <MudIcon Icon="@Icons.Material.Outlined.Inventory2" />
+                </div>
+            </div>
+            <div class="genoma-kpi-label">Kits Disponíveis</div>
+            <div class="genoma-kpi-value">@kitsDisponiveis</div>
+            <div class="genoma-kpi-sub">@totalStockItens total no inventário</div>
+        </div>
     </MudItem>
-    <MudItem xs="12" sm="6" md="3">
-        <MudPaper Class="pa-4" Elevation="2">
-            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Faturado</MudText>
-            <MudText Typo="Typo.h4">@totalFaturado.ToString("N2") €</MudText>
-        </MudPaper>
+    <MudItem xs="12" sm="6" lg="3">
+        <div class="genoma-kpi">
+            <div class="genoma-kpi-top">
+                <div class="genoma-kpi-icon green">
+                    <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" />
+                </div>
+            </div>
+            <div class="genoma-kpi-label">Exames Concluídos</div>
+            <div class="genoma-kpi-value">@examesConcluidos</div>
+            <div class="genoma-kpi-sub positive">@taxaConclusao.ToString("F0")% taxa conclusão</div>
+        </div>
+    </MudItem>
+
+    <MudItem xs="12" md="7">
+        <div class="genoma-card">
+            <div class="genoma-card-title">Processos por Estado</div>
+            <MudChart T="double"
+                      ChartType="ChartType.Bar"
+                      ChartSeries="@seriesEstado"
+                      ChartLabels="@labelsEstado"
+                      ChartOptions="@opcoesEstado"
+                      Height="260px"
+                      Width="100%" />
+        </div>
+    </MudItem>
+    <MudItem xs="12" md="5">
+        <div class="genoma-card">
+            <div class="genoma-card-title">Estado dos Kits</div>
+            <MudChart T="double"
+                      ChartType="ChartType.Donut"
+                      ChartSeries="@seriesKits"
+                      ChartLabels="@labelsKits"
+                      ChartOptions="@opcoesKits"
+                      Height="260px"
+                      Width="100%" />
+        </div>
+    </MudItem>
+
+    <MudItem xs="12">
+        <div class="genoma-card">
+            <div class="genoma-card-header-row">
+                <div>
+                    <div class="genoma-card-title">Evolução de Exames</div>
+                    <div class="genoma-card-sub">Últimos 6 meses</div>
+                </div>
+                @if (tendenciaMeses != 0)
+                {
+                    <span class="genoma-trend-badge">@(tendenciaMeses > 0 ? "+" : "")@tendenciaMeses.ToString("F0")% vs. mês anterior</span>
+                }
+            </div>
+            <MudChart T="double"
+                      ChartType="ChartType.Line"
+                      ChartSeries="@seriesEvolucao"
+                      ChartLabels="@labelsMeses"
+                      ChartOptions="@opcoesLinha"
+                      Height="280px"
+                      Width="100%" />
+        </div>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <div class="genoma-card">
+            <div class="genoma-list-header">
+                <div class="genoma-card-title">Últimos Processos</div>
+                <MudButton Href="/processos" Variant="Variant.Text" Class="genoma-list-link">Ver todos →</MudButton>
+            </div>
+            @if (!ultimosProcessos.Any())
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Sem processos registados.</MudText>
+            }
+            else
+            {
+                @foreach (var p in ultimosProcessos)
+                {
+                    <div class="genoma-list-item genoma-list-item-clickable" @onclick="() => AbrirProcessoDashboard(p.Id)">
+                        <div class="genoma-list-main">
+                            <div class="genoma-list-id">@p.NumeroProcesso</div>
+                            <div class="genoma-list-name">@(p.Paciente?.Nome ?? "—")</div>
+                        </div>
+                        <MudChip T="string" Size="Size.Small" Class="@ChipEstadoClass(ObterEstadoProcesso(p))">@ObterEstadoProcesso(p)</MudChip>
+                        <div class="genoma-list-date">@p.DataEntrada.ToString("dd MMM")</div>
+                    </div>
+                }
+            }
+        </div>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <div class="genoma-card">
+            <div class="genoma-list-header">
+                <div class="genoma-card-title">Últimos Contactos</div>
+                <MudButton Href="/contactos" Variant="Variant.Text" Class="genoma-list-link">Ver todos →</MudButton>
+            </div>
+            @if (!ultimosContactos.Any())
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Sem contactos registados.</MudText>
+            }
+            else
+            {
+                @foreach (var c in ultimosContactos)
+                {
+                    <div class="genoma-list-item genoma-list-item-clickable" @onclick="() => AbrirContactoDashboard(c.Id)">
+                        <MudAvatar Size="Size.Small" Style="background:#E7F1FF; color:#007BFF; font-size:0.7rem;">
+                            @Iniciais(c.Nome)
+                        </MudAvatar>
+                        <div class="genoma-list-main">
+                            <div class="genoma-list-id">@c.Nome</div>
+                            <div class="genoma-list-name">@(c.Email ?? c.Telemovel ?? "—")</div>
+                        </div>
+                        <div class="genoma-list-date">@c.CreatedAt.ToString("dd MMM")</div>
+                    </div>
+                }
+            }
+        </div>
     </MudItem>
 </MudGrid>
 
 @code {
     [Inject] private GenomaContext DB { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
 
-    private int totalContactos;
-    private int processosAtivos;
-    private int faturasPendentes;
-    private decimal totalFaturado;
+    private int totalContactos, contactosEsteMes, processosAtivos, totalProcessos;
+    private int kitsDisponiveis, totalStockItens, examesConcluidos;
+    private double taxaConclusao;
+    private double tendenciaMeses;
+
+    private List<Processo> ultimosProcessos = new();
+    private List<Paciente> ultimosContactos = new();
     private string? erro;
+
+    private readonly string[] labelsEstado = ["Pendente", "Colhido", "Em análise", "Concluído"];
+    private List<ChartSeries<double>> seriesEstado = new();
+    private BarChartOptions opcoesEstado = new() { ChartPalette = ["#FFC107", "#007BFF", "#6F42C1", "#28A745"] };
+
+    private List<ChartSeries<double>> seriesKits = new();
+    private readonly string[] labelsKits = ["Disponível", "Utilizado", "Em trânsito", "Expirado"];
+    private DonutChartOptions opcoesKits = new() { ChartPalette = ["#28A745", "#495057", "#007BFF", "#DC3545"] };
+
+    private List<ChartSeries<double>> seriesEvolucao = new();
+    private string[] labelsMeses = [];
+    private LineChartOptions opcoesLinha = new()
+    {
+        ChartPalette = ["#007BFF"],
+        LineStrokeWidth = 3,
+        InterpolationOption = InterpolationOption.NaturalSpline,
+        ShowDataMarkers = true,
+        LineDisplayType = LineDisplayType.Area
+    };
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+
             totalContactos = await DB.Pacientes.CountAsync(p => p.Ativo);
-            processosAtivos = await DB.Processos.CountAsync(p => p.Ativo);
-            faturasPendentes = await DB.Facturacao.CountAsync(f => f.NumeroFatura == null);
-            totalFaturado = await DB.Facturacao
-                .Where(f => f.NumeroFatura != null)
-                .SumAsync(f => f.PrecoTeste);
+            contactosEsteMes = await DB.Pacientes.CountAsync(p => p.Ativo && p.CreatedAt >= inicioMes);
+            totalProcessos = await DB.Processos.CountAsync(p => p.Ativo);
+            processosAtivos = await DB.Processos.CountAsync(p => p.Ativo && !p.Anulado);
+
+            var stocks = await DB.StockItems.Where(s => s.Ativo).ToListAsync();
+            totalStockItens = stocks.Sum(s => s.Quantidade);
+            kitsDisponiveis = stocks.Where(s => s.Quantidade > s.QuantidadeMinima).Sum(s => s.Quantidade);
+
+            var processos = await DB.Processos.AsNoTracking()
+                .Include(p => p.Paciente)
+                .Include(p => p.Colheita)
+                .Include(p => p.ResultadoClinico)
+                .Include(p => p.ProcessoKit)
+                .Where(p => p.Ativo)
+                .ToListAsync();
+
+            int pendente = 0, colhido = 0, analise = 0, concluido = 0;
+            foreach (var p in processos.Where(x => !x.Anulado))
+            {
+                var estado = ClassificarEstado(p);
+                switch (estado)
+                {
+                    case "Pendente": pendente++; break;
+                    case "Colhido": colhido++; break;
+                    case "Em análise": analise++; break;
+                    case "Concluído": concluido++; break;
+                }
+            }
+            examesConcluidos = concluido;
+            taxaConclusao = totalProcessos > 0 ? (double)concluido / totalProcessos * 100 : 0;
+
+            seriesEstado =
+            [
+                new ChartSeries<double>
+                {
+                    Name = "Processos",
+                    Data = new ChartData<double>(new[] { (double)pendente, colhido, analise, concluido })
+                }
+            ];
+
+            var kitsTransito = processos.Count(p => p.ProcessoKit?.LocalizacaoKit?.Contains("trânsito", StringComparison.OrdinalIgnoreCase) == true);
+            var kitsUtilizados = processos.Count(p => p.ProcessoKit != null && !string.IsNullOrEmpty(p.ProcessoKit.NumeroKit));
+            var kitsExpirados = stocks.Count(s => s.Quantidade <= s.QuantidadeMinima);
+            seriesKits = new[] { (double)Math.Max(kitsDisponiveis, 0), kitsUtilizados, kitsTransito, kitsExpirados }.AsChartDataSet();
+
+            var meses = Enumerable.Range(0, 6).Select(i => DateTime.Today.AddMonths(-5 + i)).ToList();
+            labelsMeses = meses.Select(m => m.ToString("MMM", System.Globalization.CultureInfo.GetCultureInfo("pt-PT"))).ToArray();
+            var contagens = meses.Select(m =>
+                processos.Count(p => p.DataEntrada.Year == m.Year && p.DataEntrada.Month == m.Month)).ToArray();
+            seriesEvolucao =
+            [
+                new ChartSeries<double>
+                {
+                    Name = "Exames",
+                    Data = new ChartData<double>(contagens.Select(c => (double)c).ToArray())
+                }
+            ];
+
+            if (contagens.Length >= 2 && contagens[^2] > 0)
+                tendenciaMeses = (contagens[^1] - contagens[^2]) / (double)contagens[^2] * 100;
+
+            ultimosProcessos = processos.OrderByDescending(p => p.DataEntrada).Take(5).ToList();
+            ultimosContactos = await DB.Pacientes.AsNoTracking()
+                .Where(p => p.Ativo)
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(5)
+                .ToListAsync();
         }
         catch (Exception ex)
         {
             erro = $"Indicadores indisponíveis: {ex.Message}";
         }
+    }
+
+    private void AbrirProcessoDashboard(string id) => Nav.NavigateTo("/processos/" + id);
+    private void AbrirContactoDashboard(string id) => Nav.NavigateTo("/contactos/" + id);
+
+    private static string ClassificarEstado(Processo p)
+    {
+        if (p.ResultadoClinico?.DataRelatorioLaboratorio != null) return "Concluído";
+        if (p.ResultadoClinico?.DataEnvioLaboratorio != null) return "Em análise";
+        if (p.Colheita?.DataEfetiva != null) return "Colhido";
+        return "Pendente";
+    }
+
+    private static string ObterEstadoProcesso(Processo p) =>
+        p.Anulado ? "Anulado" : ClassificarEstado(p);
+
+    private static string ChipEstadoClass(string estado) => estado switch
+    {
+        "Concluído" => "genoma-chip-concluido",
+        "Em análise" => "genoma-chip-analise",
+        "Colhido" => "genoma-chip-colhido",
+        "Anulado" => "genoma-chip-anulado",
+        _ => "genoma-chip-pendente"
+    };
+
+    private static string Iniciais(string nome)
+    {
+        var partes = nome.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (partes.Length >= 2) return $"{partes[0][0]}{partes[^1][0]}".ToUpperInvariant();
+        return partes.Length > 0 ? partes[0][0].ToString().ToUpperInvariant() : "?";
     }
 }

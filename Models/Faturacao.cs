@@ -31,6 +31,21 @@ public class Facturacao
     [Column("comissao")]
     public bool Comissao { get; set; } = false;
 
+    [Column("nao_gera_comissao")]
+    public bool NaoGeraComissao { get; set; }
+
+    [Column("valor_factura")]
+    public decimal? ValorFactura { get; set; }
+
+    [Column("pago")]
+    public bool Pago { get; set; }
+
+    [Column("data_envio_email")]
+    public DateTime? DataEnvioEmail { get; set; }
+
+    [Column("data_envio_sms")]
+    public DateTime? DataEnvioSms { get; set; }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 

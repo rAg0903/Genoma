@@ -27,6 +27,7 @@ public static class MauiProgram
             options.UseMySql(connectionString, serverVersion));
 
         builder.Services.AddSingleton<IAnexoService, AnexoService>();
+        builder.Services.AddSingleton<PreferenciasAppService>();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();

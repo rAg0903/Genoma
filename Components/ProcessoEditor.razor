@@ -1,0 +1,732 @@
+@namespace Genoma.Components
+
+@if (!string.IsNullOrEmpty(erro))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
+}
+
+@if (carregando)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (string.IsNullOrEmpty(ProcessoId))
+{
+    <MudAlert Severity="Severity.Warning">Processo não especificado.</MudAlert>
+}
+else if (processoId == null)
+{
+    <MudAlert Severity="Severity.Error">Processo não encontrado.</MudAlert>
+}
+else
+{
+    <MudStack Spacing="2" Class="mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudChip T="string" Size="Size.Small" Color="Color.Info">@numeroProcesso</MudChip>
+            @if (processoAnulado)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Error">Anulado</MudChip>
+            }
+        </MudStack>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudSwitch @bind-Value="processoAnulado" Label="Processo anulado" Color="Color.Error" />
+            </MudItem>
+            @if (processoAnulado)
+            {
+                <MudItem xs="12" md="8">
+                    <MudTextField @bind-Value="motivoAnulacao" Label="Motivo da anulação" Lines="2" />
+                </MudItem>
+            }
+        </MudGrid>
+    </MudStack>
+
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" panel-class="pa-4">
+        <MudTabPanel Text="Gravidez" Icon="@Icons.Material.Filled.PregnantWoman">
+            <MudGrid>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="medicoNome" Label="Médico" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="ondeSeguida" Label="Onde é seguida" /></MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect Value="testeId" ValueChanged="@(async (string? id) => await OnTesteAlterado(id))" Label="Teste" Clearable="true">
+                        @foreach (var t in testes)
+                        {
+                            <MudSelectItem Value="@t.Id">@t.Nome (@t.Preco.ToString("N2") €)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect Value="postoId" ValueChanged="@(async (string? id) => { postoId = id; AtualizarPostoSelecionado(); await Task.CompletedTask; })" Label="Posto de colheita" Clearable="true">
+                        @foreach (var p in postos)
+                        {
+                            <MudSelectItem Value="@p.Id">@p.Nome — @(p.Empresa?.Nome ?? "")</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12"><MudText Typo="Typo.subtitle2">Gestação no registo</MudText></MudItem>
+                <MudItem xs="6" md="3"><MudNumericField @bind-Value="semanasGravidez" Label="Semanas" Min="0" Max="45" /></MudItem>
+                <MudItem xs="6" md="3"><MudNumericField @bind-Value="diasGravidez" Label="Dias" Min="0" Max="6" /></MudItem>
+                <MudItem xs="12"><MudText Typo="Typo.subtitle2">Gestação actual</MudText></MudItem>
+                <MudItem xs="6" md="3"><MudNumericField @bind-Value="semanasActual" Label="Semanas" Min="0" Max="45" /></MudItem>
+                <MudItem xs="6" md="3"><MudNumericField @bind-Value="diasActual" Label="Dias" Min="0" Max="6" /></MudItem>
+                <MudItem xs="12" md="4"><MudDatePicker @bind-Date="dataPrevistaParto" Label="DPP" /></MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect @bind-Value="fertilizacao" Label="Fertilização" Clearable="true">
+                        @foreach (var f in CromossomaOpcoes.Fertilizacao)
+                        {
+                            <MudSelectItem Value="@f">@f</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect @bind-Value="tipoGravidez" Label="Tipo gravidez" Clearable="true">
+                        <MudSelectItem Value="@("Única")">Única</MudSelectItem>
+                        <MudSelectItem Value="@("Gemelar")">Gemelar</MudSelectItem>
+                        <MudSelectItem Value="@("Tripla")">Tripla</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4"><MudSwitch @bind-Value="gravidezSingular" Label="Singular" Color="Color.Primary" /></MudItem>
+                <MudItem xs="12" md="4"><MudSwitch @bind-Value="gravidezGemelar" Label="Gemelar" Color="Color.Primary" /></MudItem>
+                <MudItem xs="12" md="4"><MudSwitch @bind-Value="servicoExpresso" Label="Serviço expresso" Color="Color.Primary" /></MudItem>
+                <MudItem xs="12" md="4"><MudSwitch @bind-Value="querSaberSexo" Label="Quer saber sexo" Color="Color.Primary" /></MudItem>
+                <MudItem xs="12"><MudText Typo="Typo.subtitle2">Motivos prescrição</MudText></MudItem>
+                <MudItem xs="12" md="4"><MudCheckBox @bind-Value="motivoIdade" Label="Idade avançada" /></MudItem>
+                <MudItem xs="12" md="4"><MudCheckBox @bind-Value="motivoAnsiedade" Label="Ansiedade" /></MudItem>
+                <MudItem xs="12" md="4"><MudCheckBox @bind-Value="motivoRastreio" Label="Rastreio" /></MudItem>
+                <MudItem xs="12" md="4"><MudCheckBox @bind-Value="motivoAnomaliaEco" Label="Anomalia ecográfica" /></MudItem>
+                <MudItem xs="12" md="4"><MudCheckBox @bind-Value="motivoGravidezAnterior" Label="Gravidez anterior" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="idOrder" Label="ID Order" /></MudItem>
+                <MudItem xs="12" md="6"><MudTextField @bind-Value="idPacienteClinico" Label="ID Paciente" /></MudItem>
+                <MudItem xs="12"><MudTextField @bind-Value="motivoPrescricao" Label="Outros motivos / notas" Lines="2" /></MudItem>
+            </MudGrid>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Colheita" Icon="@Icons.Material.Filled.Science">
+            @if (postoSelecionado != null)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                    <strong>@postoSelecionado.Nome</strong>
+                    @if (!string.IsNullOrEmpty(postoSelecionado.Empresa?.Nome))
+                    {
+                        <span> — @postoSelecionado.Empresa.Nome</span>
+                    }
+                    @{
+                        var moradaPosto = ObterMoradaPosto(postoSelecionado);
+                    }
+                    @if (!string.IsNullOrEmpty(moradaPosto))
+                    {
+                        <br />@moradaPosto
+                    }
+                    @if (!string.IsNullOrEmpty(postoSelecionado.Telefone))
+                    {
+                        <br /><text>Tel. </text>@postoSelecionado.Telefone
+                    }
+                    @if (!string.IsNullOrEmpty(postoSelecionado.Horario))
+                    {
+                        <br /><text>Horário </text>@postoSelecionado.Horario
+                    }
+                    @if (!string.IsNullOrEmpty(postoSelecionado.Localizacao))
+                    {
+                        <br /><text>Localização </text>@postoSelecionado.Localizacao
+                    }
+                </MudAlert>
+            }
+            @if (!string.IsNullOrEmpty(testeId))
+            {
+                <MudText Typo="Typo.caption" Class="mb-2">Kits em stock (teste): <strong>@stockDisponivel</strong></MudText>
+            }
+            <MudGrid>
+                <MudItem xs="12" md="4"><MudDatePicker @bind-Date="dataPrevistaColheita" Label="Data prevista" /></MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect @bind-Value="periodoColheita" Label="Período" Clearable="true">
+                        <MudSelectItem Value="@("Manhã")">Manhã</MudSelectItem>
+                        <MudSelectItem Value="@("Tarde")">Tarde</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4"><MudDatePicker @bind-Date="dataEfetivaColheita" Label="Data efetiva" /></MudItem>
+                <MudItem xs="12" md="4"><MudSwitch @bind-Value="facturadoEntidade" Label="Facturado à entidade" Color="Color.Primary" /></MudItem>
+                <MudItem xs="12" md="4"><MudSwitch @bind-Value="repeticaoColheita" Label="Repetição" Color="Color.Primary" /></MudItem>
+                <MudItem xs="12" md="4"><MudSwitch @bind-Value="naoNotificar" Label="Não notificar" Color="Color.Primary" /></MudItem>
+                <MudItem xs="6" md="3"><MudNumericField @bind-Value="semanasGestacaoColheita" Label="Gestação (sem.)" Min="0" Max="45" /></MudItem>
+                <MudItem xs="6" md="3"><MudNumericField @bind-Value="diasGestacaoColheita" Label="Gestação (dias)" Min="0" Max="6" /></MudItem>
+                <MudItem xs="12" md="6"><MudDatePicker @bind-Date="dataRecepcaoAmostra" Label="Data recepção amostra" /></MudItem>
+            </MudGrid>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Faturação" Icon="@Icons.Material.Filled.Receipt">
+            @if (!string.IsNullOrEmpty(testeNome))
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">Teste: <strong>@testeNome</strong></MudAlert>
+            }
+            <MudGrid>
+                <MudItem xs="12" md="4"><MudNumericField @bind-Value="precoTeste" Label="Preço teste (€)" Min="0" /></MudItem>
+                <MudItem xs="12" md="4"><MudNumericField @bind-Value="valorFactura" Label="Valor factura (€)" Min="0" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="numeroFatura" Label="N.º Fatura" /></MudItem>
+                <MudItem xs="12" md="4"><MudDatePicker @bind-Date="dataFatura" Label="Data fatura" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="entidadeMultibanco" Label="Entidade MB" MaxLength="5" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="referenciaMultibanco" Label="Referência MB" MaxLength="9" /></MudItem>
+                <MudItem xs="12" md="4"><MudSwitch @bind-Value="pago" Label="Pago" Color="Color.Success" /></MudItem>
+                <MudItem xs="12" md="4"><MudSwitch @bind-Value="naoGeraComissao" Label="Não gera comissão" Color="Color.Primary" /></MudItem>
+                <MudItem xs="12" md="4"><MudSwitch @bind-Value="comissao" Label="Comissão" Color="Color.Primary" /></MudItem>
+                <MudItem xs="12" md="6"><MudDatePicker @bind-Date="dataEnvioEmail" Label="Data envio email" /></MudItem>
+                <MudItem xs="12" md="6"><MudDatePicker @bind-Date="dataEnvioSms" Label="Data envio SMS" /></MudItem>
+            </MudGrid>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Resultados" Icon="@Icons.Material.Filled.Assessment">
+            <MudGrid>
+                <MudItem xs="12" md="4"><MudDatePicker @bind-Date="dataEnvioLab" Label="Envio laboratório" /></MudItem>
+                <MudItem xs="12" md="4"><MudDatePicker @bind-Date="dataRecepcaoLab" Label="Recepção laboratório" /></MudItem>
+                <MudItem xs="12" md="4"><MudDatePicker @bind-Date="dataRelatorioLab" Label="Relatório laboratório" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="idAmostra" Label="ID amostra" /></MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect @bind-Value="resultadoCromossomasSexuais" Label="Resultado crom. sexuais" Clearable="true">
+                        @foreach (var r in CromossomaOpcoes.ResultadosSexuais) { <MudSelectItem Value="@r">@(string.IsNullOrEmpty(r) ? "—" : r)</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="cromossomasSexuais" Label="Cromossomas sexuais (ex. XX)" /></MudItem>
+                <MudItem xs="12" md="4"><MudNumericField @bind-Value="fraccaoFetal" Label="Fração fetal (%)" Min="0" Max="100" /></MudItem>
+                <MudItem xs="12" md="4"><MudSwitch @bind-Value="sugerirRepeticao" Label="Sugerir repetição" Color="Color.Warning" /></MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSwitch Value="semAnomalias" ValueChanged="@((bool v) => OnSemAnomaliasAlterado(v))"
+                               Label="Sem anomalias" Color="Color.Success" />
+                </MudItem>
+            </MudGrid>
+
+            @if (!semAnomalias)
+            {
+                @if (!cromossomasDoTeste.Any())
+                {
+                    <MudAlert Severity="Severity.Info" Class="mt-4">
+                        Seleciona um teste na tab Gravidez e configura os cromossomas analisados em Definições → Testes.
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">
+                        Cromossomas analisados (@cromossomasDoTeste.Count)
+                    </MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                        Todos vêm por defeito como «Sem anomalia». Altera apenas o(s) cromossoma(s) com anomalia.
+                    </MudText>
+                    <MudGrid>
+                        @foreach (var n in cromossomasDoTeste)
+                        {
+                            <MudItem xs="6" sm="4" md="3" lg="2">
+                                <MudSelect Value="@ObterResultadoCromossoma(n)" ValueChanged="@((string? v) => DefinirResultadoCromossoma(n, v))"
+                                           Label="@($"C{n}")" Dense="true" Margin="Margin.Dense"
+                                           Style="@(CromossomaOpcoes.TemAnomalia(ObterResultadoCromossoma(n)) ? "border-left: 3px solid var(--mud-palette-warning);" : null)">
+                                    @foreach (var r in CromossomaOpcoes.ResultadosCromossoma)
+                                    {
+                                        <MudSelectItem Value="@r">@r</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Kit" Icon="@Icons.Material.Filled.Inventory2">
+            <MudGrid>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="kitLote" Label="Lote" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="kitDataExpiracao" Label="Data expiração (MM/AAAA)" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="kitEmpresa" Label="Empresa kit" /></MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect @bind-Value="kitLocalizacao" Label="Localização kit" Clearable="true">
+                        @foreach (var loc in CromossomaOpcoes.LocalizacoesKit)
+                        {
+                            <MudSelectItem Value="@loc">@loc</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="kitNumero" Label="N.º kit" /></MudItem>
+                <MudItem xs="12" md="4"><MudTextField @bind-Value="kitTracking" Label="Tracking number" /></MudItem>
+            </MudGrid>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Notas" Icon="@Icons.Material.Filled.Notes">
+            <MudTextField @bind-Value="notasProcesso" Label="Notas do processo" Lines="5" />
+        </MudTabPanel>
+
+        <MudTabPanel Text="Anexos" Icon="@Icons.Material.Filled.AttachFile">
+            <MudStack Row="true" Class="mb-4">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Upload"
+                           OnClick="AdicionarAnexo" Disabled="aGuardar">Adicionar PDF</MudButton>
+            </MudStack>
+            @if (!anexos.Any())
+            {
+                <MudAlert Severity="Severity.Info">Sem anexos neste processo.</MudAlert>
+            }
+            else
+            {
+                <MudTable Items="@anexos" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Ficheiro</MudTh>
+                        <MudTh>Data</MudTh>
+                        <MudTh>Ações</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@AnexoService.ObterNomeFicheiro(context.UrlFicheiro)</MudTd>
+                        <MudTd>@context.DataUpload.ToString("dd/MM/yyyy HH:mm")</MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" title="Abrir"
+                                           OnClick="@(() => AbrirAnexo(context))" />
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Error" title="Eliminar"
+                                           OnClick="@(() => EliminarAnexo(context.Id))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudTabPanel>
+    </MudTabs>
+
+    <div class="genoma-form-actions">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Guardar" Disabled="aGuardar">
+            @(aGuardar ? "A guardar..." : "Guardar")
+        </MudButton>
+    </div>
+}
+
+@code {
+    [Parameter] public string ProcessoId { get; set; } = "";
+    [Parameter] public EventCallback OnGuardado { get; set; }
+
+    [Inject] private GenomaContext DB { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private IAnexoService AnexoService { get; set; } = default!;
+
+    private List<Teste> testes = new();
+    private List<Posto> postos = new();
+    private List<AssetsResultados> anexos = new();
+    private string? testeId, testeIdOriginal, testeNome, postoId;
+    private Posto? postoSelecionado;
+    private int stockDisponivel;
+
+    private string? processoId, resultadoId, kitId;
+    private string numeroProcesso = string.Empty;
+    private bool processoAnulado;
+    private string? motivoAnulacao;
+
+    private string? medicoNome, ondeSeguida, fertilizacao, tipoGravidez, motivoPrescricao, idOrder, idPacienteClinico;
+    private int? semanasGravidez, diasGravidez, semanasActual, diasActual;
+    private DateTime? dataPrevistaParto;
+    private bool gravidezSingular = true, gravidezGemelar, servicoExpresso, querSaberSexo;
+    private bool motivoIdade, motivoAnsiedade, motivoRastreio, motivoAnomaliaEco, motivoGravidezAnterior;
+
+    private DateTime? dataPrevistaColheita, dataEfetivaColheita, dataRecepcaoAmostra;
+    private string? periodoColheita;
+    private bool facturadoEntidade, repeticaoColheita, naoNotificar;
+    private int? semanasGestacaoColheita, diasGestacaoColheita;
+
+    private decimal precoTeste;
+    private decimal? valorFactura;
+    private string? numeroFatura;
+    private DateTime? dataFatura, dataEnvioEmail, dataEnvioSms;
+    private string? entidadeMultibanco, referenciaMultibanco;
+    private bool comissao, naoGeraComissao, pago;
+
+    private DateTime? dataEnvioLab, dataRecepcaoLab, dataRelatorioLab;
+    private string? idAmostra, resultadoCromossomasSexuais, cromossomasSexuais;
+    private decimal? fraccaoFetal;
+    private bool sugerirRepeticao, semAnomalias = true;
+    private Dictionary<int, string> cromossomaResultados = new();
+    private List<int> cromossomasDoTeste = new();
+
+    private string? kitLote, kitDataExpiracao, kitEmpresa, kitLocalizacao, kitNumero, kitTracking;
+
+    private string? notasProcesso, erro;
+    private bool carregando = true, aGuardar;
+    private string? processoIdCarregado;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ProcessoId != processoIdCarregado)
+            await CarregarProcesso();
+    }
+
+    private async Task CarregarProcesso()
+    {
+        processoIdCarregado = ProcessoId;
+        carregando = true;
+        erro = null;
+        processoId = null;
+
+        if (string.IsNullOrEmpty(ProcessoId))
+        {
+            carregando = false;
+            return;
+        }
+
+        try
+        {
+            testes = await DB.Testes.AsNoTracking().Where(t => t.Ativo).OrderBy(t => t.Nome).ToListAsync();
+            postos = await DB.Postos.AsNoTracking().Include(p => p.Empresa).OrderBy(p => p.Nome).ToListAsync();
+
+            var processo = await DB.Processos
+                .Include(p => p.Paciente)
+                .Include(p => p.InformacaoClinica)
+                .Include(p => p.Colheita)
+                .Include(p => p.Facturacao)
+                .Include(p => p.Teste)
+                .Include(p => p.ProcessoKit)
+                .Include(p => p.ResultadoClinico)
+                .Include(p => p.Assets)
+                .FirstOrDefaultAsync(p => p.Id == ProcessoId && p.Ativo);
+
+            if (processo == null)
+                throw new InvalidOperationException("Processo não encontrado.");
+
+            await EnsureRegistosFilhos(processo);
+
+            processo = await DB.Processos.AsNoTracking()
+                .Include(p => p.Paciente)
+                .Include(p => p.InformacaoClinica)
+                .Include(p => p.Colheita)
+                .Include(p => p.Facturacao)
+                .Include(p => p.Teste)
+                .Include(p => p.ProcessoKit)
+                .Include(p => p.ResultadoClinico)
+                .Include(p => p.Assets)
+                .FirstAsync(p => p.Id == ProcessoId);
+
+            PreencherCamposProcesso(processo);
+            await AtualizarStockDisponivel();
+            AtualizarPostoSelecionado();
+        }
+        catch (Exception ex)
+        {
+            erro = ex.Message;
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private async Task EnsureRegistosFilhos(Processo processo)
+    {
+        var changed = false;
+
+        if (processo.ProcessoKit == null)
+        {
+            var kit = new ProcessoKit
+            {
+                Id = Guid.NewGuid().ToString(),
+                ProcessoId = processo.Id,
+                NumeroKit = processo.NumeroProcesso,
+                TrackingNumber = processo.NumeroProcesso,
+                LocalizacaoKit = CromossomaOpcoes.LocalizacoesKit[0]
+            };
+            DB.ProcessoKits.Add(kit);
+            changed = true;
+        }
+
+        if (processo.ResultadoClinico == null)
+        {
+            DB.ResultadosClinicos.Add(new ResultadoClinico
+            {
+                Id = Guid.NewGuid().ToString(),
+                ProcessoId = processo.Id,
+                SemAnomalias = true
+            });
+            changed = true;
+        }
+
+        if (changed)
+            await DB.SaveChangesAsync();
+    }
+
+    private void PreencherCamposProcesso(Processo processo)
+    {
+        processoId = processo.Id;
+        numeroProcesso = processo.NumeroProcesso;
+        processoAnulado = processo.Anulado;
+        motivoAnulacao = processo.MotivoAnulacao;
+        notasProcesso = processo.Notas;
+        testeId = processo.TesteId;
+        testeIdOriginal = processo.TesteId;
+        testeNome = processo.Teste?.Nome;
+        postoId = processo.PostoId;
+        anexos = processo.Assets.ToList();
+
+        var ic = processo.InformacaoClinica;
+        if (ic != null)
+        {
+            medicoNome = ic.MedicoNome; ondeSeguida = ic.OndeSeguida;
+            semanasGravidez = ic.SemanasGravidez; diasGravidez = ic.DiasGravidez;
+            semanasActual = ic.SemanasActual; diasActual = ic.DiasActual;
+            dataPrevistaParto = ic.DataPrevistaParto;
+            fertilizacao = ic.Fertilizacao; tipoGravidez = ic.TipoGravidez;
+            gravidezSingular = ic.GravidezSingular; gravidezGemelar = ic.GravidezGemelar;
+            servicoExpresso = ic.ServicoExpresso; querSaberSexo = ic.QuerSaberSexo;
+            motivoPrescricao = ic.MotivoPrescricao;
+            motivoIdade = ic.MotivoIdadeAvancada; motivoAnsiedade = ic.MotivoAnsiedade;
+            motivoRastreio = ic.MotivoRastreio; motivoAnomaliaEco = ic.MotivoAnomaliaEco;
+            motivoGravidezAnterior = ic.MotivoGravidezAnterior;
+            idOrder = ic.IdOrder; idPacienteClinico = ic.IdPacienteClinico;
+        }
+
+        var col = processo.Colheita;
+        if (col != null)
+        {
+            dataPrevistaColheita = col.DataPrevista; periodoColheita = col.Periodo;
+            dataEfetivaColheita = col.DataEfetiva;
+            facturadoEntidade = col.FacturadoEntidade; repeticaoColheita = col.Repeticao;
+            naoNotificar = col.NaoNotificar;
+            semanasGestacaoColheita = col.SemanasGestacaoColheita;
+            diasGestacaoColheita = col.DiasGestacaoColheita;
+            dataRecepcaoAmostra = col.DataRecepcaoAmostra;
+        }
+
+        var fat = processo.Facturacao;
+        if (fat != null)
+        {
+            precoTeste = fat.PrecoTeste; valorFactura = fat.ValorFactura;
+            numeroFatura = fat.NumeroFatura; dataFatura = fat.DataFatura;
+            entidadeMultibanco = fat.EntidadeMultibanco; referenciaMultibanco = fat.ReferenciaMultibanco;
+            comissao = fat.Comissao; naoGeraComissao = fat.NaoGeraComissao; pago = fat.Pago;
+            dataEnvioEmail = fat.DataEnvioEmail; dataEnvioSms = fat.DataEnvioSms;
+        }
+
+        var res = processo.ResultadoClinico;
+        if (res != null)
+        {
+            resultadoId = res.Id;
+            dataEnvioLab = res.DataEnvioLaboratorio; dataRecepcaoLab = res.DataRecepcaoLaboratorio;
+            dataRelatorioLab = res.DataRelatorioLaboratorio;
+            idAmostra = res.IdAmostra;
+            resultadoCromossomasSexuais = res.ResultadoCromossomasSexuais;
+            cromossomasSexuais = res.CromossomasSexuais;
+            fraccaoFetal = res.FraccaoFetal; sugerirRepeticao = res.SugerirRepeticao;
+            semAnomalias = res.SemAnomalias;
+            cromossomaResultados = res.ResultadosCromossomas;
+        }
+
+        AtualizarCromossomasDoTeste();
+
+        var kit = processo.ProcessoKit;
+        if (kit != null)
+        {
+            kitId = kit.Id;
+            kitLote = kit.Lote; kitDataExpiracao = kit.DataExpiracao;
+            kitEmpresa = kit.EmpresaKit; kitLocalizacao = kit.LocalizacaoKit;
+            kitNumero = kit.NumeroKit; kitTracking = kit.TrackingNumber;
+        }
+    }
+
+    private static string? ObterMoradaPosto(Posto posto) =>
+        !string.IsNullOrWhiteSpace(posto.Morada) ? posto.Morada : posto.Empresa?.Morada;
+
+    private void AtualizarPostoSelecionado() =>
+        postoSelecionado = postos.FirstOrDefault(p => p.Id == postoId);
+
+    private async Task AtualizarStockDisponivel()
+    {
+        if (string.IsNullOrEmpty(testeId)) { stockDisponivel = 0; return; }
+        stockDisponivel = await DB.StockItems.Where(s => s.Ativo && s.TesteId == testeId).SumAsync(s => s.Quantidade);
+    }
+
+    private void AtualizarCromossomasDoTeste()
+    {
+        var teste = testes.FirstOrDefault(t => t.Id == testeId);
+        cromossomasDoTeste = teste?.CromossomasAnalisados.OrderBy(n => n).ToList() ?? new();
+    }
+
+    private async Task OnTesteAlterado(string? id)
+    {
+        testeId = id;
+        var teste = testes.FirstOrDefault(t => t.Id == id);
+        testeNome = teste?.Nome;
+        if (teste != null) precoTeste = teste.Preco;
+        AtualizarCromossomasDoTeste();
+        if (!semAnomalias)
+            CromossomaOpcoes.InicializarSemAnomalia(cromossomaResultados, cromossomasDoTeste);
+        await AtualizarStockDisponivel();
+    }
+
+    private void OnSemAnomaliasAlterado(bool valor)
+    {
+        semAnomalias = valor;
+        if (!semAnomalias)
+            CromossomaOpcoes.InicializarSemAnomalia(cromossomaResultados, cromossomasDoTeste);
+    }
+
+    private string? ObterResultadoCromossoma(int n)
+    {
+        if (cromossomaResultados.TryGetValue(n, out var v) && !string.IsNullOrEmpty(v))
+            return v;
+        return CromossomaOpcoes.SemAnomalia;
+    }
+
+    private void DefinirResultadoCromossoma(int n, string? v)
+    {
+        if (string.IsNullOrEmpty(v) || v == CromossomaOpcoes.SemAnomalia)
+            cromossomaResultados[n] = CromossomaOpcoes.SemAnomalia;
+        else
+            cromossomaResultados[n] = v;
+    }
+
+    private async Task AdicionarAnexo()
+    {
+        if (processoId == null) return;
+        aGuardar = true;
+        try
+        {
+            var resultado = await AnexoService.SelecionarEGuardarAsync(processoId);
+            if (resultado == null) return;
+            DB.AssetsResultados.Add(new AssetsResultados
+            {
+                Id = Guid.NewGuid().ToString(), ProcessoId = processoId,
+                UrlFicheiro = resultado.Value.CaminhoRelativo, TipoFicheiro = "PDF", DataUpload = DateTime.Now
+            });
+            await DB.SaveChangesAsync();
+            anexos = await DB.AssetsResultados.AsNoTracking().Where(a => a.ProcessoId == processoId).ToListAsync();
+            Snackbar.Add("Anexo adicionado.", Severity.Success);
+        }
+        catch (Exception ex) { erro = ex.Message; }
+        finally { aGuardar = false; }
+    }
+
+    private async Task AbrirAnexo(AssetsResultados anexo)
+    {
+        try { await AnexoService.AbrirAnexoAsync(anexo.UrlFicheiro); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+    }
+
+    private async Task EliminarAnexo(string id)
+    {
+        var anexo = await DB.AssetsResultados.FindAsync(id);
+        if (anexo == null) return;
+        DB.AssetsResultados.Remove(anexo);
+        await DB.SaveChangesAsync();
+        anexos = anexos.Where(a => a.Id != id).ToList();
+    }
+
+    private async Task Guardar()
+    {
+        if (processoId == null) return;
+        aGuardar = true;
+        erro = null;
+        try
+        {
+            await GuardarProcesso();
+            await DB.SaveChangesAsync();
+            Snackbar.Add("Processo guardado com sucesso.", Severity.Success);
+            if (OnGuardado.HasDelegate)
+                await OnGuardado.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            erro = $"Erro ao guardar: {ex.Message}";
+        }
+        finally
+        {
+            aGuardar = false;
+        }
+    }
+
+    private async Task GuardarProcesso()
+    {
+        var processo = await DB.Processos.FindAsync(processoId);
+        if (processo == null) return;
+
+        processo.Notas = notasProcesso;
+        processo.PostoId = postoId;
+        processo.Anulado = processoAnulado;
+        processo.MotivoAnulacao = processoAnulado ? motivoAnulacao : null;
+
+        if (testeId != testeIdOriginal)
+        {
+            if (!string.IsNullOrEmpty(testeIdOriginal))
+                await StockService.ReporPorTesteAsync(DB, testeIdOriginal);
+            if (!string.IsNullOrEmpty(testeId))
+            {
+                var (ok, msg) = await StockService.DescontarPorTesteAsync(DB, testeId);
+                if (!ok) throw new InvalidOperationException(msg ?? "Stock insuficiente.");
+            }
+            processo.TesteId = testeId;
+            testeIdOriginal = testeId;
+        }
+        else
+            processo.TesteId = testeId;
+
+        var ic = await DB.InformacaoClinica.FirstOrDefaultAsync(x => x.ProcessoId == processoId);
+        if (ic != null)
+        {
+            ic.MedicoNome = medicoNome; ic.OndeSeguida = ondeSeguida;
+            ic.SemanasGravidez = semanasGravidez; ic.DiasGravidez = diasGravidez;
+            ic.SemanasActual = semanasActual; ic.DiasActual = diasActual;
+            ic.DataPrevistaParto = dataPrevistaParto;
+            ic.Fertilizacao = fertilizacao; ic.TipoGravidez = tipoGravidez;
+            ic.GravidezSingular = gravidezSingular; ic.GravidezGemelar = gravidezGemelar;
+            ic.ServicoExpresso = servicoExpresso; ic.QuerSaberSexo = querSaberSexo;
+            ic.MotivoPrescricao = motivoPrescricao;
+            ic.MotivoIdadeAvancada = motivoIdade; ic.MotivoAnsiedade = motivoAnsiedade;
+            ic.MotivoRastreio = motivoRastreio; ic.MotivoAnomaliaEco = motivoAnomaliaEco;
+            ic.MotivoGravidezAnterior = motivoGravidezAnterior;
+            ic.IdOrder = idOrder; ic.IdPacienteClinico = idPacienteClinico;
+        }
+
+        var col = await DB.Colheitas.FirstOrDefaultAsync(x => x.ProcessoId == processoId);
+        if (col != null)
+        {
+            col.DataPrevista = dataPrevistaColheita; col.Periodo = periodoColheita;
+            col.DataEfetiva = dataEfetivaColheita; col.PostoId = postoId;
+            col.FacturadoEntidade = facturadoEntidade; col.Repeticao = repeticaoColheita;
+            col.NaoNotificar = naoNotificar;
+            col.SemanasGestacaoColheita = semanasGestacaoColheita;
+            col.DiasGestacaoColheita = diasGestacaoColheita;
+            col.DataRecepcaoAmostra = dataRecepcaoAmostra;
+        }
+
+        var fat = await DB.Facturacao.FirstOrDefaultAsync(x => x.ProcessoId == processoId);
+        if (fat != null)
+        {
+            fat.PrecoTeste = precoTeste; fat.ValorFactura = valorFactura;
+            fat.NumeroFatura = numeroFatura; fat.DataFatura = dataFatura;
+            fat.EntidadeMultibanco = entidadeMultibanco; fat.ReferenciaMultibanco = referenciaMultibanco;
+            fat.Comissao = comissao; fat.NaoGeraComissao = naoGeraComissao; fat.Pago = pago;
+            fat.DataEnvioEmail = dataEnvioEmail; fat.DataEnvioSms = dataEnvioSms;
+            fat.UpdatedAt = DateTime.Now;
+        }
+
+        var res = await DB.ResultadosClinicos.FirstOrDefaultAsync(x => x.ProcessoId == processoId);
+        if (res == null)
+        {
+            res = new ResultadoClinico { Id = Guid.NewGuid().ToString(), ProcessoId = processoId! };
+            DB.ResultadosClinicos.Add(res);
+        }
+        res.DataEnvioLaboratorio = dataEnvioLab;
+        res.DataRecepcaoLaboratorio = dataRecepcaoLab;
+        res.DataRelatorioLaboratorio = dataRelatorioLab;
+        res.IdAmostra = idAmostra;
+        res.ResultadoCromossomasSexuais = resultadoCromossomasSexuais;
+        res.CromossomasSexuais = cromossomasSexuais;
+        res.FraccaoFetal = fraccaoFetal;
+        res.SugerirRepeticao = sugerirRepeticao;
+        res.SemAnomalias = semAnomalias;
+        if (semAnomalias)
+            res.ResultadosCromossomas = new Dictionary<int, string>();
+        else
+        {
+            foreach (var n in cromossomasDoTeste)
+            {
+                if (!cromossomaResultados.TryGetValue(n, out var val) || string.IsNullOrEmpty(val))
+                    cromossomaResultados[n] = CromossomaOpcoes.SemAnomalia;
+            }
+            res.ResultadosCromossomas = cromossomaResultados
+                .Where(kv => cromossomasDoTeste.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+        }
+
+        var kit = await DB.ProcessoKits.FirstOrDefaultAsync(x => x.ProcessoId == processoId);
+        if (kit == null)
+        {
+            kit = new ProcessoKit { Id = Guid.NewGuid().ToString(), ProcessoId = processoId! };
+            DB.ProcessoKits.Add(kit);
+        }
+        kit.Lote = kitLote; kit.DataExpiracao = kitDataExpiracao;
+        kit.EmpresaKit = kitEmpresa; kit.LocalizacaoKit = kitLocalizacao;
+        kit.NumeroKit = kitNumero; kit.TrackingNumber = kitTracking;
+    }
+}

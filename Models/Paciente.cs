@@ -33,6 +33,30 @@ public class Paciente
     [Column("morada")]
     public string? Morada { get; set; }
 
+    [Column("morada2")]
+    public string? Morada2 { get; set; }
+
+    [Column("codigo_postal")]
+    public string? CodigoPostal { get; set; }
+
+    [Column("localidade")]
+    public string? Localidade { get; set; }
+
+    [Column("pais")]
+    public string? Pais { get; set; }
+
+    [Column("distrito")]
+    public string? Distrito { get; set; }
+
+    [Column("telefone_fixo")]
+    public string? TelefoneFixo { get; set; }
+
+    [Column("bi_cc")]
+    public string? BiCc { get; set; }
+
+    [Column("sistema_saude")]
+    public string? SistemaSaude { get; set; }
+
     [Column("altura")]
     public decimal? Altura { get; set; }
 

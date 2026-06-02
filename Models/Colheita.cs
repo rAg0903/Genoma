@@ -25,6 +25,24 @@ public class Colheita
     [Column("data_efetiva")]
     public DateTime? DataEfetiva { get; set; }
 
+    [Column("facturado_entidade")]
+    public bool FacturadoEntidade { get; set; }
+
+    [Column("repeticao")]
+    public bool Repeticao { get; set; }
+
+    [Column("nao_notificar")]
+    public bool NaoNotificar { get; set; }
+
+    [Column("semanas_gestacao_colheita")]
+    public int? SemanasGestacaoColheita { get; set; }
+
+    [Column("dias_gestacao_colheita")]
+    public int? DiasGestacaoColheita { get; set; }
+
+    [Column("data_recepcao_amostra")]
+    public DateTime? DataRecepcaoAmostra { get; set; }
+
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.Now;
 

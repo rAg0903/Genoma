@@ -1,0 +1,136 @@
+@page "/pesquisa"
+
+<div class="genoma-page-header">
+    <div>
+        <h1 class="genoma-page-title">Pesquisa</h1>
+        <p class="genoma-page-subtitle">Resultados para «@(Termo ?? "—")»</p>
+    </div>
+</div>
+
+@if (string.IsNullOrWhiteSpace(Termo))
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+        Escreva um termo na barra de pesquisa e prima Enter.
+    </MudAlert>
+}
+else if (!string.IsNullOrEmpty(erro))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@erro</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="6">
+            <div class="genoma-card">
+                <div class="genoma-list-header">
+                    <div class="genoma-card-title">Contactos (@contactos.Count)</div>
+                    <MudButton Href="@($"/contactos?q={Uri.EscapeDataString(Termo)}")" Variant="Variant.Text" Class="genoma-list-link">Ver todos →</MudButton>
+                </div>
+                @if (!contactos.Any())
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Nenhum contacto encontrado.</MudText>
+                }
+                else
+                {
+                    @foreach (var c in contactos.Take(10))
+                    {
+                        <div class="genoma-list-item genoma-list-item-clickable" @onclick="() => AbrirContactoPesquisa(c.Id)">
+                            <MudAvatar Size="Size.Small" Class="genoma-search-avatar">@Iniciais(c.Nome)</MudAvatar>
+                            <div class="genoma-list-main">
+                                <div class="genoma-list-id">@c.Nome</div>
+                                <div class="genoma-list-name">@(c.Email ?? c.Telemovel ?? c.Nif ?? "—")</div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <div class="genoma-card">
+                <div class="genoma-list-header">
+                    <div class="genoma-card-title">Processos (@processos.Count)</div>
+                    <MudButton Href="@($"/processos?q={Uri.EscapeDataString(Termo)}")" Variant="Variant.Text" Class="genoma-list-link">Ver todos →</MudButton>
+                </div>
+                @if (!processos.Any())
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Nenhum processo encontrado.</MudText>
+                }
+                else
+                {
+                    @foreach (var p in processos.Take(10))
+                    {
+                        <div class="genoma-list-item genoma-list-item-clickable" @onclick="() => AbrirProcessoPesquisa(p.Id)">
+                            <div class="genoma-list-main">
+                                <div class="genoma-list-id">@p.NumeroProcesso</div>
+                                <div class="genoma-list-name">@(p.Paciente?.Nome ?? "—")</div>
+                            </div>
+                            <div class="genoma-list-date">@p.DataEntrada.ToString("dd MMM")</div>
+                        </div>
+                    }
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Inject] private GenomaContext DB { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? Termo { get; set; }
+
+    private List<Paciente> contactos = new();
+    private List<Processo> processos = new();
+    private string? erro;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        contactos = new();
+        processos = new();
+        erro = null;
+
+        if (string.IsNullOrWhiteSpace(Termo))
+            return;
+
+        var termo = Termo.Trim();
+        try
+        {
+            contactos = await DB.Pacientes.AsNoTracking()
+                .Where(p => p.Ativo && (
+                    p.Nome.Contains(termo) ||
+                    (p.Nif != null && p.Nif.Contains(termo)) ||
+                    (p.Email != null && p.Email.Contains(termo)) ||
+                    (p.Telemovel != null && p.Telemovel.Contains(termo))))
+                .OrderBy(p => p.Nome)
+                .Take(50)
+                .ToListAsync();
+
+            processos = await DB.Processos.AsNoTracking()
+                .Include(p => p.Paciente)
+                .Include(p => p.ProcessoKit)
+                .Where(p => p.Ativo && (
+                    p.NumeroProcesso.Contains(termo) ||
+                    (p.Paciente != null && p.Paciente.Nome.Contains(termo)) ||
+                    (p.ProcessoKit != null && p.ProcessoKit.NumeroKit != null && p.ProcessoKit.NumeroKit.Contains(termo)) ||
+                    (p.ProcessoKit != null && p.ProcessoKit.TrackingNumber != null && p.ProcessoKit.TrackingNumber.Contains(termo))))
+                .OrderByDescending(p => p.DataEntrada)
+                .Take(50)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            erro = ex.Message;
+        }
+    }
+
+    private void AbrirContactoPesquisa(string id) => Nav.NavigateTo("/contactos/" + id);
+    private void AbrirProcessoPesquisa(string id) => Nav.NavigateTo("/processos/" + id);
+
+    private static string Iniciais(string nome)
+    {
+        var partes = nome.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (partes.Length >= 2) return $"{partes[0][0]}{partes[^1][0]}".ToUpperInvariant();
+        return partes.Length > 0 ? partes[0][0].ToString().ToUpperInvariant() : "?";
+    }
+}
