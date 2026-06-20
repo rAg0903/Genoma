@@ -1,0 +1,273 @@
+### Variáveis
+@baseUrl = http://localhost:3000/api
+@token = seu_jwt_token_aqui
+
+### ============================================
+### 1. HEALTH CHECK
+### ============================================
+
+GET http://localhost:3000/health
+
+
+### ============================================
+### 2. AUTENTICAÇÃO
+### ============================================
+
+### Login
+POST @baseUrl/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@genoma.lab",
+  "password": "password123"
+}
+
+
+### ============================================
+### 3. PACIENTES
+### ============================================
+
+### Listar pacientes (com paginação)
+GET @baseUrl/pacientes?page=1&limit=10
+Authorization: Bearer @token
+
+
+### Buscar paciente por ID
+GET @baseUrl/pacientes/5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d
+Authorization: Bearer @token
+
+
+### Criar novo paciente
+POST @baseUrl/pacientes
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "nome": "João Silva Santos",
+  "data_nascimento": "1990-05-15",
+  "genero": "M",
+  "nif": "123456789",
+  "telemovel": "+351912345678",
+  "email": "joao.silva@example.com",
+  "morada": "Rua Principal, 123, Lisboa"
+}
+
+
+### Atualizar paciente
+PUT @baseUrl/pacientes/5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "telemovel": "+351987654321",
+  "email": "joao.silva.novo@example.com"
+}
+
+
+### Deletar paciente (soft-delete)
+DELETE @baseUrl/pacientes/5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d
+Authorization: Bearer @token
+
+
+### ============================================
+### 4. TESTES
+### ============================================
+
+### Listar testes
+GET @baseUrl/testes?page=1&limit=10
+Authorization: Bearer @token
+
+
+### Criar novo teste
+POST @baseUrl/testes
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "nome": "Teste Trisomia 21",
+  "preco": 150.00,
+  "descricao": "Análise de aneuploidias fetais, incluindo Trisomia 21, 18 e 13"
+}
+
+
+### Atualizar teste
+PUT @baseUrl/testes/5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "preco": 160.00
+}
+
+
+### ============================================
+### 5. ITENS DE PESQUISA
+### ============================================
+
+### Listar itens
+GET @baseUrl/itens?page=1&limit=10
+Authorization: Bearer @token
+
+
+### Criar novo item
+POST @baseUrl/itens
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "codigo": "T21",
+  "descricao": "Trisomia 21 (Down)"
+}
+
+
+### ============================================
+### 6. MÉDICOS
+### ============================================
+
+### Listar médicos
+GET @baseUrl/medicos
+Authorization: Bearer @token
+
+
+### Criar novo médico
+POST @baseUrl/medicos
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "utilizador_id": "5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d",
+  "num_ordem": "12345",
+  "especialidade": "Obstetrícia"
+}
+
+
+### ============================================
+### 7. COMPOSIÇÃO DE TESTES
+### ============================================
+
+### Listar itens de um teste
+GET @baseUrl/teste-composicao/teste/5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d
+Authorization: Bearer @token
+
+
+### Adicionar item a um teste
+POST @baseUrl/teste-composicao
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "teste_id": "5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d",
+  "item_id": "5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9e"
+}
+
+
+### Remover item de um teste
+DELETE @baseUrl/teste-composicao/teste_id/item_id
+Authorization: Bearer @token
+
+
+### ============================================
+### 8. PEDIDOS DE EXAMES
+### ============================================
+
+### Listar pedidos
+GET @baseUrl/pedidos?page=1&limit=10
+Authorization: Bearer @token
+
+
+### Listar pedidos de um paciente
+GET @baseUrl/pedidos/paciente/5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d
+Authorization: Bearer @token
+
+
+### Criar novo pedido
+POST @baseUrl/pedidos
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "paciente_id": "5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d",
+  "medico_id": "5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9e",
+  "teste_id": "5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9f",
+  "empresa_id": "5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d90",
+  "status": "Pendente",
+  "notas_clinicas": "Paciente preferencia para colheita de manhã"
+}
+
+
+### Atualizar status do pedido
+PUT @baseUrl/pedidos/5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "status": "Colhido",
+  "notas_clinicas": "Colhida com sucesso"
+}
+
+
+### ============================================
+### 9. RESULTADOS
+### ============================================
+
+### Listar resultados
+GET @baseUrl/resultados?page=1&limit=10
+Authorization: Bearer @token
+
+
+### Listar resultados de um pedido
+GET @baseUrl/resultados/pedido/5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d
+Authorization: Bearer @token
+
+
+### Criar novo resultado
+POST @baseUrl/resultados
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "pedido_id": "5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9d",
+  "item_id": "5f9d9d9d-9d9d-9d9d-9d9d-9d9d9d9d9d9e",
+  "resultado": "Negativo",
+  "observacoes": "Nenhuma anomalia detectada"
+}
+
+
+### ============================================
+### 10. ERROS E VALIDAÇÃO
+### ============================================
+
+### Exemplo: Email inválido
+POST @baseUrl/pacientes
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "nome": "Teste",
+  "data_nascimento": "1990-05-15",
+  "email": "email-invalido",
+  "telemovel": "+351912345678"
+}
+
+
+### Exemplo: NIF com formato inválido
+POST @baseUrl/pacientes
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "nome": "Teste",
+  "data_nascimento": "1990-05-15",
+  "nif": "12345"
+}
+
+
+### Exemplo: Preço negativo
+POST @baseUrl/testes
+Authorization: Bearer @token
+Content-Type: application/json
+
+{
+  "nome": "Teste",
+  "preco": -100.00
+}

@@ -1,0 +1,16 @@
+{
+  "name": "genoma-app",
+  "private": true,
+  "packageManager": "npm@10.9.2",
+  "scripts": {
+    "migrate": "cd backend && npm run migrate",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:start": "cd backend && npm start",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:preview": "cd frontend && npm run preview"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1"
+  }
+}

@@ -1,0 +1,64 @@
+const express = require('express');
+const router = express.Router();
+
+const authRoutes = require('./auth.routes');
+const perfisRoutes = require('./perfis.routes');
+const empresasRoutes = require('./empresas.routes');
+const utilizadoresRoutes = require('./utilizadores.routes');
+const pacientesRoutes = require('./pacientes.routes');
+const testesRoutes = require('./testes.routes');
+const itensRoutes = require('./itens_pesquisa.routes');
+const medicosRoutes = require('./medicos.routes');
+const composicaoRoutes = require('./teste_composicao.routes');
+const pedidosRoutes = require('./pedidos_exames.routes');
+const processosRoutes = require('./processos.routes');
+const resultadosRoutes = require('./resultados_detalhados.routes');
+const stocksRoutes = require('./stocks.routes');
+const agendamentosRoutes = require('./colheitas.routes');
+const requisicoesRoutes = require('./requisicoes.routes');
+const dashboardsRoutes = require('./dashboards.routes');
+const traceRoutes = require('./trace.routes');
+const listagensRoutes = require('./listagens.routes');
+const anexosRoutes = require('./anexos.routes');
+const lembretesRoutes = require('./lembretes.routes');
+const postosRoutes = require('./postos.routes');
+const laboratoriosRoutes = require('./laboratorios.routes');
+const entidadesRoutes = require('./entidades.routes');
+const tiposKitRoutes = require('./tipos_kit.routes');
+const motivosAnulacaoRoutes = require('./motivos_anulacao.routes');
+const notificacoesRoutes = require('./notificacoes.routes');
+const codigoPostalRoutes = require('./codigo-postal.routes');
+const deprecationMiddleware = require('../middleware/deprecation.middleware');
+
+router.use('/auth', authRoutes);
+router.use('/perfis', perfisRoutes);
+router.use('/empresas', empresasRoutes);
+router.use('/utilizadores', utilizadoresRoutes);
+router.use('/pacientes', pacientesRoutes);
+router.use('/testes', testesRoutes);
+router.use('/itens', itensRoutes);
+router.use('/medicos', medicosRoutes);
+router.use('/teste-composicao', composicaoRoutes);
+router.use('/processos', processosRoutes);
+router.use('/agendamentos', agendamentosRoutes);
+router.use('/requisicoes', requisicoesRoutes);
+router.use('/dashboards', dashboardsRoutes);
+router.use('/stocks', stocksRoutes);
+router.use('/trace', traceRoutes);
+router.use('/listagens', listagensRoutes);
+router.use('/anexos', anexosRoutes);
+router.use('/lembretes', lembretesRoutes);
+router.use('/postos', postosRoutes);
+router.use('/laboratorios', laboratoriosRoutes);
+router.use('/entidades', entidadesRoutes);
+router.use('/tipos-kit', tiposKitRoutes);
+router.use('/motivos-anulacao', motivosAnulacaoRoutes);
+router.use('/notificacoes', notificacoesRoutes);
+router.use('/codigo-postal', codigoPostalRoutes);
+
+// Rotas legadas (dominio unificado em `processos`). Mantidas apenas para
+// compatibilidade retroativa.
+router.use('/pedidos', deprecationMiddleware({ successor: '/api/processos' }), pedidosRoutes);
+router.use('/resultados', deprecationMiddleware({ successor: '/api/processos' }), resultadosRoutes);
+
+module.exports = router;

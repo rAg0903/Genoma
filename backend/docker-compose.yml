@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: genoma-mariadb
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: genoma
+      MARIADB_USER: genoma
+      MARIADB_PASSWORD: genoma123
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mariadb_data:

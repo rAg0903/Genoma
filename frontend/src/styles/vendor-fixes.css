@@ -1,0 +1,13 @@
+/* Vendor compatibility overrides (loaded after app theme). */
+
+@layer base {
+  html,
+  :host {
+    text-size-adjust: 100%;
+  }
+}
+
+[data-sonner-toast][data-swiped='true'] {
+  -webkit-user-select: none;
+  user-select: none;
+}
