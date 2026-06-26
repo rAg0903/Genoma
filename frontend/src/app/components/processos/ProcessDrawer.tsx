@@ -127,6 +127,11 @@ function ResumoTab({
         <div>
           <div className="text-xs text-slate-400">Estado atual</div>
           <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{ESTADO_LABEL[processo.estado]}</div>
+          {processo.estado === 'Cancelado' && processo.motivo_anulacao_nome && (
+            <div className="text-xs text-rose-600 dark:text-rose-400 mt-1">
+              Motivo: {processo.motivo_anulacao_nome}
+            </div>
+          )}
         </div>
         {canUpdate && (
           <StateTransitionMenu estado={processo.estado} onTransition={(d) => onUpdateEstado(processo, d)} />

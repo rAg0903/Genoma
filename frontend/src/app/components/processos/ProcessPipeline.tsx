@@ -1,7 +1,7 @@
 import { Clock, AlertTriangle, FolderOpen } from 'lucide-react';
 import { Processo } from '../../data/types';
 import {
-  PROCESS_PIPELINE_COLUMNS,
+  getVisiblePipelineColumns,
   EstadoProcesso,
   diasDesde,
   ultimaAtualizacao,
@@ -16,6 +16,8 @@ interface ProcessPipelineProps {
   onOpen: (p: Processo) => void;
   onTransition: (p: Processo, destino: EstadoProcesso) => void;
   canUpdate: boolean;
+  /** Chave do chip de estado activo — limita o kanban à coluna correspondente. */
+  columnFilter?: string;
 }
 
 const COLUMN_COLORS: Record<string, string> = {
@@ -24,13 +26,17 @@ const COLUMN_COLORS: Record<string, string> = {
   'Resultado Disponivel': PROCESS_STATE_COLORS['Resultado Disponivel'],
   Validado: PROCESS_STATE_COLORS.Validado,
   Faturado: PROCESS_STATE_COLORS.Faturado,
+  Cancelado: PROCESS_STATE_COLORS.Cancelado,
 };
 
 /**
  * Quadro tipo kanban por estado. Cada coluna mostra os processos nesse estado;
  * cada cartao permite avancar apenas para transicoes validas.
  */
-export function ProcessPipeline({ processos, onOpen, onTransition, canUpdate }: ProcessPipelineProps) {
+export function ProcessPipeline({ processos, onOpen, onTransition, canUpdate, columnFilter }: ProcessPipelineProps) {
+  const columns = getVisiblePipelineColumns(columnFilter);
+  const singleColumn = columns.length === 1;
+
   if (processos.length === 0) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -40,12 +46,12 @@ export function ProcessPipeline({ processos, onOpen, onTransition, canUpdate }: 
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2">
-      {PROCESS_PIPELINE_COLUMNS.map((column) => {
+    <div className={`flex gap-3 overflow-x-auto pb-2 ${singleColumn ? 'max-w-xl' : ''}`}>
+      {columns.map((column) => {
         const items = processos.filter((p) => column.estados.includes(p.estado));
         const color = COLUMN_COLORS[column.key] ?? '#94a3b8';
         return (
-          <div key={column.key} className="flex-shrink-0 w-72">
+          <div key={column.key} className={`flex-shrink-0 ${singleColumn ? 'w-full' : 'w-72'}`}>
             <div className="flex items-center justify-between mb-2 px-1 gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />

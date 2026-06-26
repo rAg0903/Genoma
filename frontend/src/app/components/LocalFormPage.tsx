@@ -341,7 +341,7 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
 
       const payload = {
         nome: form.nome.trim(),
-        codigo: form.codigo.trim(),
+        codigo: kind === 'posto' ? form.codigo.trim() : '',
         ...addressFields,
         contacto: form.contacto.trim(),
         email: form.email.trim(),
@@ -490,6 +490,7 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
                     style={{ fontSize: '14px' }}
                   />
                 </div>
+                {kind === 'posto' && (
                 <div>
                   <label className={labelClass} style={{ fontSize: '13px' }}>Código</label>
                   <input
@@ -500,6 +501,7 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
                     style={{ fontSize: '14px', fontFamily: 'monospace' }}
                   />
                 </div>
+                )}
               </div>
             </Section>
 

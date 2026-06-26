@@ -8,6 +8,8 @@ const perfisRepository = require('../repositories/perfis.repository');
 const informacaoClinicaRepository = require('../repositories/informacao_clinica.repository');
 const utilizadoresRepository = require('../repositories/utilizadores.repository');
 const logService = require('./log.service');
+const motivosAnulacaoService = require('./motivos_anulacao.service');
+const pacientesService = require('./pacientes.service');
 const { normalizeRoleName } = require('../config/stock-permissions');
 const { formatCalendarDate } = require('../utils/calendar-dates');
 
@@ -513,6 +515,14 @@ exports.update = async (id, data, user) => {
     if (!teste) throw new Error('Teste nao encontrado');
   }
 
+  let motivoAnulacao = null;
+  if (statusResultante === 'Cancelado') {
+    const motivoId = data.motivo_anulacao_id !== undefined
+      ? data.motivo_anulacao_id
+      : processo.motivo_anulacao_id;
+    motivoAnulacao = await motivosAnulacaoService.assertMotivoParaContexto(motivoId, 'processo');
+  }
+
   const updateData = {};
   if (data.status !== undefined) updateData.status_id = statusResultante;
   if (data.medico_id !== undefined) updateData.medico_id = data.medico_id;
@@ -521,6 +531,14 @@ exports.update = async (id, data, user) => {
   if (workflowData.posto !== undefined) updateData.posto = workflowData.posto;
   if (workflowData.numero_processo) updateData.numero_processo = workflowData.numero_processo;
   if (workflowData.observacoes !== undefined) updateData.observacoes = workflowData.observacoes;
+
+  if (statusResultante === 'Cancelado') {
+    updateData.motivo_anulacao_id = motivoAnulacao.id;
+    updateData.data_anulacao = data.data_anulacao || formatCalendarDate(new Date());
+  } else if (data.status !== undefined && processo.status_id === 'Cancelado') {
+    updateData.motivo_anulacao_id = null;
+    updateData.data_anulacao = null;
+  }
 
   if (workflowData.kit_codigo !== undefined) {
     const kitId = await resolveKitId(workflowData.kit_codigo);
@@ -578,6 +596,10 @@ exports.update = async (id, data, user) => {
 
   await processosRepository.update(id, updateData);
   await syncInformacaoClinica(id, data);
+
+  if (statusResultante === 'Cancelado' && motivoAnulacao?.reabre_contacto) {
+    await pacientesService.resetParaNovaColheita(processo.paciente_id, user);
+  }
 
   if (user) {
     await logService.log({

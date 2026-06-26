@@ -69,6 +69,9 @@ interface ApiProcesso {
   gestacao_semanas_registo?: number | null;
   gestacao_dias_registo?: number | null;
   gestacao_registada_em?: string | null;
+  motivo_anulacao_id?: string | null;
+  motivo_anulacao_nome?: string | null;
+  data_anulacao?: string | null;
 }
 
 interface ApiMedico {
@@ -500,6 +503,9 @@ const mapPedidoToProcesso = (pedido: ApiProcesso): Processo => ({
   gestacao_semanas_registo: pedido.gestacao_semanas_registo ?? null,
   gestacao_dias_registo: pedido.gestacao_dias_registo ?? null,
   gestacao_registada_em: normalizeDate(pedido.gestacao_registada_em) || null,
+  motivo_anulacao_id: pedido.motivo_anulacao_id || null,
+  motivo_anulacao_nome: pedido.motivo_anulacao_nome || undefined,
+  data_anulacao: normalizeDate(pedido.data_anulacao) || null,
 });
 
 const mapKitStatusFromApi = (status: string | null | undefined): Kit['status'] => {
@@ -786,6 +792,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       id: m.id,
       nome: m.nome || '',
       ativo: m.ativo !== false,
+      contexto: m.contexto === 'processo' ? 'processo' : 'contacto',
+      reabre_contacto: !!m.reabre_contacto,
     })));
   }, []);
 
@@ -1105,10 +1113,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ...(data.nao_gera_comissao !== undefined ? { nao_gera_comissao: !!data.nao_gera_comissao } : {}),
         ...(data.fatura_envio_email !== undefined ? { fatura_envio_email: data.fatura_envio_email || null } : {}),
         ...(data.fatura_envio_sms !== undefined ? { fatura_envio_sms: data.fatura_envio_sms || null } : {}),
+        ...(data.motivo_anulacao_id !== undefined ? { motivo_anulacao_id: data.motivo_anulacao_id || null } : {}),
+        ...(data.data_anulacao !== undefined ? { data_anulacao: data.data_anulacao || null } : {}),
       },
     });
 
     await refreshProcessos();
+    if (data.estado === 'Cancelado') {
+      await refreshContacts();
+    }
   };
 
   const deleteProcesso = async (id: string) => {
@@ -1542,7 +1555,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   interface ApiTipoKit { id: string; nome?: string | null; ativo?: boolean | null }
-  interface ApiMotivoAnulacao { id: string; nome?: string | null; ativo?: boolean | null }
+  interface ApiMotivoAnulacao {
+    id: string;
+    nome?: string | null;
+    ativo?: boolean | null;
+    contexto?: string | null;
+    reabre_contacto?: boolean | null;
+  }
 
   const addTipoKit = async (data: Omit<TipoKit, 'id'>) => {
     const token = getAuthToken();
@@ -1587,7 +1606,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setMotivosAnulacao((prev) => [...prev, { ...data, id: genId() }]);
       return;
     }
-    await apiRequest('/motivos-anulacao', { method: 'POST', token, body: { nome: data.nome } });
+    await apiRequest('/motivos-anulacao', {
+      method: 'POST',
+      token,
+      body: {
+        nome: data.nome,
+        contexto: data.contexto || 'contacto',
+        reabre_contacto: data.contexto === 'processo' ? !!data.reabre_contacto : false,
+      },
+    });
     await refreshMotivosAnulacao();
   };
 
@@ -1603,6 +1630,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       body: {
         ...(data.nome !== undefined ? { nome: data.nome } : {}),
         ...(data.ativo !== undefined ? { ativo: data.ativo } : {}),
+        ...(data.contexto !== undefined ? { contexto: data.contexto } : {}),
+        ...(data.reabre_contacto !== undefined ? { reabre_contacto: data.reabre_contacto } : {}),
       },
     });
     await refreshMotivosAnulacao();

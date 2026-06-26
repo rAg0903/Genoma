@@ -63,6 +63,7 @@ const buildTestePayload = (form: Omit<Teste, 'id'>): Omit<Teste, 'id'> => {
     ...form,
     nome: nomeTeste,
     tipo_teste: nomeTeste,
+    codigo: '',
     preco: 0,
     preco_compra: 0,
     preco_venda: 0,
@@ -205,7 +206,7 @@ export function TesteFormPage() {
               {editing ? 'Editar teste' : 'Novo teste'}
             </h1>
             <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '12px' }}>
-              {form.nome || form.codigo || 'Configuração do teste laboratorial'}
+              {form.nome || 'Configuração do teste laboratorial'}
             </p>
           </div>
           {podeGuardar && tab === 'dados' && (
@@ -248,9 +249,6 @@ export function TesteFormPage() {
           <form id="teste-form" onSubmit={(e) => void handleSave(e)} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 md:p-6 space-y-5 max-w-5xl">
             <div className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Código" required>
-                  <input required type="text" name="teste-codigo" value={form.codigo} onChange={(e) => setForm((f) => ({ ...f, codigo: e.target.value }))} className={inputClass} placeholder="MT-001" style={{ fontSize: '14px', fontFamily: 'monospace' }} />
-                </Field>
                 <Field label="Nome do teste" required>
                   <input required type="text" name="teste-nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} className={inputClass} placeholder="Maternity" style={{ fontSize: '14px' }} />
                 </Field>
@@ -286,7 +284,7 @@ export function TesteFormPage() {
                 >
                   <option value="">Selecione o laboratório de processamento...</option>
                   {laboratoriosFinais.map((l) => (
-                    <option key={l.id} value={l.id}>{l.nome}{l.codigo ? ` (${l.codigo})` : ''}</option>
+                    <option key={l.id} value={l.id}>{l.nome}</option>
                   ))}
                 </select>
                 <p className="text-xs text-slate-400 mt-1">

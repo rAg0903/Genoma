@@ -106,6 +106,9 @@ export interface Processo {
   gestacao_semanas_registo?: number | null;
   gestacao_dias_registo?: number | null;
   gestacao_registada_em?: string | null;
+  motivo_anulacao_id?: string | null;
+  motivo_anulacao_nome?: string | null;
+  data_anulacao?: string | null;
 }
 
 export type KitFaseCiclo =
@@ -264,6 +267,8 @@ export interface MotivoAnulacao {
   id: string;
   nome: string;
   ativo?: boolean;
+  contexto: 'contacto' | 'processo';
+  reabre_contacto?: boolean;
 }
 
 export interface SistemaSaude {

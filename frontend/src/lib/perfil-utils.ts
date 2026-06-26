@@ -7,3 +7,6 @@ export const normalizePerfilNome = (value: string) =>
 
 export const isAdminPerfilNome = (nome?: string | null): boolean =>
   normalizePerfilNome(nome ?? '') === 'administrador';
+
+export const isMedicoPerfilNome = (nome?: string | null): boolean =>
+  normalizePerfilNome(nome ?? '') === 'medico';

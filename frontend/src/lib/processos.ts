@@ -35,6 +35,33 @@ export const PROCESSOS_PAGE_ESTADOS: { key: string; estados: EstadoProcesso[] }[
   { key: 'Cancelado', estados: ['Cancelado'] },
 ];
 
+/** Coluna do kanban para processos cancelados (só visível com filtro activo). */
+export const PROCESS_PIPELINE_CANCELADO_COLUMN = {
+  key: 'Cancelado',
+  label: 'Cancelado',
+  estados: ['Cancelado'] as EstadoProcesso[],
+};
+
+/** Colunas possíveis no pipeline (inclui cancelados). */
+export const ALL_PIPELINE_DISPLAY_COLUMNS = [
+  ...PROCESS_PIPELINE_COLUMNS,
+  PROCESS_PIPELINE_CANCELADO_COLUMN,
+];
+
+/** Com filtro de estado activo, mostra só a coluna correspondente. */
+export const getVisiblePipelineColumns = (filterKey?: string) => {
+  if (!filterKey) return PROCESS_PIPELINE_COLUMNS;
+  const match = ALL_PIPELINE_DISPLAY_COLUMNS.find((c) => c.key === filterKey);
+  if (match) return [match];
+  const entry = PROCESSOS_PAGE_ESTADOS.find((e) => e.key === filterKey);
+  if (!entry) return PROCESS_PIPELINE_COLUMNS;
+  return [{
+    key: entry.key,
+    label: ESTADO_LABEL[entry.estados[0]] ?? entry.key,
+    estados: entry.estados,
+  }];
+};
+
 export const processoMatchesEstadoFilter = (estado: EstadoProcesso, filterKey: string): boolean => {
   const entry = PROCESSOS_PAGE_ESTADOS.find((e) => e.key === filterKey);
   return entry ? entry.estados.includes(estado) : estado === filterKey;

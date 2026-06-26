@@ -83,6 +83,9 @@ export const processToFormData = (processo: Processo): ProcessFormData => ({
   gestacao_semanas_registo: processo.gestacao_semanas_registo ?? null,
   gestacao_dias_registo: processo.gestacao_dias_registo ?? null,
   gestacao_registada_em: processo.gestacao_registada_em || '',
+  motivo_anulacao_id: processo.motivo_anulacao_id || null,
+  motivo_anulacao_nome: processo.motivo_anulacao_nome || undefined,
+  data_anulacao: processo.data_anulacao || null,
 });
 
 export type ProcessFaturacaoData = Pick<Processo,

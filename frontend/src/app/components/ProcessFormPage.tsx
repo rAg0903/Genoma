@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft, Save, User, Phone, MapPin, Baby, Syringe, Receipt, StickyNote, Paperclip,
-  FileText, Package, Activity, Loader2, Lock,
+  FileText, Package, Activity, Loader2, Lock, Ban,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Contact, Processo } from '../data/types';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { filterMotivosPorContexto, getMotivoProcessoCancelHint } from '../../lib/motivos-anulacao';
 import { apiRequest } from '../../lib/api';
 import { getAuthToken } from '../../lib/api-processos';
 import { ApiPaciente, mapApiPacienteToContact } from '../../lib/pacientes';
@@ -77,22 +79,42 @@ export function ProcessFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const {
-    contacts, processos, updateProcesso, refreshProcessos,
+    contacts, processos, updateProcesso, refreshProcessos, motivosAnulacao,
     getAnexosByPaciente, addAnexo, deleteAnexo,
   } = useData();
   const { hasPermission } = useAuth();
+  const { t } = useLanguage();
   const canUpdate = hasPermission('processos', 'update');
 
   const [tab, setTab] = useState<TabId>('identificacao');
   const [form, setForm] = useState<ProcessFormData | null>(null);
   const [paciente, setPaciente] = useState<Contact | null>(null);
   const [saving, setSaving] = useState(false);
+  const [anulacao, setAnulacao] = useState({ cancelado: false, motivo_anulacao_id: '' });
 
   const processo = id ? processos.find((p) => p.id === id) : undefined;
+  const jaCancelado = processo?.estado === 'Cancelado';
+
+  const motivosProcesso = useMemo(
+    () => filterMotivosPorContexto(motivosAnulacao, 'processo'),
+    [motivosAnulacao],
+  );
+  const motivoSelecionado = motivosProcesso.find((m) => m.id === anulacao.motivo_anulacao_id);
+  const motivoCanceladoNome = processo?.motivo_anulacao_nome
+    || motivosProcesso.find((m) => m.id === processo?.motivo_anulacao_id)?.nome
+    || '';
 
   useEffect(() => {
     if (processo) setForm(processToFormData(processo));
   }, [processo]);
+
+  useEffect(() => {
+    if (!processo) return;
+    setAnulacao({
+      cancelado: processo.estado === 'Cancelado',
+      motivo_anulacao_id: processo.motivo_anulacao_id || '',
+    });
+  }, [processo?.id, processo?.estado, processo?.motivo_anulacao_id]);
 
   useEffect(() => {
     if (!form?.paciente_id) {
@@ -125,15 +147,25 @@ export function ProcessFormPage() {
 
   const handleGuardar = async () => {
     if (!processo || !form || !canUpdate) return;
-    const error = validateProcessForm(form, processos, processo.id);
+    if (anulacao.cancelado && !anulacao.motivo_anulacao_id) {
+      toast.error(t('pages.processes.form.cancelReasonRequired'));
+      setTab('identificacao');
+      return;
+    }
+    const formComEstado = {
+      ...form,
+      estado: anulacao.cancelado ? 'Cancelado' as const : form.estado,
+      motivo_anulacao_id: anulacao.cancelado ? anulacao.motivo_anulacao_id : null,
+    };
+    const error = validateProcessForm(formComEstado, processos, processo.id);
     if (error) {
       toast.error(error);
       return;
     }
     setSaving(true);
     try {
-      await updateProcesso(processo.id, buildProcessSubmitPayload(form));
-      toast.success('Processo atualizado!');
+      await updateProcesso(processo.id, buildProcessSubmitPayload(formComEstado));
+      toast.success(anulacao.cancelado ? 'Processo cancelado.' : 'Processo atualizado!');
       navigate(`/processos/${processo.id}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao guardar processo.');
@@ -202,6 +234,18 @@ export function ProcessFormPage() {
 
       <div className="p-4 md:p-6">
         <div className="space-y-4 max-w-4xl">
+          {form && jaCancelado && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200">
+              <Ban className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-sm">{t('pages.processes.form.cancelledBanner')}</p>
+                <p className="text-xs mt-1 opacity-90">{t('pages.processes.form.cancelledBannerDetail')}</p>
+                {motivoCanceladoNome && (
+                  <p className="text-xs mt-2">Motivo: {motivoCanceladoNome}</p>
+                )}
+              </div>
+            </div>
+          )}
           {form && (
             <FaturacaoAlertBanner
               value={extractFaturacaoFromProcesso({ ...processo, ...form })}
@@ -223,14 +267,13 @@ export function ProcessFormPage() {
                   </div>
                   <div>
                     <label className={labelClass} style={{ fontSize: '13px' }}>Estado</label>
-                    <select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value as Processo['estado'] })} className={inputClass} style={{ fontSize: '14px' }} disabled={!canUpdate}>
+                    <select value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value as Processo['estado'] })} className={inputClass} style={{ fontSize: '14px' }} disabled={!canUpdate || jaCancelado || anulacao.cancelado}>
                       <option value="Colheita Realizada">Colheita Realizada</option>
                       <option value="Enviado Laboratorio">Enviado Laboratorio</option>
                       <option value="Em Analise">Em Analise</option>
                       <option value="Resultado Disponivel">Resultado Disponivel</option>
                       <option value="Validado">Validado</option>
                       <option value="Faturado">Faturado</option>
-                      <option value="Cancelado">Cancelado</option>
                     </select>
                   </div>
                   <ReadOnlyField label="Paciente" value={pacienteNome} />
@@ -263,6 +306,65 @@ export function ProcessFormPage() {
                   <ReadOnlyField label="Cidade" value={paciente?.cidade || ''} />
                   <ReadOnlyField label="Distrito" value={paciente?.distrito || ''} />
                   <ReadOnlyField label="País" value={paciente?.pais || ''} />
+                </div>
+              </Section>
+
+              <Section title={jaCancelado ? t('pages.processes.form.cancelled') : t('pages.processes.form.cancelProcess')} icon={Ban}>
+                <div className="space-y-3">
+                  {jaCancelado ? (
+                    <div className="max-w-md space-y-2">
+                      <ReadOnlyField label={t('pages.processes.form.cancelReason')} value={motivoCanceladoNome || '—'} />
+                      {processo.data_anulacao && (
+                        <ReadOnlyField label="Data de cancelamento" value={fmt(processo.data_anulacao)} />
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <label className="inline-flex items-center gap-2.5 text-gray-700 dark:text-gray-300 cursor-pointer" style={{ fontSize: '14px' }}>
+                        <input
+                          type="checkbox"
+                          checked={anulacao.cancelado}
+                          onChange={(e) => setAnulacao({
+                            cancelado: e.target.checked,
+                            motivo_anulacao_id: e.target.checked ? anulacao.motivo_anulacao_id : '',
+                          })}
+                          disabled={!canUpdate}
+                          className="w-4 h-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                        />
+                        <span style={{ fontWeight: 500 }}>{t('pages.processes.form.cancelProcess')}</span>
+                      </label>
+
+                      {anulacao.cancelado && (
+                        <div className="pl-6 max-w-md space-y-2">
+                          <label className={labelClass} style={{ fontSize: '13px' }}>
+                            {t('pages.processes.form.cancelReason')} <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            className={inputClass}
+                            value={anulacao.motivo_anulacao_id}
+                            onChange={(e) => setAnulacao({ ...anulacao, motivo_anulacao_id: e.target.value })}
+                            disabled={!canUpdate}
+                            style={{ fontSize: '14px' }}
+                          >
+                            <option value="">{t('pages.processes.form.selectCancelReason')}</option>
+                            {motivosProcesso.map((m) => (
+                              <option key={m.id} value={m.id}>{m.nome}</option>
+                            ))}
+                          </select>
+                          {motivosProcesso.length === 0 && (
+                            <p className="text-amber-600 dark:text-amber-400 text-xs">
+                              Sem motivos configurados. Adicione em Administração → Motivos de anulação.
+                            </p>
+                          )}
+                          {motivoSelecionado && (
+                            <p className="text-gray-500 dark:text-gray-400 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 px-3 py-2">
+                              {getMotivoProcessoCancelHint(motivoSelecionado)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </Section>
             </div>

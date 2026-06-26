@@ -4,8 +4,9 @@ import { Link, useNavigate } from 'react-router';
 import { apiRequest } from '../../lib/api';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../../i18n/LanguageContext';
-import genomaSymbol from '../../assets/genoma-logo_high_quality.png';
-import genomaSymbolDark from '../../assets/genoma-logo_high_quality2.png';
+
+const LOGIN_LOGO_LIGHT = '/genoma-logo_high_quality.png';
+const LOGIN_LOGO_DARK = '/genoma-logo_high_quality2.png';
 
 type LoginResponse = {
   token: string;
@@ -198,16 +199,10 @@ export function LoginPage() {
                 className={`relative flex h-56 w-56 items-center justify-center overflow-hidden rounded-[2rem] p-6 ${brandSurfaceClass}`}
               >
                 <img
-                  src={genomaSymbol}
+                  src={isDark ? LOGIN_LOGO_DARK : LOGIN_LOGO_LIGHT}
                   alt=""
                   aria-hidden
-                  className="h-full w-full object-contain dark:hidden"
-                />
-                <img
-                  src={genomaSymbolDark}
-                  alt=""
-                  aria-hidden
-                  className="hidden h-full w-full object-contain dark:block"
+                  className="h-full w-full object-contain"
                 />
               </div>
             </div>

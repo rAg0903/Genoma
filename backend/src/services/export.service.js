@@ -11,7 +11,7 @@ const DARK_HEADER = 'FF1A1A1A';
 
 let logoDataUri = '';
 try {
-  const logoPath = path.join(__dirname, '../../assets/genoma-logo.png');
+  const logoPath = path.join(__dirname, '../assets/genoma-logo.png');
   const logoBuf = fs.readFileSync(logoPath);
   logoDataUri = `data:image/png;base64,${logoBuf.toString('base64')}`;
 } catch {

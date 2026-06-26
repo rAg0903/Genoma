@@ -15,6 +15,7 @@ import { ProcessKpis, ProcessKpiId } from './processos/ProcessKpis';
 import { ProcessPipeline } from './processos/ProcessPipeline';
 import { ProcessTable } from './processos/ProcessTable';
 import { ProcessDrawer } from './processos/ProcessDrawer';
+import { CancelProcessoDialog } from './processos/CancelProcessoDialog';
 import { TraceView } from './shared/TraceView';
 import {
   EstadoProcesso, PROCESSOS_PAGE_ESTADOS, PROCESS_PIPELINE_COLUMNS, ESTADO_LABEL,
@@ -40,7 +41,7 @@ const KPI_PREDICATE: Record<ProcessKpiId, (p: Processo) => boolean> = {
 };
 
 export function ProcessesPage() {
-  const { processos, updateProcesso, deleteProcesso, refreshProcessos } = useData();
+  const { processos, updateProcesso, deleteProcesso, refreshProcessos, motivosAnulacao } = useData();
   const { hasPermission } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -61,6 +62,7 @@ export function ProcessesPage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [drawerProcesso, setDrawerProcesso] = useState<Processo | null>(null);
+  const [cancelTargets, setCancelTargets] = useState<Processo[]>([]);
 
   const processosLaboratorio = useMemo(
     () => processos.filter((p) => isProcessoLaboratorio(p.estado)),
@@ -116,7 +118,10 @@ export function ProcessesPage() {
 
   const handleTransition = async (p: Processo, destino: EstadoProcesso) => {
     if (!canUpdate) return;
-    if (destino === 'Cancelado' && !confirm(`Cancelar o processo ${p.numero}?`)) return;
+    if (destino === 'Cancelado') {
+      setCancelTargets([p]);
+      return;
+    }
     try {
       await updateProcesso(p.id, { estado: destino });
       setDrawerProcesso((prev) => (prev?.id === p.id ? { ...prev, estado: destino } : prev));
@@ -124,6 +129,22 @@ export function ProcessesPage() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Transicao invalida.');
     }
+  };
+
+  const confirmCancel = async (motivoId: string) => {
+    let ok = 0;
+    for (const p of cancelTargets) {
+      try {
+        await updateProcesso(p.id, { estado: 'Cancelado', motivo_anulacao_id: motivoId });
+        ok += 1;
+        setDrawerProcesso((prev) => (prev?.id === p.id ? { ...prev, estado: 'Cancelado', motivo_anulacao_id: motivoId } : prev));
+      } catch {
+        /* skip */
+      }
+    }
+    toast.success(ok === 1 ? 'Processo cancelado.' : `${ok}/${cancelTargets.length} processos cancelados.`);
+    setCancelTargets([]);
+    clearSelection();
   };
 
   const toggle = (id: string) => setSelectedIds((prev) => {
@@ -154,14 +175,9 @@ export function ProcessesPage() {
     clearSelection();
   };
 
-  const bulkCancel = async () => {
-    if (!confirm(`Cancelar ${selectedProcessos.length} processo(s)?`)) return;
-    let ok = 0;
-    for (const p of selectedProcessos) {
-      try { await updateProcesso(p.id, { estado: 'Cancelado' }); ok += 1; } catch { /* skip */ }
-    }
-    toast.success(`${ok} cancelados.`);
-    clearSelection();
+  const bulkCancel = () => {
+    if (selectedProcessos.length === 0) return;
+    setCancelTargets(selectedProcessos);
   };
 
   const estadoChips = PROCESSOS_PAGE_ESTADOS.map((e) => {
@@ -221,7 +237,13 @@ export function ProcessesPage() {
         />
 
         {view === 'pipeline' ? (
-          <ProcessPipeline processos={filtered} onOpen={setDrawerProcesso} onTransition={handleTransition} canUpdate={canUpdate} />
+          <ProcessPipeline
+            processos={filtered}
+            onOpen={setDrawerProcesso}
+            onTransition={handleTransition}
+            canUpdate={canUpdate}
+            columnFilter={estadoFilter || undefined}
+          />
         ) : (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             {paginated.length === 0 ? (
@@ -280,6 +302,14 @@ export function ProcessesPage() {
         canUpdate={canUpdate}
         canDelete={canDelete}
         renderTrace={(p) => <TraceView tipo="processo" id={p.id} />}
+      />
+
+      <CancelProcessoDialog
+        processo={cancelTargets[0] ?? null}
+        bulkCount={cancelTargets.length > 1 ? cancelTargets.length : undefined}
+        motivos={motivosAnulacao}
+        onClose={() => setCancelTargets([])}
+        onConfirm={confirmCancel}
       />
 
     </div>

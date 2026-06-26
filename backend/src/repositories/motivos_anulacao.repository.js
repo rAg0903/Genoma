@@ -4,7 +4,7 @@ exports.findAll = async () => {
   const connection = await pool.getConnection();
   try {
     const [rows] = await connection.execute(
-      'SELECT id, nome, ativo FROM motivos_anulacao ORDER BY nome ASC'
+      'SELECT id, nome, ativo, contexto, reabre_contacto FROM motivos_anulacao ORDER BY contexto ASC, nome ASC'
     );
     return rows;
   } finally {
@@ -16,7 +16,7 @@ exports.findById = async (id) => {
   const connection = await pool.getConnection();
   try {
     const [rows] = await connection.execute(
-      'SELECT id, nome, ativo FROM motivos_anulacao WHERE id = ? LIMIT 1',
+      'SELECT id, nome, ativo, contexto, reabre_contacto FROM motivos_anulacao WHERE id = ? LIMIT 1',
       [id]
     );
     return rows[0] || null;
@@ -29,7 +29,7 @@ exports.findByNome = async (nome) => {
   const connection = await pool.getConnection();
   try {
     const [rows] = await connection.execute(
-      'SELECT id, nome, ativo FROM motivos_anulacao WHERE nome = ? LIMIT 1',
+      'SELECT id, nome, ativo, contexto, reabre_contacto FROM motivos_anulacao WHERE nome = ? LIMIT 1',
       [nome.trim()]
     );
     return rows[0] || null;
@@ -46,12 +46,15 @@ exports.create = async (data) => {
     const nome = String(data.nome || '').trim();
     const ativo = data.ativo === undefined || data.ativo === null ? true : !!data.ativo;
 
+    const contexto = data.contexto === 'processo' ? 'processo' : 'contacto';
+    const reabreContacto = contexto === 'processo' && !!data.reabre_contacto;
+
     await connection.execute(
-      'INSERT INTO motivos_anulacao (id, nome, ativo) VALUES (?, ?, ?)',
-      [id, nome, ativo]
+      'INSERT INTO motivos_anulacao (id, nome, ativo, contexto, reabre_contacto) VALUES (?, ?, ?, ?, ?)',
+      [id, nome, ativo, contexto, reabreContacto]
     );
 
-    return { id, nome, ativo };
+    return { id, nome, ativo, contexto, reabre_contacto: reabreContacto };
   } finally {
     connection.release();
   }
@@ -70,6 +73,14 @@ exports.update = async (id, data) => {
     if (data.ativo !== undefined) {
       updates.push('ativo = ?');
       values.push(!!data.ativo);
+    }
+    if (data.contexto !== undefined) {
+      updates.push('contexto = ?');
+      values.push(data.contexto === 'processo' ? 'processo' : 'contacto');
+    }
+    if (data.reabre_contacto !== undefined) {
+      updates.push('reabre_contacto = ?');
+      values.push(!!data.reabre_contacto);
     }
 
     if (updates.length === 0) return false;

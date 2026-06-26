@@ -1,4 +1,4 @@
-import { Search, Bell, X, Sun, Moon, Menu, Loader2, Languages, Check } from 'lucide-react';
+import { Search, Bell, X, Sun, Moon, Loader2, Languages, Check } from 'lucide-react';
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { toast } from 'sonner';
@@ -148,7 +148,12 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
         aria-label={t('nav.openMenu')}
         title={t('nav.openMenu')}
       >
-        <Menu className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+        <img
+          src="/symbol_genoma.png"
+          alt=""
+          className="w-6 h-6 object-contain"
+          aria-hidden="true"
+        />
       </button>
 
       <div className="min-w-0 flex-1 flex items-center gap-3">

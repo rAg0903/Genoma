@@ -19,7 +19,8 @@ const baseSelect = `
          END AS teste_nome,
          t.tempo_resposta_dias,
          e.nome AS empresa_nome,
-         k.codigo_barras AS kit_codigo
+         k.codigo_barras AS kit_codigo,
+         ma.nome AS motivo_anulacao_nome
   FROM processos pr
   JOIN pacientes p ON pr.paciente_id = p.id
   JOIN medicos m ON pr.medico_id = m.utilizador_id
@@ -28,6 +29,7 @@ const baseSelect = `
   LEFT JOIN testes tp ON t.teste_pai_id = tp.id
   LEFT JOIN empresas e ON pr.empresa_id = e.id
   LEFT JOIN kits k ON pr.kit_id = k.id
+  LEFT JOIN motivos_anulacao ma ON pr.motivo_anulacao_id = ma.id
 `;
 
 exports.findAll = async () => {
@@ -263,6 +265,8 @@ exports.update = async (id, data) => {
     if (data.nao_gera_comissao !== undefined) setIfDefined('nao_gera_comissao', data.nao_gera_comissao ? 1 : 0);
     if (data.fatura_envio_email !== undefined) setIfDefined('fatura_envio_email', data.fatura_envio_email || null);
     if (data.fatura_envio_sms !== undefined) setIfDefined('fatura_envio_sms', data.fatura_envio_sms || null);
+    setIfDefined('motivo_anulacao_id', data.motivo_anulacao_id || null);
+    setIfDefined('data_anulacao', data.data_anulacao || null);
 
     if (updates.length === 0) return false;
 

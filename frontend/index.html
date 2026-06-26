@@ -13,11 +13,6 @@
           try { theme = localStorage.getItem('crm-theme') || 'system'; } catch (e) {}
           var dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
           if (dark) document.documentElement.classList.add('dark');
-          var preload = document.createElement('link');
-          preload.rel = 'preload';
-          preload.as = 'image';
-          preload.href = dark ? '/genoma-logo2.png' : '/genoma-logo.png';
-          document.head.appendChild(preload);
         })();
       </script>
       <title>Genoma CRM</title>

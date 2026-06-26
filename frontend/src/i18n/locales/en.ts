@@ -308,6 +308,15 @@ const en: TranslationTree = {
       title: 'Processes',
       subtitle: 'Clinical-laboratory pipeline — from collection to billing',
       searchPlaceholder: 'Search by no., patient, doctor, kit or test...',
+      form: {
+        cancelled: 'Process cancelled',
+        cancelProcess: 'Cancel process',
+        cancelReason: 'Cancellation reason',
+        selectCancelReason: 'Select reason...',
+        cancelReasonRequired: 'Select a cancellation reason.',
+        cancelledBanner: 'Process cancelled',
+        cancelledBannerDetail: 'This process was voided and will not continue in the pipeline.',
+      },
     },
     listings: {
       title: 'Reports',

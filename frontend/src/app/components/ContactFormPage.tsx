@@ -25,6 +25,7 @@ import {
   validateFaturacaoData,
 } from '../../lib/process-form';
 import { extractFaturacaoFromContact, mergeFaturacaoIntoContact } from '../../lib/faturacao';
+import { filterMotivosPorContexto } from '../../lib/motivos-anulacao';
 import { ApiPaciente, mapApiPacienteToContact } from '../../lib/pacientes';
 import { Section, AnexosTab } from './ContactDetail';
 import { GestacaoFields } from './GestacaoFields';
@@ -144,8 +145,9 @@ export function ContactFormPage() {
   const [contactFaturacao, setContactFaturacao] = useState<ProcessFaturacaoData>(emptyProcessFaturacao());
   const [anulacao, setAnulacao] = useState({ anulado: false, motivo_anulacao_id: '' });
   const canEditFaturacao = canUpdate || canCreate;
+  const temProcessoAtivo = savedContactId ? contactTemProcessoAtivo(savedContactId, processos) : false;
   const motivosAtivos = useMemo(
-    () => motivosAnulacao.filter((m) => m.ativo !== false),
+    () => filterMotivosPorContexto(motivosAnulacao, 'contacto'),
     [motivosAnulacao],
   );
 
@@ -625,6 +627,7 @@ export function ContactFormPage() {
               <p className="text-gray-400 dark:text-gray-500 mt-2" style={{ fontSize: '11px' }}>Distrito/Cidade podem ser preenchidos automaticamente a partir do Código Postal.</p>
             </Section>
 
+            {savedContactId && (
             <Section title={t('pages.contacts.form.voided')} icon={Ban}>
               <div className="space-y-3">
                 <label className="inline-flex items-center gap-2.5 text-gray-700 dark:text-gray-300 cursor-pointer" style={{ fontSize: '14px' }}>
@@ -635,11 +638,16 @@ export function ContactFormPage() {
                       anulado: e.target.checked,
                       motivo_anulacao_id: e.target.checked ? anulacao.motivo_anulacao_id : '',
                     })}
-                    disabled={!canEditFaturacao}
+                    disabled={!canEditFaturacao || temProcessoAtivo}
                     className="w-4 h-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
                   />
                   <span style={{ fontWeight: 500 }}>{t('pages.contacts.form.voided')}</span>
                 </label>
+                {temProcessoAtivo && (
+                  <p className="text-amber-600 dark:text-amber-400 text-xs">
+                    Este contacto tem um processo activo. Cancele o processo em Processos para anular aqui ou use os motivos de processo.
+                  </p>
+                )}
 
                 {anulacao.anulado && (
                   <div className="pl-6 max-w-md">
@@ -670,6 +678,7 @@ export function ContactFormPage() {
                 )}
               </div>
             </Section>
+            )}
           </div>
         )}
 

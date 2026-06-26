@@ -18,7 +18,7 @@ import { AccessDeniedState } from './shared/AccessDeniedState';
 import { ReadOnlyNotice } from './shared/ReadOnlyNotice';
 import { DefinicoesSubmodule } from '../../lib/permissions';
 import { perfisApi, Perfil } from '../../lib/api-perfis';
-import { isAdminPerfilNome } from '../../lib/perfil-utils';
+import { isAdminPerfilNome, isMedicoPerfilNome } from '../../lib/perfil-utils';
 import { useSearchParams } from 'react-router';
 import { createPostalCodeAutofillHandlers } from '../../lib/postal-code-pt';
 import {
@@ -182,7 +182,10 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
   const [editItem, setEditItem] = useState<Utilizador | null>(null);
   const [perfis, setPerfis] = useState<Perfil[]>([]);
   const [saving, setSaving] = useState(false);
-  const perfisCriacao = useMemo(() => perfis.filter((p) => !isAdminPerfilNome(p.nome)), [perfis]);
+  const perfisCriacao = useMemo(
+    () => perfis.filter((p) => !isAdminPerfilNome(p.nome) && !isMedicoPerfilNome(p.nome)),
+    [perfis],
+  );
   const defaultPerfil = perfisCriacao[0]?.nome ?? 'Assistente';
   const [form, setForm] = useState<Omit<Utilizador, 'id'>>({ nome: '', email: '', perfil: defaultPerfil, ativo: true });
 
@@ -196,8 +199,15 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
     if (editItem && isAdminPerfilNome(editItem.perfil)) {
       return perfis.filter((p) => isAdminPerfilNome(p.nome));
     }
-    return perfis.filter((p) => !isAdminPerfilNome(p.nome));
+    if (editItem && isMedicoPerfilNome(editItem.perfil)) {
+      return perfis.filter((p) => isMedicoPerfilNome(p.nome));
+    }
+    return perfis.filter((p) => !isAdminPerfilNome(p.nome) && !isMedicoPerfilNome(p.nome));
   }, [perfis, editItem]);
+
+  const perfilSelectDisabled = !!editItem && (
+    isAdminPerfilNome(editItem.perfil) || isMedicoPerfilNome(editItem.perfil)
+  );
 
   const filtered = utilizadores.filter(u => u.nome.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
   const openNew = () => {
@@ -296,6 +306,7 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
             {!editItem && (
               <p className="rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sky-800 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-300" style={{ fontSize: '12px' }}>
                 A password não é definida aqui. Após criar a conta, o utilizador deve aceder a <strong>Recuperar Password</strong> no login, introduzir o email e definir a primeira password com o token recebido.
+                {' '}Contas com perfil <strong>Médico</strong> são criadas em <strong>Administração → Médicos</strong>.
               </p>
             )}
             <Field label="Nome" required><input required type="text" name="utilizador-nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} className={inputClass} placeholder="Ex.: João Silva" style={{ fontSize: '14px' }} /></Field>
@@ -308,7 +319,7 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
                   onChange={e => setForm(f => ({ ...f, perfil: e.target.value }))}
                   className={inputClass}
                   style={{ fontSize: '14px' }}
-                  disabled={!!editItem && isAdminPerfilNome(editItem.perfil)}
+                  disabled={perfilSelectDisabled}
                 >
                   {perfisFormulario.length === 0 ? (
                     <option value={form.perfil}>{form.perfil}</option>
@@ -318,6 +329,11 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
                     ))
                   )}
                 </select>
+                {perfilSelectDisabled && isMedicoPerfilNome(editItem?.perfil) && (
+                  <p className="text-gray-500 dark:text-gray-400 mt-1" style={{ fontSize: '11px' }}>
+                    Edite médicos em Administração → Médicos.
+                  </p>
+                )}
               </Field>
               <Field label="Estado">
                 <select name="utilizador-estado" value={form.ativo ? 'ativo' : 'inativo'} onChange={e => setForm(f => ({ ...f, ativo: e.target.value === 'ativo' }))} className={inputClass} style={{ fontSize: '14px' }}>
@@ -444,7 +460,7 @@ function TestesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; ca
   const { testes, deleteTeste } = useData();
   const [search, setSearch] = useState('');
 
-  const filtered = getTestesPrincipais(testes).filter(t => t.nome.toLowerCase().includes(search.toLowerCase()) || t.codigo.toLowerCase().includes(search.toLowerCase()));
+  const filtered = getTestesPrincipais(testes).filter(t => t.nome.toLowerCase().includes(search.toLowerCase()) || (t.descricao || '').toLowerCase().includes(search.toLowerCase()));
   const openNew = () => navigate('/definicoes/testes/novo');
   const openEdit = (t: Teste) => navigate(`/definicoes/testes/${t.id}/editar`);
   const handleDelete = (id: string, nome: string) => {
@@ -466,14 +482,13 @@ function TestesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; ca
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className={ADMIN_TABLE_HEAD_CLASS}>
-              <tr>{['Código', 'Nome', 'Descrição', 'Preços (sub-testes)', 'Ações'].map(h => (
+              <tr>{['Nome', 'Descrição', 'Preços (sub-testes)', 'Ações'].map(h => (
                 <AdminTableHeadCell key={h} align={h === 'Ações' ? 'right' : 'left'}>{h}</AdminTableHeadCell>
               ))}</tr>
             </thead>
             <tbody className={ADMIN_TABLE_BODY_CLASS}>
               {filtered.map(t => (
                 <tr key={t.id} className={ADMIN_TABLE_ROW_CLASS}>
-                  <td className="px-4 py-3"><span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">{t.codigo}</span></td>
                   <td className="px-4 py-3 text-[13px] font-medium text-slate-800 dark:text-slate-100">{t.nome}</td>
                   <td className="px-4 py-3 text-[12px] text-slate-500 dark:text-slate-400 max-w-[250px]">{t.descricao}</td>
                   <td className="px-4 py-3 text-[13px] font-medium text-slate-500 dark:text-slate-400">{formatSubTestesResumo(t)}</td>
@@ -579,7 +594,7 @@ function EntidadesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean;
   const { entidades, deleteEntidade } = useData();
   const [search, setSearch] = useState('');
 
-  const filtered = entidades.filter(e => e.nome.toLowerCase().includes(search.toLowerCase()) || (e.codigo || '').toLowerCase().includes(search.toLowerCase()));
+  const filtered = entidades.filter(e => e.nome.toLowerCase().includes(search.toLowerCase()) || (e.cidade || '').toLowerCase().includes(search.toLowerCase()));
 
   const handleDelete = async (id: string, nome: string) => {
     if (!confirm(`Eliminar entidade ${nome}?`)) return;
@@ -602,7 +617,7 @@ function EntidadesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean;
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className={ADMIN_TABLE_HEAD_CLASS}>
-              <tr>{['Nome', 'Código', 'Cidade', 'Contacto', 'Estado', 'Ações'].map(h => (
+              <tr>{['Nome', 'Cidade', 'Contacto', 'Estado', 'Ações'].map(h => (
                 <AdminTableHeadCell key={h} align={h === 'Ações' ? 'right' : 'left'}>{h}</AdminTableHeadCell>
               ))}</tr>
             </thead>
@@ -610,7 +625,6 @@ function EntidadesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean;
               {filtered.map(e => (
                 <tr key={e.id} className={ADMIN_TABLE_ROW_CLASS}>
                   <td className="px-4 py-3 text-[13px] font-medium text-slate-800 dark:text-slate-100">{e.nome}</td>
-                  <td className="px-4 py-3"><span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">{e.codigo}</span></td>
                   <td className="px-4 py-3 text-[13px] text-slate-500 dark:text-slate-400">{e.cidade}</td>
                   <td className="px-4 py-3 text-[13px] text-slate-500 dark:text-slate-400">{e.contacto}</td>
                   <td className="px-4 py-3"><AtivoBadge ativo={e.ativo !== false} /></td>
@@ -636,8 +650,7 @@ function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
   const [search, setSearch] = useState('');
 
   const q = search.toLowerCase();
-  const matches = (l: { nome: string; codigo?: string }) =>
-    l.nome.toLowerCase().includes(q) || (l.codigo || '').toLowerCase().includes(q);
+  const matches = (l: { nome: string }) => l.nome.toLowerCase().includes(q);
 
   const operacionais = laboratorios.filter((l) => l.tipo !== 'final' && matches(l));
   const finais = laboratorios.filter((l) => l.tipo === 'final' && matches(l));
@@ -648,11 +661,13 @@ function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
     catch (err) { toast.error(err instanceof Error ? err.message : 'Não foi possível eliminar o laboratório.'); }
   };
 
-  const renderTable = (items: typeof laboratorios, showTipo = false) => (
+  const renderTable = (items: typeof laboratorios, { showTipo = false, showCidade = true } = {}) => {
+    const headers = ['Nome', ...(showTipo ? ['Tipo'] : []), ...(showCidade ? ['Cidade'] : []), 'Contacto', 'Estado', 'Ações'];
+    return (
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead className={ADMIN_TABLE_HEAD_CLASS}>
-          <tr>{['Nome', 'Código', ...(showTipo ? ['Tipo'] : []), 'Cidade', 'Contacto', 'Estado', 'Ações'].map(h => (
+          <tr>{headers.map(h => (
             <AdminTableHeadCell key={h} align={h === 'Ações' ? 'right' : 'left'}>{h}</AdminTableHeadCell>
           ))}</tr>
         </thead>
@@ -660,7 +675,6 @@ function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
           {items.map(l => (
             <tr key={l.id} className={ADMIN_TABLE_ROW_CLASS}>
               <td className="px-4 py-3 text-[13px] font-medium text-slate-800 dark:text-slate-100">{l.nome}</td>
-              <td className="px-4 py-3"><span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">{l.codigo || '—'}</span></td>
               {showTipo && (
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${l.tipo === 'final' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300'}`}>
@@ -668,7 +682,9 @@ function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
                   </span>
                 </td>
               )}
-              <td className="px-4 py-3 text-[13px] text-slate-500 dark:text-slate-400">{l.cidade || '—'}</td>
+              {showCidade && (
+                <td className="px-4 py-3 text-[13px] text-slate-500 dark:text-slate-400">{l.cidade || '—'}</td>
+              )}
               <td className="px-4 py-3 text-[13px] text-slate-500 dark:text-slate-400">{l.contacto || '—'}</td>
               <td className="px-4 py-3"><AtivoBadge ativo={l.ativo !== false} /></td>
               <td className="px-4 py-3">
@@ -682,7 +698,8 @@ function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
         </tbody>
       </table>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -704,7 +721,7 @@ function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
         <AdminTabPanel>
           {operacionais.length === 0 ? (
             <p className="text-sm text-slate-400 text-center py-6">Sem laboratórios operacionais.</p>
-          ) : renderTable(operacionais)}
+          ) : renderTable(operacionais, { showCidade: false })}
         </AdminTabPanel>
       </div>
 
@@ -713,7 +730,7 @@ function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
         <AdminTabPanel>
           {finais.length === 0 ? (
             <p className="text-sm text-slate-400 text-center py-6">Sem laboratórios finais. Crie um e associe-o em Administração → Testes.</p>
-          ) : renderTable(finais, true)}
+          ) : renderTable(finais, { showTipo: true, showCidade: true })}
         </AdminTabPanel>
       </div>
     </div>

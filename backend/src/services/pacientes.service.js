@@ -1,4 +1,6 @@
 const pacientesRepository = require('../repositories/pacientes.repository');
+const processosRepository = require('../repositories/processos.repository');
+const motivosAnulacaoService = require('./motivos_anulacao.service');
 const logService = require('./log.service');
 
 exports.listAll = async (user) => {
@@ -14,6 +16,54 @@ exports.search = async (nome, user) => {
         throw new Error('Nome é obrigatório para busca');
     }
     return await pacientesRepository.searchByNome(nome);
+};
+
+/** Repõe contacto para nova colheita (ex.: repetição por fração fetal insuficiente). */
+exports.resetParaNovaColheita = async (id, user) => {
+    const paciente = await pacientesRepository.findById(id);
+    if (!paciente) throw new Error('Paciente não encontrado');
+
+    await pacientesRepository.update(id, {
+        medico_id: null,
+        teste_id: null,
+        tipo_gravidez: null,
+        gestacao_semanas_registo: null,
+        gestacao_dias_registo: null,
+        gestacao_registada_em: null,
+        onde_seguida: null,
+        posto_colheita_id: null,
+        data_colheita_prevista: null,
+        estado_agendamento: null,
+        estado_contacto: null,
+        motivo_anulacao_id: null,
+        data_anulacao: null,
+        fatura_emitida: 0,
+        fatura_numero: null,
+        fatura_data_emissao: null,
+        valor_base: 0,
+        desconto_percentual: 0,
+        valor_final: 0,
+        pagamento_data: null,
+        recibo_numero: null,
+        pago: 0,
+        entidade_multibanco: null,
+        referencia_multibanco: null,
+        nao_gera_comissao: 0,
+        fatura_envio_email: null,
+        fatura_envio_sms: null,
+    });
+
+    if (user) {
+        await logService.log({
+            empresa_id: user.empresa_id,
+            utilizador_id: user.id,
+            acao: 'Reabriu contacto para nova colheita',
+            tabela: 'pacientes',
+            registro_id: id,
+        });
+    }
+
+    return pacientesRepository.findById(id);
 };
 
 exports.create = async (data, user) => {
@@ -201,6 +251,14 @@ exports.update = async (id, data, user) => {
     const motivoResultante = data.motivo_anulacao_id !== undefined ? data.motivo_anulacao_id : paciente.motivo_anulacao_id;
     if (estadoResultante === 'Cancelado' && !motivoResultante) {
         throw new Error('Motivo de anulação é obrigatório quando o contacto está anulado');
+    }
+    if (estadoResultante === 'Cancelado') {
+        await motivosAnulacaoService.assertMotivoParaContexto(motivoResultante, 'contacto');
+        const processos = await processosRepository.findByPaciente(id);
+        const temProcessoAtivo = processos.some((p) => (p.status_id || p.status) !== 'Cancelado');
+        if (temProcessoAtivo) {
+            throw new Error('Este contacto tem um processo activo. Cancele o processo em Processos.');
+        }
     }
 
     const passthrough = [
