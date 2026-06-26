@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Edit, Trash2, Package, Search, Route } from 'lucide-react';
+import { Edit, Trash2, Package, Route } from 'lucide-react';
 import { Kit } from '../../data/types';
 import { StatusBadge } from '../shared/StatusBadge';
 import { EmptyState } from '../shared/EmptyState';
 import { DetailDrawer } from '../shared/DetailDrawer';
 import { TraceView } from '../shared/TraceView';
+import { PANEL, CONTROL } from '../../../lib/design-tokens';
+import { SearchField } from '../shared/PageToolbar';
 import { KIT_STATUS_STYLES } from '../../../lib/design-system';
 import { validadeEstado, VALIDADE_STYLE, formatValidadeAte } from '../../../lib/stocks';
 import { LOC_LABELS } from './StockForms';
@@ -37,21 +39,18 @@ export function KitsTab({ kits, canUpdate, canDelete, onEdit, onDelete }: KitsTa
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar por codigo, tipo ou lote..." className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900" />
-        </div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+        <SearchField value={search} onChange={setSearch} placeholder="Pesquisar por codigo, tipo ou lote..." />
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className={`${CONTROL.input} sm:w-44`}>
           <option value="">Todos os estados</option>
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={loc} onChange={(e) => setLoc(e.target.value)} className="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+        <select value={loc} onChange={(e) => setLoc(e.target.value)} className={`${CONTROL.input} sm:w-48`}>
           <option value="">Todas as localizacoes</option>
           {LOCS.map((l) => <option key={l} value={l}>{LOC_LABELS[l]}</option>)}
         </select>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className={PANEL.table}>
         {filtered.length === 0 ? (
           <EmptyState icon={Package} title="Sem kits" description="Ajuste os filtros ou use 'Adicionar kits' para inserir kits por leitura de código de barras." />
         ) : (

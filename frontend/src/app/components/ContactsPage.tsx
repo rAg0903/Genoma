@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { DataTable } from './shared/DataTable';
 import { PageHeader } from './shared/PageHeader';
 import { FilterBar } from './shared/FilterBar';
+import { ViewModeToggle } from './shared/SlidingTabs';
 import { StatusBadge } from './shared/StatusBadge';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -19,7 +20,7 @@ import {
 } from '../../lib/contactos';
 import { formatCalendarDatePt } from '../../lib/dates';
 import { KpiCard } from './dashboard/KpiCard';
-import { formatNumber } from '../../lib/design-tokens';
+import { formatNumber, LAYOUT, PAGE, PANEL, CONTROL } from '../../lib/design-tokens';
 
 const CONTACTO_STATUS_STYLES: Record<string, string> = {
   Criado: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
@@ -205,20 +206,19 @@ export function ContactsPage() {
   ];
 
   return (
-    <div className="flex flex-col min-h-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <PageHeader title={t('pages.contacts.title')} subtitle={t('pages.contacts.subtitle')} />
+    <div className={PAGE.shell} style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className={PAGE.body}>
+        <PageHeader title={t('pages.contacts.title')} subtitle={t('pages.contacts.subtitle')} />
 
-      <div className="p-4 md:p-6 space-y-4 md:space-y-5">
         {!canCreate && !canUpdate && !canDelete && <ReadOnlyNotice />}
 
         <FilterBar
-          layout="inline"
           searchValue={searchTerm}
           onSearchChange={(v) => { setSearchTerm(v); resetPage(); }}
           searchPlaceholder={t('pages.contacts.searchPlaceholder')}
           chips={estadoChips}
           activeChipId={estadoFilter || undefined}
-          onChipClick={(id) => { setEstadoFilter((prev) => (prev === id ? '' : id as ContactoFiltroEstado)); resetPage(); }}
+          onChipClick={(id) => { setEstadoFilter(id as ContactoFiltroEstado | ''); resetPage(); }}
           advancedCount={generoFilter ? 1 : 0}
           onClearAdvanced={() => { setGeneroFilter(''); resetPage(); }}
           advanced={(
@@ -226,7 +226,7 @@ export function ContactsPage() {
               name="contacts-genero"
               value={generoFilter}
               onChange={(e) => { setGeneroFilter(e.target.value); resetPage(); }}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              className={CONTROL.input}
             >
               <option value="">Todos os géneros</option>
               <option value="Feminino">Feminino</option>
@@ -235,10 +235,14 @@ export function ContactsPage() {
           )}
           right={(
             <div className="flex items-center gap-2">
-              <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 p-0.5">
-                <button type="button" onClick={() => setView('pipeline')} className={`p-1.5 rounded-md transition ${view === 'pipeline' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`} title="Pipeline"><LayoutGrid className="w-4 h-4" /></button>
-                <button type="button" onClick={() => setView('table')} className={`p-1.5 rounded-md transition ${view === 'table' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`} title="Tabela"><Table2 className="w-4 h-4" /></button>
-              </div>
+              <ViewModeToggle
+                value={view}
+                onChange={setView}
+                items={[
+                  { id: 'pipeline', label: 'Pipeline', icon: LayoutGrid },
+                  { id: 'table', label: 'Tabela', icon: Table2 },
+                ]}
+              />
               {canCreate && (
                 <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}>
                   <Plus className="w-4 h-4" />
@@ -256,7 +260,7 @@ export function ContactsPage() {
             onEdit={openEdit}
           />
         ) : (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className={PANEL.table}>
             {paginated.length === 0 ? (
               <div className="py-16 text-center">
                 <Users className="w-12 h-12 text-gray-200 dark:text-gray-700 mx-auto mb-3" />
@@ -323,7 +327,7 @@ export function ContactsPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className={LAYOUT.kpiGrid}>
           <KpiCard label="Em contacto" value={contactosPreProcesso.length} icon={Users} tone="brand" />
           <KpiCard label="Agendados" value={agendados} icon={UserCheck} tone="warning" />
           <KpiCard label="Novos este mês" value={novosEsteMes} icon={UserPlus} tone="success" />

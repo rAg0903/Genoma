@@ -4,7 +4,9 @@ import {
   Bell, BellRing, Loader2, CheckCheck, Package, Activity, AlertTriangle, Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PAGE, PANEL } from '../../lib/design-tokens';
 import { PageHeader } from './shared/PageHeader';
+import { SlidingTabs } from './shared/SlidingTabs';
 import { EmptyState } from './shared/EmptyState';
 import { formatRelativeTime as formatRelativeTimeI18n, useLanguage } from '../../i18n/LanguageContext';
 import {
@@ -83,35 +85,26 @@ export function NotificationsPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-      <PageHeader
-        title={t('pages.notifications.title')}
-        subtitle={t('pages.notifications.subtitle')}
-        action={unreadCount > 0 ? { label: 'Marcar todas como lidas', mobileLabel: 'Marcar lidas', onClick: () => void markAllRead(), icon: CheckCheck } : undefined}
-      />
+    <div className={PAGE.shell}>
+      <div className={PAGE.body}>
+        <PageHeader
+          title={t('pages.notifications.title')}
+          subtitle={t('pages.notifications.subtitle')}
+          action={unreadCount > 0 ? { label: 'Marcar todas como lidas', mobileLabel: 'Marcar lidas', onClick: () => void markAllRead(), icon: CheckCheck } : undefined}
+        />
 
-      <div className="p-4 md:p-6 space-y-5">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className={PANEL.table}>
           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-1">
-              {([
+            <SlidingTabs
+              items={[
                 { id: 'todas' as FilterTab, label: 'Todas' },
                 { id: 'nao_lidas' as FilterTab, label: `Não lidas${unreadCount ? ` (${unreadCount})` : ''}` },
-              ]).map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTab(t.id)}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                    tab === t.id
-                      ? 'bg-teal-600 text-white'
-                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+              ]}
+              active={tab}
+              onChange={setTab}
+              size="sm"
+              ariaLabel="Filtrar notificações"
+            />
             {unreadCount > 0 && (
               <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
                 {unreadCount} por ler

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { X, Loader2, CalendarPlus } from 'lucide-react';
+import { Loader2, CalendarPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useData } from '../../context/DataContext';
 import { agendamentosApi } from '../../../lib/api-agendamentos';
+import { FORM } from '../../../lib/design-tokens';
+import { AppModal, ModalActions, ModalAlert, ModalField, MODAL_INPUT_CLASS } from '../shared/AppModal';
 
 interface AgendamentoFormProps {
   isOpen: boolean;
@@ -77,80 +79,77 @@ export function AgendamentoForm({ isOpen, onClose, onCreated, defaultDate }: Age
     }
   };
 
-  const inputCls = 'w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500';
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Novo agendamento</h3>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"><X className="w-4 h-4" /></button>
+    <AppModal
+      title="Novo agendamento"
+      onClose={onClose}
+      footer={(
+        <ModalActions
+          onCancel={onClose}
+          onSubmit={() => void submit()}
+          submitLabel={busy ? 'A agendar…' : 'Agendar'}
+          saving={busy}
+          submitDisabled={loadingRefs}
+        />
+      )}
+    >
+      {loadingRefs ? (
+        <div className="flex items-center justify-center py-12 text-slate-400">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /> A carregar…
         </div>
+      ) : (
+        <div className={FORM.stack}>
+          <ModalField label="Paciente" required>
+            <select value={pacienteId} onChange={(e) => setPacienteId(e.target.value)} className={MODAL_INPUT_CLASS}>
+              <option value="">Selecionar paciente</option>
+              {contacts.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          </ModalField>
 
-        {loadingRefs ? (
-          <div className="flex items-center justify-center py-12 text-slate-400"><Loader2 className="w-5 h-5 animate-spin mr-2" /> A carregar…</div>
-        ) : (
-          <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
-            <div>
-              <label className="text-xs font-medium text-slate-500 mb-1 block">Paciente</label>
-              <select value={pacienteId} onChange={(e) => setPacienteId(e.target.value)} className={inputCls}>
-                <option value="">Selecionar paciente</option>
-                {contacts.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          <div className="grid grid-cols-2 gap-3">
+            <ModalField label="Medico" required>
+              <select value={medicoId} onChange={(e) => setMedicoId(e.target.value)} className={MODAL_INPUT_CLASS}>
+                <option value="">Selecionar</option>
+                {medicos.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
               </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-slate-500 mb-1 block">Medico</label>
-                <select value={medicoId} onChange={(e) => setMedicoId(e.target.value)} className={inputCls}>
-                  <option value="">Selecionar</option>
-                  {medicos.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-500 mb-1 block">Teste</label>
-                <select value={testeId} onChange={(e) => setTesteId(e.target.value)} className={inputCls}>
-                  <option value="">Selecionar</option>
-                  {testes.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-slate-500 mb-1 block">Posto</label>
-                <select value={postoId} onChange={(e) => setPostoId(e.target.value)} className={inputCls}>
-                  <option value="">Selecionar</option>
-                  {postos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-500 mb-1 block">Periodo</label>
-                <select value={periodo} onChange={(e) => setPeriodo(e.target.value as typeof periodo)} className={inputCls}>
-                  <option value="Manhã">Manha</option>
-                  <option value="Tarde">Tarde</option>
-                  <option value="Noite">Noite</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-500 mb-1 block">Data prevista</label>
-              <input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-500 mb-1 block">Observacoes</label>
-              <textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={2} className={inputCls} />
-            </div>
-            <p className="text-xs text-slate-400">Ao agendar, o sistema verifica stock, reserva um kit e cria o processo automaticamente.</p>
+            </ModalField>
+            <ModalField label="Teste" required>
+              <select value={testeId} onChange={(e) => setTesteId(e.target.value)} className={MODAL_INPUT_CLASS}>
+                <option value="">Selecionar</option>
+                {testes.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+              </select>
+            </ModalField>
           </div>
-        )}
 
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-100 dark:border-slate-800">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
-          <button onClick={submit} disabled={busy} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50">
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarPlus className="w-4 h-4" />} Agendar
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <ModalField label="Posto" required>
+              <select value={postoId} onChange={(e) => setPostoId(e.target.value)} className={MODAL_INPUT_CLASS}>
+                <option value="">Selecionar</option>
+                {postos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+            </ModalField>
+            <ModalField label="Periodo" required>
+              <select value={periodo} onChange={(e) => setPeriodo(e.target.value as typeof periodo)} className={MODAL_INPUT_CLASS}>
+                <option value="Manhã">Manha</option>
+                <option value="Tarde">Tarde</option>
+                <option value="Noite">Noite</option>
+              </select>
+            </ModalField>
+          </div>
+
+          <ModalField label="Data prevista" required>
+            <input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} className={MODAL_INPUT_CLASS} />
+          </ModalField>
+
+          <ModalField label="Observacoes">
+            <textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={2} className={MODAL_INPUT_CLASS} />
+          </ModalField>
+
+          <ModalAlert>
+            Ao agendar, o sistema verifica stock, reserva um kit e cria o processo automaticamente.
+          </ModalAlert>
         </div>
-      </div>
-    </div>
+      )}
+    </AppModal>
   );
 }

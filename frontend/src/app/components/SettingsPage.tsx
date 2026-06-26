@@ -7,14 +7,15 @@ import { MotivosAnulacaoTab } from './MotivosAnulacaoTab';
 import { useData } from '../context/DataContext';
 import { Utilizador, Empresa, Teste, TipoKit } from '../data/types';
 import { toast } from 'sonner';
-import { ADD_ACTION_BUTTON_CLASS, FORM_INPUT_CLASS } from '../../lib/design-system';
+import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
 import { formatSubTestesResumo, getTestesPrincipais } from '../../lib/testes';
 import { StatusBadge } from './shared/StatusBadge';
 import { UserAvatar } from './shared/UserAvatar';
+import { PAGE, FORM } from '../../lib/design-tokens';
 import { AdminModuleHeader } from './definicoes/AdminModuleHeader';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
-import { AccessDeniedState } from './shared/AccessDeniedState';
+import { AppModal, ModalActions, ModalAlert, ModalCheckbox, ModalField, MODAL_INPUT_CLASS } from './shared/AppModal';
 import { ReadOnlyNotice } from './shared/ReadOnlyNotice';
 import { DefinicoesSubmodule } from '../../lib/permissions';
 import { perfisApi, Perfil } from '../../lib/api-perfis';
@@ -55,9 +56,6 @@ const getValidSettingsTab = (tab: string | null, isAdmin: boolean, allowedTabs: 
 
   return tab as Tab;
 };
-
-const inputClass = FORM_INPUT_CLASS;
-const labelClass = "block mb-1.5 text-gray-600 dark:text-gray-400";
 
 const perfilBadgeMap: Record<string, string> = {
   Administrador: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
@@ -146,16 +144,16 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <AdminModuleHeader
-        title={t('pages.admin.title')}
-        subtitle={t('pages.admin.subtitle')}
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={handleChangeTab}
-      />
+    <div className={PAGE.shell} style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className={PAGE.body}>
+        <AdminModuleHeader
+          title={t('pages.admin.title')}
+          subtitle={t('pages.admin.subtitle')}
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={handleChangeTab}
+        />
 
-      <div className="p-4 md:p-6 space-y-5">
         {!canCreate && !canUpdate && !canDelete && (
           <ReadOnlyNotice message="Este perfil pode consultar a administracao, mas nao pode criar, editar ou eliminar registos." />
         )}
@@ -301,24 +299,34 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
         </div>
       </AdminTabPanel>
       {(canCreate || canUpdate) && isOpen && (
-        <Modal title={editItem ? 'Editar Utilizador' : 'Novo Utilizador'} onClose={() => setIsOpen(false)}>
-          <form onSubmit={(e) => void handleSave(e)} className="space-y-4">
+        <AppModal
+          title={editItem ? 'Editar Utilizador' : 'Novo Utilizador'}
+          onClose={() => setIsOpen(false)}
+          footer={<ModalActions onCancel={() => setIsOpen(false)} isEdit={!!editItem} saving={saving} formId="utilizador-form" />}
+        >
+          <form id="utilizador-form" onSubmit={(e) => void handleSave(e)} className={FORM.stack}>
             {!editItem && (
-              <p className="rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sky-800 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-300" style={{ fontSize: '12px' }}>
+              <ModalAlert>
                 A password não é definida aqui. Após criar a conta, o utilizador deve aceder a <strong>Recuperar Password</strong> no login, introduzir o email e definir a primeira password com o token recebido.
                 {' '}Contas com perfil <strong>Médico</strong> são criadas em <strong>Administração → Médicos</strong>.
-              </p>
+              </ModalAlert>
             )}
-            <Field label="Nome" required><input required type="text" name="utilizador-nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} className={inputClass} placeholder="Ex.: João Silva" style={{ fontSize: '14px' }} /></Field>
-            <Field label="Email" required><input required type="email" name="utilizador-email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={inputClass} placeholder="nome@empresa.pt" style={{ fontSize: '14px' }} /></Field>
+            <ModalField label="Nome" required>
+              <input required type="text" name="utilizador-nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="Ex.: João Silva" />
+            </ModalField>
+            <ModalField label="Email" required>
+              <input required type="email" name="utilizador-email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="nome@empresa.pt" />
+            </ModalField>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Perfil">
+              <ModalField
+                label="Perfil"
+                hint={perfilSelectDisabled && isMedicoPerfilNome(editItem?.perfil) ? 'Edite médicos em Administração → Médicos.' : undefined}
+              >
                 <select
                   name="utilizador-perfil"
                   value={form.perfil}
                   onChange={e => setForm(f => ({ ...f, perfil: e.target.value }))}
-                  className={inputClass}
-                  style={{ fontSize: '14px' }}
+                  className={MODAL_INPUT_CLASS}
                   disabled={perfilSelectDisabled}
                 >
                   {perfisFormulario.length === 0 ? (
@@ -329,22 +337,16 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
                     ))
                   )}
                 </select>
-                {perfilSelectDisabled && isMedicoPerfilNome(editItem?.perfil) && (
-                  <p className="text-gray-500 dark:text-gray-400 mt-1" style={{ fontSize: '11px' }}>
-                    Edite médicos em Administração → Médicos.
-                  </p>
-                )}
-              </Field>
-              <Field label="Estado">
-                <select name="utilizador-estado" value={form.ativo ? 'ativo' : 'inativo'} onChange={e => setForm(f => ({ ...f, ativo: e.target.value === 'ativo' }))} className={inputClass} style={{ fontSize: '14px' }}>
+              </ModalField>
+              <ModalField label="Estado">
+                <select name="utilizador-estado" value={form.ativo ? 'ativo' : 'inativo'} onChange={e => setForm(f => ({ ...f, ativo: e.target.value === 'ativo' }))} className={MODAL_INPUT_CLASS}>
                   <option value="ativo">Ativo</option>
                   <option value="inativo">Inativo</option>
                 </select>
-              </Field>
+              </ModalField>
             </div>
-            <ModalFooter onClose={() => setIsOpen(false)} isEdit={!!editItem} saving={saving} />
           </form>
-        </Modal>
+        </AppModal>
       )}
     </div>
   );
@@ -430,25 +432,39 @@ function EmpresasTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
         </div>
       </AdminTabPanel>
       {(canCreate || canUpdate) && isOpen && (
-        <Modal title={editItem ? 'Editar Empresa' : 'Nova Empresa'} onClose={() => setIsOpen(false)}>
-          <form onSubmit={handleSave} className="space-y-4">
-            <Field label="Nome" required><input required type="text" name="empresa-nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} className={inputClass} placeholder="Ex.: Genoma" style={{ fontSize: '14px' }} /></Field>
+        <AppModal
+          title={editItem ? 'Editar Empresa' : 'Nova Empresa'}
+          onClose={() => setIsOpen(false)}
+          footer={<ModalActions onCancel={() => setIsOpen(false)} isEdit={!!editItem} saving={saving} formId="empresa-form" />}
+        >
+          <form id="empresa-form" onSubmit={handleSave} className={FORM.stack}>
+            <ModalField label="Nome" required>
+              <input required type="text" name="empresa-nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="Ex.: Genoma" />
+            </ModalField>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="NIF"><input type="text" name="empresa-nif" value={form.nif} onChange={e => setForm(f => ({ ...f, nif: e.target.value }))} className={inputClass} placeholder="123456789" style={{ fontSize: '14px', fontFamily: 'monospace' }} /></Field>
-              <Field label="Contacto"><input type="text" name="empresa-contacto" value={form.contacto} onChange={e => setForm(f => ({ ...f, contacto: e.target.value }))} className={inputClass} placeholder="912 345 678" style={{ fontSize: '14px' }} /></Field>
+              <ModalField label="NIF">
+                <input type="text" name="empresa-nif" value={form.nif} onChange={e => setForm(f => ({ ...f, nif: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="123456789" style={{ fontFamily: 'monospace' }} />
+              </ModalField>
+              <ModalField label="Contacto">
+                <input type="text" name="empresa-contacto" value={form.contacto} onChange={e => setForm(f => ({ ...f, contacto: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="912 345 678" />
+              </ModalField>
             </div>
-            <Field label="Email"><input type="email" name="empresa-email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={inputClass} placeholder="contacto@empresa.pt" style={{ fontSize: '14px' }} /></Field>
+            <ModalField label="Email">
+              <input type="email" name="empresa-email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="contacto@empresa.pt" />
+            </ModalField>
             <div className="grid grid-cols-3 gap-4">
-              <Field label="Código Postal"><input type="text" name="empresa-cp" value={form.codigo_postal || ''} onChange={e => handleCodigoPostalChange(e.target.value)} onBlur={e => void autofillFromCp(e.target.value)} placeholder="0000-000" className={inputClass} style={{ fontSize: '14px' }} /></Field>
-              <div className="col-span-2"><Field label="Morada"><input type="text" name="empresa-morada" value={form.morada} onChange={e => setForm(f => ({ ...f, morada: e.target.value }))} className={inputClass} placeholder="Endereço completo" style={{ fontSize: '14px' }} /></Field></div>
+              <ModalField label="Código Postal">
+                <input type="text" name="empresa-cp" value={form.codigo_postal || ''} onChange={e => handleCodigoPostalChange(e.target.value)} onBlur={e => void autofillFromCp(e.target.value)} placeholder="0000-000" className={MODAL_INPUT_CLASS} />
+              </ModalField>
+              <div className="col-span-2">
+                <ModalField label="Morada">
+                  <input type="text" name="empresa-morada" value={form.morada} onChange={e => setForm(f => ({ ...f, morada: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="Endereço completo" />
+                </ModalField>
+              </div>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={form.ativo !== false} onChange={e => setForm(f => ({ ...f, ativo: e.target.checked }))} className="w-4 h-4 accent-teal-600" />
-              <span className="text-gray-700 dark:text-gray-300" style={{ fontSize: '13px' }}>Ativo</span>
-            </label>
-            <ModalFooter onClose={() => setIsOpen(false)} isEdit={!!editItem} saving={saving} />
+            <ModalCheckbox label="Ativo" checked={form.ativo !== false} onChange={(ativo) => setForm(f => ({ ...f, ativo }))} />
           </form>
-        </Modal>
+        </AppModal>
       )}
     </div>
   );
@@ -573,17 +589,18 @@ function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
         </div>
       </AdminTabPanel>
       {(canCreate || canUpdate) && isOpen && (
-        <Modal title={editItem ? 'Editar Tipo de Kit' : 'Novo Tipo de Kit'} onClose={() => setIsOpen(false)}>
-          <form onSubmit={handleSave} className="space-y-4">
-            <Field label="Nome" required>
-              <input required type="text" name="tipo-kit-nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} className={inputClass} placeholder="Maternity" style={{ fontSize: '14px' }} />
-            </Field>
-            <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300" style={{ fontSize: '13px' }}>
-              <input type="checkbox" checked={form.ativo !== false} onChange={(e) => setForm((f) => ({ ...f, ativo: e.target.checked }))} /> Ativo
-            </label>
-            <ModalFooter onClose={() => setIsOpen(false)} isEdit={!!editItem} />
+        <AppModal
+          title={editItem ? 'Editar Tipo de Kit' : 'Novo Tipo de Kit'}
+          onClose={() => setIsOpen(false)}
+          footer={<ModalActions onCancel={() => setIsOpen(false)} isEdit={!!editItem} formId="tipo-kit-form" />}
+        >
+          <form id="tipo-kit-form" onSubmit={handleSave} className={FORM.stack}>
+            <ModalField label="Nome" required>
+              <input required type="text" name="tipo-kit-nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="Maternity" />
+            </ModalField>
+            <ModalCheckbox label="Ativo" checked={form.ativo !== false} onChange={(ativo) => setForm((f) => ({ ...f, ativo }))} />
           </form>
-        </Modal>
+        </AppModal>
       )}
     </div>
   );
@@ -740,38 +757,4 @@ function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
 /* =========== SHARED COMPONENTS =========== */
 function AtivoBadge({ ativo }: { ativo: boolean }) {
   return <StatusBadge status={ativo ? 'Ativo' : 'Inativo'} map={ADMIN_ATIVO_STATUS_MAP} />;
-}
-
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-          <h2 className="text-gray-900 dark:text-gray-100" style={{ fontSize: '17px', fontWeight: 600 }}>{title}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-          </button>
-        </div>
-        <div className="p-6">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
-  return (
-    <div>
-      <label className={labelClass} style={{ fontSize: '13px' }}>{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
-      {children}
-    </div>
-  );
-}
-
-function ModalFooter({ onClose, isEdit, saving }: { onClose: () => void; isEdit: boolean; saving?: boolean }) {
-  return (
-    <div className="flex justify-end gap-3 pt-2">
-      <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors" style={{ fontSize: '14px' }}>Cancelar</button>
-      <button type="submit" disabled={saving} className="px-5 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed" style={{ fontSize: '14px', fontWeight: 500 }}>{saving ? 'A guardar…' : (isEdit ? 'Guardar' : 'Criar')}</button>
-    </div>
-  );
 }

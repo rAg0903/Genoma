@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Edit, Trash2, Phone, MapPin, User, FileText, Baby, Syringe, Receipt, StickyNote, Paperclip, Plus, Download, Ban } from 'lucide-react';
+import { Edit, Trash2, Phone, MapPin, User, FileText, Baby, Syringe, Receipt, StickyNote, Paperclip, Plus, Download, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import { Contact, Anexo, Processo } from '../data/types';
 import { useData } from '../context/DataContext';
@@ -11,6 +11,9 @@ import { resolveTesteSelecionavelLabel } from '../../lib/testes';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { ProcessFaturacaoView } from './shared/ProcessFaturacaoFields';
 import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
+import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
+import { CONTROL } from '../../lib/design-tokens';
+import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
 
 interface ContactDetailProps {
   contact: Contact;
@@ -71,66 +74,50 @@ export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = t
   const postoNome = postos.find((p) => p.id === contact.posto_colheita_id)?.nome || '';
 
   return (
-    <div className="flex flex-col min-h-full bg-gray-50 dark:bg-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 md:py-5">
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0">
-            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          </button>
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-700 dark:text-blue-400" style={{ fontSize: '15px', fontWeight: 700 }}>
-                {contact.nome.split(' ').map((n) => n[0]).slice(0, 2).join('')}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-gray-900 dark:text-gray-100 truncate" style={{ fontSize: '18px', fontWeight: 600 }}>{contact.nome}</h1>
-              <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '12px', marginTop: 2 }}>
-                {calculateAge(contact.data_nascimento)} anos · {contact.genero} · NIF: {contact.nif || '—'}
-                {(() => {
-                  const estado = getContactoPipelineEstado(contact);
-                  return estado ? ` · ${CONTACTO_PIPELINE_LABEL[estado]}` : '';
-                })()}
-              </p>
-            </div>
-          </div>
-          {(canUpdate || canDelete) && (
-            <div className="flex gap-2 flex-shrink-0">
-              {canUpdate && <button onClick={onEdit} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm" style={{ fontSize: '13px', fontWeight: 500 }}>
-                <Edit className="w-4 h-4" /> <span className="hidden sm:inline">Editar</span>
-              </button>}
-              {canDelete && <button onClick={onDelete} className="flex items-center gap-2 px-3 md:px-4 py-2 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" style={{ fontSize: '13px', fontWeight: 500 }}>
-                <Trash2 className="w-4 h-4" /> <span className="hidden sm:inline">Eliminar</span>
-              </button>}
-            </div>
+    <FormPageShell>
+      <FormPageBody>
+        <FormPageHeader
+          onBack={onBack}
+          title={contact.nome}
+          subtitle={[
+            `${calculateAge(contact.data_nascimento)} anos · ${contact.genero} · NIF: ${contact.nif || '—'}`,
+            (() => {
+              const estado = getContactoPipelineEstado(contact);
+              return estado ? CONTACTO_PIPELINE_LABEL[estado] : '';
+            })(),
+          ].filter(Boolean).join(' · ')}
+          avatar={(
+            <FormAvatarInitials
+              initials={contact.nome.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+              tone="info"
+            />
           )}
-        </div>
+          actions={(canUpdate || canDelete) ? (
+            <>
+              {canUpdate && (
+                <button type="button" onClick={onEdit} className={ADD_ACTION_BUTTON_CLASS}>
+                  <Edit className="w-4 h-4" />
+                  <span className="hidden sm:inline">Editar</span>
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className={`${CONTROL.buttonSecondary} text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Eliminar</span>
+                </button>
+              )}
+            </>
+          ) : undefined}
+          tabs={TABS}
+          activeTab={tab}
+          onTabChange={setTab}
+        />
 
-        {/* Tabs */}
-        <div className="flex gap-1 mt-4 overflow-x-auto">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-colors ${
-                  active
-                    ? 'bg-teal-600 text-white'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-                style={{ fontSize: '13px', fontWeight: active ? 600 : 500 }}
-              >
-                <Icon className="w-4 h-4" /> {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="p-4 md:p-6">
-        <div className="max-w-3xl mb-4">
+        <div className="max-w-3xl">
           {isContactoCancelado(contact) ? (
             <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200">
               <Ban className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -164,8 +151,8 @@ export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = t
             deleteAnexo={deleteAnexo}
           />
         )}
-      </div>
-    </div>
+      </FormPageBody>
+    </FormPageShell>
   );
 }
 
@@ -426,7 +413,7 @@ export function AnexosTab({
               <textarea className={input} rows={2} placeholder="Descrição (opcional)" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowForm(false)} className="px-3 py-1.5 text-sm rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">Cancelar</button>
-                <button onClick={() => void handleAdd()} className="px-3 py-1.5 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700">Guardar</button>
+                <button onClick={() => void handleAdd()} className={ADD_ACTION_BUTTON_CLASS}>Guardar</button>
               </div>
             </div>
           )}

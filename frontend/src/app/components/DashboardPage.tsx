@@ -15,7 +15,7 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import { apiRequest } from '../../lib/api';
 import { formatCalendarDatePt, normalizeCalendarDate } from '../../lib/dates';
 import {
-  PROCESS_STATE_COLORS, SURFACE, LAYOUT, formatEUR, formatNumber,
+  PROCESS_STATE_COLORS, SURFACE, LAYOUT, PAGE, formatEUR, formatNumber,
 } from '../../lib/design-tokens';
 import { KpiCard } from './dashboard/KpiCard';
 import { ChartCard } from './dashboard/ChartCard';
@@ -90,6 +90,17 @@ const chartTheme = (isDark: boolean) => ({
     color: isDark ? '#f1f5f9' : '#0f172a',
     boxShadow: '0 8px 24px -12px rgba(0,0,0,0.25)',
   },
+});
+
+const CHART_MARGIN = { top: 8, right: 12, left: 0, bottom: 0 };
+
+const yAxisProps = (tickColor: string) => ({
+  tick: { fontSize: 11, fill: tickColor },
+  axisLine: false as const,
+  tickLine: false as const,
+  allowDecimals: false as const,
+  width: 36,
+  tickMargin: 6,
 });
 
 export function DashboardPage() {
@@ -206,12 +217,12 @@ export function DashboardPage() {
   ], [alerts, colheitas, contacts.length, fallback, kits.length, kpis, navigate, period, processos.length, t]);
 
   return (
-    <div className={`${LAYOUT.pagePadding} ${LAYOUT.sectionGap} min-h-full ${SURFACE.canvas} border border-slate-200 dark:border-slate-800 rounded-2xl`}>
+    <div className={`${PAGE.shell} ${LAYOUT.pagePadding} ${LAYOUT.sectionGap} min-h-full`}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-slate-900 dark:text-slate-100 text-2xl font-semibold tracking-tight">{t('dashboard.title')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-[13px] mt-1">
+          <h1 className={PAGE.title}>{t('dashboard.title')}</h1>
+          <p className={PAGE.subtitle}>
             {t('dashboard.subtitle')}
           </p>
         </div>
@@ -238,20 +249,20 @@ export function DashboardPage() {
       {scope === 'operacional' ? (
         <>
           {/* KPI grid — 7 widgets */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+          <div className={LAYOUT.kpiGrid}>
             {operacionalKpis.map((k) => (
               <KpiCard key={k.label} {...k} />
             ))}
           </div>
 
           {/* Linha de graficos */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className={`grid grid-cols-1 lg:grid-cols-3 ${LAYOUT.gridGap}`}>
             <ChartCard className="lg:col-span-2" title={t('dashboard.charts.processPipeline')} subtitle={t('dashboard.charts.processPipelineSub')} icon={Activity}>
-              <ResponsiveContainer width="100%" height={230}>
-                <BarChart data={byEstado} barSize={34} margin={{ left: -16 }}>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={byEstado} barSize={34} margin={CHART_MARGIN}>
                   <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: theme.tick }} axisLine={false} tickLine={false} interval={0} angle={-18} textAnchor="end" height={48} />
-                  <YAxis tick={{ fontSize: 11, fill: theme.tick }} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+                  <YAxis {...yAxisProps(theme.tick)} />
                   <Tooltip contentStyle={theme.tooltip} cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,23,42,0.04)' }} />
                   <Bar dataKey="total" radius={[6, 6, 0, 0]}>
                     {byEstado.map((entry) => <Cell key={entry.name} fill={entry.fill} />)}
@@ -264,7 +275,7 @@ export function DashboardPage() {
           </div>
 
           {/* Evolucao + kits */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className={`grid grid-cols-1 lg:grid-cols-3 ${LAYOUT.gridGap}`}>
             <ChartCard
               className="lg:col-span-2"
               title={t('dashboard.charts.processEvolution')}
@@ -272,7 +283,7 @@ export function DashboardPage() {
               icon={TrendingUp}
             >
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={examEvolution} margin={{ left: -16 }}>
+                <AreaChart data={examEvolution} margin={CHART_MARGIN}>
                   <defs>
                     <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#0d9488" stopOpacity={isDark ? 0.3 : 0.18} />
@@ -281,7 +292,7 @@ export function DashboardPage() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} vertical={false} />
                   <XAxis dataKey="mes" tick={{ fontSize: 11, fill: theme.tick }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: theme.tick }} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+                  <YAxis {...yAxisProps(theme.tick)} />
                   <Tooltip contentStyle={theme.tooltip} />
                   <Area type="monotone" dataKey="exames" stroke="#0d9488" strokeWidth={2.5} fill="url(#grad)" dot={{ fill: '#0d9488', r: 3, strokeWidth: 0 }} />
                 </AreaChart>
@@ -309,7 +320,7 @@ export function DashboardPage() {
           </div>
 
           {/* Listas recentes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-2">
+          <div className={`grid grid-cols-1 md:grid-cols-2 ${LAYOUT.gridGap} pb-2`}>
             <div className={`${SURFACE.cardElevated} overflow-hidden`}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
                 <h3 className="text-slate-900 dark:text-slate-100 text-[15px] font-semibold">{t('dashboard.charts.recentProcesses')}</h3>
@@ -403,7 +414,7 @@ function ScopeView({ scope, theme, isDark }: { scope: DashboardScope; theme: Ret
 
   return (
     <>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className={LAYOUT.kpiGrid}>
         {meta.map((m) => (
           <KpiCard
             key={m.key}
@@ -414,7 +425,7 @@ function ScopeView({ scope, theme, isDark }: { scope: DashboardScope; theme: Ret
           />
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 lg:grid-cols-3 ${LAYOUT.gridGap}`}>
         <ChartCard className="lg:col-span-2" title={t('dashboard.charts.trend')} subtitle={t('dashboard.charts.recentPeriod')} icon={TrendingUp}>
           <ScopeChart scope={scope} data={data} theme={theme} isDark={isDark} noDataLabel={t('dashboard.charts.noData')} />
         </ChartCard>
@@ -450,7 +461,7 @@ function ScopeChart({ scope, data, theme, isDark, noDataLabel }: { scope: Dashbo
 
   return (
     <ResponsiveContainer width="100%" height={220}>
-      <AreaChart data={series} margin={{ left: -16 }}>
+      <AreaChart data={series} margin={CHART_MARGIN}>
         <defs>
           <linearGradient id="scopeGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#0d9488" stopOpacity={isDark ? 0.3 : 0.18} />
@@ -459,7 +470,7 @@ function ScopeChart({ scope, data, theme, isDark, noDataLabel }: { scope: Dashbo
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} vertical={false} />
         <XAxis dataKey="label" tick={{ fontSize: 11, fill: theme.tick }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fontSize: 11, fill: theme.tick }} axisLine={false} tickLine={false} width={28} allowDecimals={false} />
+        <YAxis {...yAxisProps(theme.tick)} />
         <Tooltip contentStyle={theme.tooltip} />
         <Area type="monotone" dataKey="value" stroke="#0d9488" strokeWidth={2.5} fill="url(#scopeGrad)" dot={{ fill: '#0d9488', r: 3, strokeWidth: 0 }} />
       </AreaChart>

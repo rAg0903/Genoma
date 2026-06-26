@@ -51,10 +51,10 @@ export function StockCharts({ kits, lotes }: { kits: Kit[]; lotes: Lote[] }) {
         ) : (
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={consumo} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <BarChart data={consumo} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                 <XAxis dataKey="lote" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} width={36} tickMargin={6} axisLine={false} tickLine={false} />
                 <Tooltip />
                 <Bar dataKey="consumido" fill="#0d9488" radius={[4, 4, 0, 0]} />
               </BarChart>

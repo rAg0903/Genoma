@@ -263,7 +263,6 @@ export function StockByLocationPanel({ kits, lotes, empresas, postos, laboratori
       title={t('stocks.locationPanel.title')}
       subtitle={t('stocks.locationPanel.subtitle')}
       icon={Package}
-      className="!p-4"
     >
       <SummaryStrip
         empresasStock={empresasStock}

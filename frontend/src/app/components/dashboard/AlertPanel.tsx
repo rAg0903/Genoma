@@ -34,10 +34,10 @@ export function AlertPanel({ alerts }: { alerts: DashboardAlert[] }) {
 
   return (
     <section className={`${SURFACE.cardElevated} overflow-hidden`}>
-      <header className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+      <header className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <Bell className="w-4 h-4 text-slate-400" />
-          <h3 className="text-slate-900 dark:text-slate-100 text-[15px] font-semibold">Alertas criticos</h3>
+          <Bell className="w-3.5 h-3.5 text-slate-400" />
+          <h3 className="text-slate-900 dark:text-slate-100 text-sm font-semibold">Alertas criticos</h3>
         </div>
         {ordered.length > 0 && (
           <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
@@ -47,11 +47,11 @@ export function AlertPanel({ alerts }: { alerts: DashboardAlert[] }) {
       </header>
 
       {ordered.length === 0 ? (
-        <div className="px-5 py-10 text-center">
-          <div className="w-10 h-10 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2">
-            <AlertTriangle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+        <div className="px-3.5 py-6 text-center">
+          <div className="w-8 h-8 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-1.5">
+            <AlertTriangle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Sem alertas. Tudo operacional.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Sem alertas. Tudo operacional.</p>
         </div>
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -62,7 +62,7 @@ export function AlertPanel({ alerts }: { alerts: DashboardAlert[] }) {
                 <button
                   onClick={a.onClick}
                   disabled={!a.onClick}
-                  className="w-full flex items-start gap-3 px-5 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors disabled:cursor-default"
+                  className="w-full flex items-start gap-2.5 px-3.5 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors disabled:cursor-default"
                 >
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${s.dot}`} />
                   <div className="min-w-0 flex-1">

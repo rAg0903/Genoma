@@ -7,7 +7,7 @@ import {
   ultimaAtualizacao,
   isAtrasado,
 } from '../../../lib/processos';
-import { PROCESS_STATE_COLORS } from '../../../lib/design-tokens';
+import { PROCESS_STATE_COLORS, PANEL } from '../../../lib/design-tokens';
 import { StateTransitionMenu } from './StateTransitionMenu';
 import { EmptyState } from '../shared/EmptyState';
 
@@ -39,7 +39,7 @@ export function ProcessPipeline({ processos, onOpen, onTransition, canUpdate, co
 
   if (processos.length === 0) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+      <div className={PANEL.table}>
         <EmptyState icon={FolderOpen} title="Sem processos" description="Nao ha processos que correspondam aos filtros atuais." />
       </div>
     );

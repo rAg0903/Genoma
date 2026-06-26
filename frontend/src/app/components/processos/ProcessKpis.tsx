@@ -1,7 +1,7 @@
 import { FolderOpen, CalendarClock, FlaskConical, BadgeCheck, Wallet, AlertTriangle, Send } from 'lucide-react';
 import { Processo } from '../../data/types';
 import { KpiCard } from '../dashboard/KpiCard';
-import { formatNumber } from '../../../lib/design-tokens';
+import { formatNumber, LAYOUT } from '../../../lib/design-tokens';
 import {
   isAtivo, isAtrasado, isResultadoPorValidar, isRelatorioPorEnviar, isFaturaPorEmitir, tatDias,
 } from '../../../lib/processos';
@@ -44,9 +44,9 @@ export function ProcessKpis({ processos, activeKpi, onSelect }: ProcessKpisProps
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+    <div className={LAYOUT.kpiGrid}>
       {cards.map((c) => (
-        <div key={c.id} className={activeKpi === c.id ? 'ring-2 ring-teal-500/50 rounded-2xl' : ''}>
+        <div key={c.id} className={`min-w-0 h-full ${activeKpi === c.id ? 'ring-2 ring-teal-500/50 rounded-xl' : ''}`}>
           <KpiCard
             label={c.label}
             value={c.value}

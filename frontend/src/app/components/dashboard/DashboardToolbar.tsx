@@ -1,32 +1,10 @@
 import { RefreshCw } from 'lucide-react';
 import { CONTROL } from '../../../lib/design-tokens';
 import { useLanguage } from '../../../i18n/LanguageContext';
+import { SlidingTabs } from '../shared/SlidingTabs';
 
 export type DashboardScope = 'operacional' | 'financeiro' | 'laboratorial' | 'executivo';
 export type DashboardPeriod = 'hoje' | 'semana' | 'mes';
-
-interface SegmentProps<T extends string> {
-  options: T[];
-  labels: Record<T, string>;
-  value: T;
-  onChange: (v: T) => void;
-}
-
-function Segment<T extends string>({ options, labels, value, onChange }: SegmentProps<T>) {
-  return (
-    <div className={CONTROL.segment}>
-      {options.map((opt) => (
-        <button
-          key={opt}
-          onClick={() => onChange(opt)}
-          className={`${CONTROL.segmentItem} ${value === opt ? CONTROL.segmentItemActive : CONTROL.segmentItemIdle}`}
-        >
-          {labels[opt]}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 interface DashboardToolbarProps {
   scopes: DashboardScope[];
@@ -57,10 +35,22 @@ export function DashboardToolbar({
     mes: t('dashboard.periods.mes'),
   };
 
+  const scopeItems = scopes.map((id) => ({ id, label: scopeLabels[id] }));
+  const periodItems = (['hoje', 'semana', 'mes'] as DashboardPeriod[]).map((id) => ({
+    id,
+    label: periodLabels[id],
+  }));
+
   return (
     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
       {scopes.length > 1 ? (
-        <Segment options={scopes} labels={scopeLabels} value={scope} onChange={onScopeChange} />
+        <SlidingTabs
+          items={scopeItems}
+          active={scope}
+          onChange={onScopeChange}
+          size="sm"
+          ariaLabel="Âmbito do painel"
+        />
       ) : (
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
           {scopeLabels[scope]}
@@ -68,7 +58,13 @@ export function DashboardToolbar({
       )}
 
       <div className="flex items-center gap-2">
-        <Segment options={['hoje', 'semana', 'mes']} labels={periodLabels} value={period} onChange={onPeriodChange} />
+        <SlidingTabs
+          items={periodItems}
+          active={period}
+          onChange={onPeriodChange}
+          size="sm"
+          ariaLabel="Período"
+        />
         <button onClick={onRefresh} className={CONTROL.buttonGhost} title={t('common.refresh')}>
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           <span className="hidden sm:inline">

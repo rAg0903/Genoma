@@ -15,7 +15,9 @@ import {
   StockSubmodule,
   STOCK_SUBMODULES,
 } from '../../../lib/permissions';
-import { ADD_ACTION_BUTTON_CLASS, FORM_INPUT_CLASS } from '../../../lib/design-system';
+import { ADD_ACTION_BUTTON_CLASS } from '../../../lib/design-system';
+import { FORM } from '../../../lib/design-tokens';
+import { AppModal, ModalActions, ModalField, MODAL_INPUT_CLASS } from '../shared/AppModal';
 import {
   ADMIN_ACTION_BTN_CLASS,
   ADMIN_DELETE_BTN_CLASS,
@@ -259,35 +261,31 @@ export function PerfisPermissoesTab() {
       </AdminTabPanel>
 
       {createOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md border border-gray-200 dark:border-gray-700">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-              <h4 className="text-gray-900 dark:text-gray-100" style={{ fontSize: '15px', fontWeight: 600 }}>Novo perfil</h4>
-            </div>
-            <form onSubmit={(e) => void handleCreate(e)} className="p-5 space-y-4">
-              <div>
-                <label className="block mb-1.5 text-gray-600 dark:text-gray-400" style={{ fontSize: '13px' }}>Nome</label>
-                <input
-                  required
-                  autoFocus
-                  value={newNome}
-                  onChange={(e) => setNewNome(e.target.value)}
-                  className={FORM_INPUT_CLASS}
-                  style={{ fontSize: '14px' }}
-                  placeholder="Ex.: Telemarketing"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => { setCreateOpen(false); setNewNome(''); }} className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300" style={{ fontSize: '13px' }}>
-                  Cancelar
-                </button>
-                <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-60" style={{ fontSize: '13px', fontWeight: 600 }}>
-                  {saving ? 'A criar…' : 'Criar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <AppModal
+          title="Novo perfil"
+          onClose={() => { setCreateOpen(false); setNewNome(''); }}
+          footer={(
+            <ModalActions
+              onCancel={() => { setCreateOpen(false); setNewNome(''); }}
+              submitLabel={saving ? 'A criar…' : 'Criar'}
+              formId="novo-perfil-form"
+              saving={saving}
+            />
+          )}
+        >
+          <form id="novo-perfil-form" onSubmit={(e) => void handleCreate(e)} className={FORM.stack}>
+            <ModalField label="Nome" required>
+              <input
+                required
+                autoFocus
+                value={newNome}
+                onChange={(e) => setNewNome(e.target.value)}
+                className={MODAL_INPUT_CLASS}
+                placeholder="Ex.: Telemarketing"
+              />
+            </ModalField>
+          </form>
+        </AppModal>
       )}
     </div>
   );

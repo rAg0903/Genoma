@@ -1,6 +1,7 @@
 import { LucideIcon } from 'lucide-react';
 import { ReactNode } from 'react';
 import { ADD_ACTION_BUTTON_CLASS } from '../../../lib/design-system';
+import { PAGE } from '../../../lib/design-tokens';
 
 type HeaderAction = {
   label: string;
@@ -20,29 +21,21 @@ export function PageHeader({ title, subtitle, action, children }: PageHeaderProp
   const Icon = action?.icon;
 
   return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 md:py-5">
-      <div className="flex items-center justify-between mb-4">
+    <header>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-gray-900 dark:text-gray-100" style={{ fontSize: '20px', fontWeight: 600 }}>{title}</h1>
-          {subtitle && (
-            <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '13px', marginTop: 2 }}>
-              {subtitle}
-            </p>
-          )}
+          <h1 className={PAGE.title}>{title}</h1>
+          {subtitle && <p className={PAGE.subtitle}>{subtitle}</p>}
         </div>
         {action && (
-          <button
-            type="button"
-            onClick={action.onClick}
-            className={ADD_ACTION_BUTTON_CLASS}
-          >
+          <button type="button" onClick={action.onClick} className={ADD_ACTION_BUTTON_CLASS}>
             {Icon && <Icon className="w-4 h-4" />}
             <span className="hidden sm:inline">{action.label}</span>
             <span className="sm:hidden">{action.mobileLabel || action.label}</span>
           </button>
         )}
       </div>
-      {children}
-    </div>
+      {children && <div className="mt-4">{children}</div>}
+    </header>
   );
 }

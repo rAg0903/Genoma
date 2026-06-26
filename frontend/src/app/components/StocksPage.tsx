@@ -8,7 +8,9 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import { Lote, RequisicaoKit } from '../data/types';
 import { StockSubmodule } from '../../lib/permissions';
 import { resolveFeatureHealthLab, filterLaboratoriosFinais } from '../../lib/stock-locations';
+import { LAYOUT, PAGE } from '../../lib/design-tokens';
 import { PageHeader } from './shared/PageHeader';
+import { PageTabsRow } from './shared/PageToolbar';
 import { TabsBar } from './shared/TabsBar';
 import { ReadOnlyNotice } from './shared/ReadOnlyNotice';
 import { AlertPanel, DashboardAlert } from './dashboard/AlertPanel';
@@ -106,32 +108,29 @@ export function StocksPage() {
   const TabActionIcon = tabAction?.icon;
 
   return (
-    <div className="flex flex-col min-h-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-      <PageHeader title={t('nav.stocks')} subtitle={t('stocks.subtitle')} />
+    <div className={PAGE.shell}>
+      <div className={PAGE.body}>
+        <PageHeader title={t('nav.stocks')} subtitle={t('stocks.subtitle')}>
+          {allowedTabs.length > 0 && (
+            <PageTabsRow
+              actions={tabAction ? (
+                <button type="button" onClick={tabAction.onClick} className={ADD_ACTION_BUTTON_CLASS}>
+                  {TabActionIcon && <TabActionIcon className="w-4 h-4" />}
+                  <span className="hidden sm:inline">{tabAction.label}</span>
+                  <span className="sm:hidden">{tabAction.mobileLabel || tabAction.label}</span>
+                </button>
+              ) : undefined}
+            >
+              <TabsBar
+                items={allowedTabs.map((tab) => ({ id: tab, label: t(TAB_META[tab].labelKey), icon: TAB_META[tab].icon }))}
+                active={activeTab}
+                onChange={setTab}
+              />
+            </PageTabsRow>
+          )}
+        </PageHeader>
 
-      <div className="p-4 md:p-6 space-y-5">
         {!canCreate && !canUpdate && <ReadOnlyNotice />}
-
-        {allowedTabs.length > 0 && (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <TabsBar
-              items={allowedTabs.map((tab) => ({ id: tab, label: t(TAB_META[tab].labelKey), icon: TAB_META[tab].icon }))}
-              active={activeTab}
-              onChange={setTab}
-            />
-            {tabAction && (
-              <button
-                type="button"
-                onClick={tabAction.onClick}
-                className={`${ADD_ACTION_BUTTON_CLASS} self-end sm:self-auto`}
-              >
-                {TabActionIcon && <TabActionIcon className="w-4 h-4" />}
-                <span className="hidden sm:inline">{tabAction.label}</span>
-                <span className="sm:hidden">{tabAction.mobileLabel || tabAction.label}</span>
-              </button>
-            )}
-          </div>
-        )}
 
         {activeTab === 'lotes' && (
           <LotesTab
@@ -165,7 +164,7 @@ export function StocksPage() {
 
         <StockByLocationPanel kits={kits} lotes={lotes} empresas={empresas} postos={postos} laboratorios={laboratorios} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 lg:grid-cols-3 ${LAYOUT.gridGap}`}>
           <div className="lg:col-span-2"><StockCharts kits={kits} lotes={lotes} /></div>
           <AlertPanel alerts={alerts} />
         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
-import { ArrowLeft, FlaskConical, Loader2, MapPin, Phone, Receipt, Save, StickyNote, User } from 'lucide-react';
+import { FlaskConical, Loader2, MapPin, Phone, Receipt, Save, StickyNote, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPostalCodeAutofillHandlers } from '../../lib/postal-code-pt';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +15,7 @@ import {
 } from '../data/types';
 import { Section } from './ContactDetail';
 import { LaboratorioPostosPanel } from './LaboratorioPostosPanel';
+import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
 import { getTestesSelecionaveis } from '../../lib/testes';
 
 export type LocalKind = 'posto' | 'laboratorio' | 'entidade';
@@ -396,69 +397,26 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-gray-50 dark:bg-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 md:py-5">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(backPath)}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          </button>
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center flex-shrink-0">
-              <span className="text-teal-700 dark:text-teal-400" style={{ fontSize: '15px', fontWeight: 700 }}>
-                {initials}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-gray-900 dark:text-gray-100 truncate" style={{ fontSize: '18px', fontWeight: 600 }}>
-                {displayName}
-              </h1>
-              <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '12px', marginTop: 2 }}>
-                {editing
-                  ? (isLabFinal ? 'Edição de laboratório final (processamento)' : config.editSubtitle)
-                  : (isLabFinal ? 'Criação de laboratório final para descarte de kits' : config.createSubtitle)}
-              </p>
-            </div>
-          </div>
-          {podeGuardar && tab !== 'postos' && (
-            <button
-              type="button"
-              onClick={() => void handleGuardar()}
-              disabled={saving}
-              className="flex items-center gap-2 px-3 md:px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm disabled:opacity-60 flex-shrink-0"
-              style={{ fontSize: '13px', fontWeight: 500 }}
-            >
+    <FormPageShell>
+      <FormPageBody>
+        <FormPageHeader
+          onBack={() => navigate(backPath)}
+          title={displayName}
+          subtitle={editing
+            ? (isLabFinal ? 'Edição de laboratório final (processamento)' : config.editSubtitle)
+            : (isLabFinal ? 'Criação de laboratório final para descarte de kits' : config.createSubtitle)}
+          avatar={<FormAvatarInitials initials={initials} />}
+          actions={podeGuardar && tab !== 'postos' ? (
+            <FormPrimaryButton onClick={() => void handleGuardar()} disabled={saving}>
               <Save className="w-4 h-4" />
               <span className="hidden sm:inline">{saving ? 'A guardar…' : 'Guardar'}</span>
-            </button>
-          )}
-        </div>
+            </FormPrimaryButton>
+          ) : undefined}
+          tabs={tabs}
+          activeTab={tab}
+          onTabChange={setTab}
+        />
 
-        <div className="flex gap-1 mt-4 overflow-x-auto">
-          {tabs.map((item) => {
-            const Icon = item.icon;
-            const active = tab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setTab(item.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-colors ${
-                  active ? 'bg-teal-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-                style={{ fontSize: '13px', fontWeight: active ? 600 : 500 }}
-              >
-                <Icon className="w-4 h-4" /> {item.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="p-4 md:p-6">
         {tab === 'postos' && kind === 'laboratorio' && (
           editing && id ? (
             <LaboratorioPostosPanel
@@ -751,8 +709,8 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
             </Section>
           </div>
         )}
-      </div>
-    </div>
+      </FormPageBody>
+    </FormPageShell>
   );
 }
 

@@ -46,34 +46,71 @@ export const TYPOGRAPHY = {
   subtitle: 'text-sm font-medium',                    // 14px
   body: 'text-sm',                                    // 14px
   caption: 'text-xs text-slate-500 dark:text-slate-400', // 12px
-  metric: 'text-3xl font-bold tracking-tight tabular-nums', // KPIs
-  metricSm: 'text-2xl font-bold tracking-tight tabular-nums',
+  metric: 'text-xl font-bold tracking-tight tabular-nums', // KPIs
+  metricSm: 'text-lg font-bold tracking-tight tabular-nums',
 } as const;
 
 // ----------------------------------------------------------------------------
 // 3. ESPACAMENTO / RAIO / SOMBRA  (base 4px)
 // ----------------------------------------------------------------------------
 export const LAYOUT = {
-  pagePadding: 'p-4 md:p-6',
-  sectionGap: 'space-y-5 md:space-y-6',
-  gridGap: 'gap-3 md:gap-4',
-  radiusCard: 'rounded-2xl',
+  pagePadding: 'p-3 md:p-5',
+  sectionGap: 'space-y-4 md:space-y-5',
+  gridGap: 'gap-2.5 md:gap-3',
+  /** KPIs preenchem a largura; linhas incompletas expandem os cartões proporcionalmente. */
+  kpiGrid: 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-2.5 md:gap-3 items-stretch',
+  radiusCard: 'rounded-xl',
   radiusControl: 'rounded-lg',
   radiusPill: 'rounded-full',
+} as const;
+
+export const CARD = {
+  padding: 'p-3',
+  paddingComfort: 'px-3.5 py-3',
+  iconBox: 'w-9 h-9 rounded-lg',
+  iconSize: 'w-4 h-4',
 } as const;
 
 export const SURFACE = {
   // Cartao padrao
   card:
-    'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl',
+    'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl',
   // Cartao com leve elevacao
   cardElevated:
-    'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm',
+    'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm',
   // Cartao interativo (hover)
   cardInteractive:
-    'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl transition-all hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-[0_10px_30px_-18px_rgba(13,148,136,0.45)]',
+    'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl transition-all hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-[0_10px_30px_-18px_rgba(13,148,136,0.45)]',
   // Fundo da area de trabalho
   canvas: 'bg-slate-50 dark:bg-slate-950',
+} as const;
+
+/** Contentor e corpo de pagina (alinhado com o Painel). */
+export const PAGE = {
+  shell:
+    'flex flex-col min-h-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden',
+  body: `flex flex-col flex-1 ${LAYOUT.pagePadding} ${LAYOUT.sectionGap}`,
+  title: 'text-slate-900 dark:text-slate-100 text-2xl font-semibold tracking-tight',
+  subtitle: 'text-slate-500 dark:text-slate-400 text-[13px] mt-1',
+} as const;
+
+/** Tabs deslizantes (cápsula #0f172b + texto branco). */
+export const TAB = {
+  track: 'relative inline-flex gap-0.5 p-1 rounded-xl bg-slate-100/80 dark:bg-slate-800/50',
+  indicator:
+    'pointer-events-none absolute top-1 bottom-1 rounded-lg bg-[#0f172b] dark:bg-slate-100 shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+  active: 'font-semibold text-white dark:text-[#0f172b]',
+  inactive: 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
+  activeIcon: 'text-white dark:text-[#0f172b]',
+  inactiveIcon: 'text-slate-400 dark:text-slate-500',
+  activeCount: 'bg-white/20 dark:bg-slate-900/15 text-white dark:text-[#0f172b]',
+} as const;
+
+/** Painéis de listagem / tabelas */
+export const PANEL = {
+  table:
+    'bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden',
+  tableHead: 'bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800',
 } as const;
 
 // ----------------------------------------------------------------------------
@@ -148,14 +185,35 @@ export const CONTROL = {
     'inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 active:bg-teal-800 transition disabled:opacity-50',
   buttonGhost:
     'inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition',
+  buttonSecondary:
+    'inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition',
+  searchInput:
+    'w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition',
   segment:
-    'inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-0.5',
+    'relative inline-flex gap-0.5 p-1 rounded-xl bg-slate-100/80 dark:bg-slate-800/50',
   segmentItem:
-    'px-3 py-1.5 text-xs font-medium rounded-md transition',
+    'relative z-10 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors duration-200',
   segmentItemActive:
-    'bg-teal-600 text-white shadow-sm',
+    'font-semibold text-white dark:text-[#0f172b]',
+  segmentIndicator:
+    'pointer-events-none absolute top-1 bottom-1 rounded-lg bg-[#0f172b] dark:bg-slate-100 shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
   segmentItemIdle:
     'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
+} as const;
+
+/** Campos de formulário (páginas e modais). */
+export const FORM = {
+  label: 'block mb-1.5 text-[13px] font-medium text-slate-600 dark:text-slate-400',
+  hint: 'mt-1 text-xs text-slate-500 dark:text-slate-400',
+  stack: 'space-y-4',
+  alertInfo:
+    'rounded-lg border border-sky-200 dark:border-sky-900/40 bg-sky-50 dark:bg-sky-950/30 px-3 py-2 text-xs leading-relaxed text-sky-800 dark:text-sky-300',
+  alertWarning:
+    'rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs leading-relaxed text-amber-800 dark:text-amber-300',
+  checkboxRow:
+    'flex items-start gap-2.5 text-[13px] leading-snug text-slate-700 dark:text-slate-200 cursor-pointer select-none',
+  checkbox:
+    'mt-0.5 rounded border-slate-300 dark:border-slate-600 text-teal-600 focus:ring-teal-500/40',
 } as const;
 
 // Helpers de formatacao

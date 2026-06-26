@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Send, Search, ArrowRight, Pencil, X } from 'lucide-react';
+import { Send, ArrowRight, Pencil, X } from 'lucide-react';
 import { RequisicaoKit } from '../../data/types';
 import { EmptyState } from '../shared/EmptyState';
 import { StatusBadge } from '../shared/StatusBadge';
 import { MinDatePicker } from '../shared/MinDatePicker';
 import { formatRequisicaoLocationLabel, isRequisicaoDescarte } from '../../../lib/stock-locations';
+import { PANEL, CONTROL } from '../../../lib/design-tokens';
+import { SearchField } from '../shared/PageToolbar';
 import { formatCalendarDatePt, normalizeCalendarDate } from '../../../lib/dates';
 import { useLanguage } from '../../../i18n/LanguageContext';
 
@@ -45,21 +47,16 @@ export function RequisicoesTab({ requisicoes, canUpdate, onEdit, featureHealthLa
     });
   }, [requisicoes, search, dateFilter, featureHealthLabId]);
 
-  const dateInputClass =
-    'w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500';
+  const dateInputClass = CONTROL.input;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-        <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('stocks.searchShipments')}
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          />
-        </div>
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder={t('stocks.searchShipments')}
+        />
         <div className="flex w-full shrink-0 items-center gap-1 sm:w-52">
           <MinDatePicker
             allowAnyDate
@@ -81,7 +78,7 @@ export function RequisicoesTab({ requisicoes, canUpdate, onEdit, featureHealthLa
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className={PANEL.table}>
         {filtered.length === 0 ? (
           <EmptyState icon={Send} title={t('stocks.emptyShipments.title')} description={t('stocks.emptyShipments.description')} />
         ) : (

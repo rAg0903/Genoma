@@ -4,10 +4,11 @@ import { FlaskConical, Receipt, Package, Boxes, BadgeCheck } from 'lucide-react'
 import { useData } from '../../context/DataContext';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { PageHeader } from '../shared/PageHeader';
+import { PageTabsRow } from '../shared/PageToolbar';
 import { TabsBar } from '../shared/TabsBar';
 import { FilterBar } from '../shared/FilterBar';
 import { KpiCard } from '../dashboard/KpiCard';
-import { formatEUR } from '../../../lib/design-tokens';
+import { CONTROL, formatEUR, LAYOUT, PAGE } from '../../../lib/design-tokens';
 import {
   listagensApi, ListingKey, ListingColumn, ListingRow, ListingPagination, ListingQuery,
 } from '../../../lib/api-listagens';
@@ -137,19 +138,20 @@ export function ListingsPage() {
     : def.searchPlaceholder;
 
   return (
-    <div className="flex flex-col min-h-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-      <PageHeader title={t('pages.listings.title')} subtitle={t('pages.listings.subtitle')}>
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <TabsBar
-            active={activeTab}
-            onChange={changeTab}
-            items={LISTING_ORDER.map((k) => ({ id: k, label: t(`listings.${k}`), icon: LISTINGS[k].icon }))}
-          />
-          <ExportMenu listing={activeTab} query={query} count={pagination?.totalRecords ?? 0} />
-        </div>
-      </PageHeader>
+    <div className={PAGE.shell}>
+      <div className={PAGE.body}>
+        <PageHeader title={t('pages.listings.title')} subtitle={t('pages.listings.subtitle')}>
+          <PageTabsRow
+            actions={<ExportMenu listing={activeTab} query={query} count={pagination?.totalRecords ?? 0} />}
+          >
+            <TabsBar
+              active={activeTab}
+              onChange={changeTab}
+              items={LISTING_ORDER.map((k) => ({ id: k, label: t(`listings.${k}`), icon: LISTINGS[k].icon }))}
+            />
+          </PageTabsRow>
+        </PageHeader>
 
-      <div className="p-4 md:p-6 space-y-5">
         <FilterBar
           searchValue={search}
           onSearchChange={(v) => { setSearch(v); setPage(1); }}
@@ -161,8 +163,9 @@ export function ListingsPage() {
           onClearAdvanced={() => { setAdvanced({}); setPage(1); }}
           right={(
             <button
+              type="button"
               onClick={() => setSearchOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              className={CONTROL.buttonSecondary}
             >
               {t('listingsPage.globalSearch')}
               <kbd className="hidden sm:inline text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">Ctrl K</kbd>
@@ -184,7 +187,7 @@ export function ListingsPage() {
           onRowClick={setSelected}
         />
 
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4">
+        <div className={LAYOUT.kpiGrid}>
           <KpiCard label="Resultados" value={kpis.resultados} icon={FlaskConical} tone="success" onClick={() => changeTab('resultados')} />
           <KpiCard label="A faturar" value={kpis.aFaturar} icon={BadgeCheck} tone="warning" onClick={() => changeTab('faturacao')} />
           <KpiCard label="Faturados" value={kpis.faturacao} icon={Receipt} tone="violet" onClick={() => changeTab('faturacao')} />

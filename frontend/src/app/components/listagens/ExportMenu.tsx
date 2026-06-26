@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Download, FileSpreadsheet, FileText, FileDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { listagensApi, ListingKey, ListingQuery } from '../../../lib/api-listagens';
+import { ADD_ACTION_BUTTON_CLASS } from '../../../lib/design-system';
 
 interface ExportMenuProps {
   listing: ListingKey;
@@ -43,7 +44,7 @@ export function ExportMenu({ listing, query, count }: ExportMenuProps) {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-2 px-3 md:px-4 py-2 text-sm font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition shadow-sm"
+        className={ADD_ACTION_BUTTON_CLASS}
       >
         <Download className="w-4 h-4" />
         <span className="hidden sm:inline">Exportar</span>

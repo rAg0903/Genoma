@@ -5,8 +5,10 @@ import { toast } from 'sonner';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { PAGE, PANEL, CONTROL } from '../../lib/design-tokens';
 import { Processo } from '../data/types';
 import { PageHeader } from './shared/PageHeader';
+import { ViewModeToggle } from './shared/SlidingTabs';
 import { ReadOnlyNotice } from './shared/ReadOnlyNotice';
 import { EmptyState } from './shared/EmptyState';
 import { FilterBar } from './shared/FilterBar';
@@ -194,13 +196,13 @@ export function ProcessesPage() {
   const currentDrawer = drawerProcesso ? processosLaboratorio.find((p) => p.id === drawerProcesso.id) || drawerProcesso : null;
 
   return (
-    <div className="flex flex-col min-h-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-      <PageHeader
-        title={t('pages.processes.title')}
-        subtitle={t('pages.processes.subtitle')}
-      />
+    <div className={PAGE.shell}>
+      <div className={PAGE.body}>
+        <PageHeader
+          title={t('pages.processes.title')}
+          subtitle={t('pages.processes.subtitle')}
+        />
 
-      <div className="p-4 md:p-6 space-y-5">
         {!canCreate && !canUpdate && !canDelete && <ReadOnlyNotice />}
 
         <FilterBar
@@ -209,30 +211,34 @@ export function ProcessesPage() {
           searchPlaceholder={t('pages.processes.searchPlaceholder')}
           chips={estadoChips}
           activeChipId={estadoFilter || undefined}
-          onChipClick={(id) => { setEstadoFilter((prev) => (prev === id ? '' : id)); resetPage(); }}
+          onChipClick={(id) => { setEstadoFilter(id); resetPage(); }}
           advancedCount={advancedCount}
           onClearAdvanced={() => { setPostoFilter(''); setMedicoFilter(''); setDataInicio(''); setDataFim(''); resetPage(); }}
           advanced={
             <div className="space-y-2">
-              <select value={postoFilter} onChange={(e) => { setPostoFilter(e.target.value); resetPage(); }} className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+              <select value={postoFilter} onChange={(e) => { setPostoFilter(e.target.value); resetPage(); }} className={CONTROL.input}>
                 <option value="">Todos os postos</option>
                 {postos.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
-              <select value={medicoFilter} onChange={(e) => { setMedicoFilter(e.target.value); resetPage(); }} className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+              <select value={medicoFilter} onChange={(e) => { setMedicoFilter(e.target.value); resetPage(); }} className={CONTROL.input}>
                 <option value="">Todos os medicos</option>
                 {medicos.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
               <div className="flex gap-2">
-                <input type="date" value={dataInicio} onChange={(e) => { setDataInicio(e.target.value); resetPage(); }} className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900" />
-                <input type="date" value={dataFim} onChange={(e) => { setDataFim(e.target.value); resetPage(); }} className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900" />
+                <input type="date" value={dataInicio} onChange={(e) => { setDataInicio(e.target.value); resetPage(); }} className={`${CONTROL.input} flex-1`} />
+                <input type="date" value={dataFim} onChange={(e) => { setDataFim(e.target.value); resetPage(); }} className={`${CONTROL.input} flex-1`} />
               </div>
             </div>
           }
           right={
-            <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-0.5">
-              <button onClick={() => setView('table')} className={`p-1.5 rounded-md transition ${view === 'table' ? 'bg-teal-600 text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`} title="Tabela"><Table2 className="w-4 h-4" /></button>
-              <button onClick={() => setView('pipeline')} className={`p-1.5 rounded-md transition ${view === 'pipeline' ? 'bg-teal-600 text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`} title="Pipeline"><LayoutGrid className="w-4 h-4" /></button>
-            </div>
+            <ViewModeToggle
+              value={view}
+              onChange={setView}
+              items={[
+                { id: 'pipeline', label: 'Pipeline', icon: LayoutGrid },
+                { id: 'table', label: 'Tabela', icon: Table2 },
+              ]}
+            />
           }
         />
 
@@ -245,7 +251,7 @@ export function ProcessesPage() {
             columnFilter={estadoFilter || undefined}
           />
         ) : (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className={PANEL.table}>
             {paginated.length === 0 ? (
               <EmptyState icon={FolderOpen} title="Sem processos" description="Ajuste os filtros ou crie processos a partir dos contactos." />
             ) : (

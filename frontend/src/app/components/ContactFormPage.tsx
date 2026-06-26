@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
-  ArrowLeft, Save, User, Phone, MapPin, Baby, Syringe, Receipt, StickyNote, Paperclip,
+  Save, User, Phone, MapPin, Baby, Syringe, Receipt, StickyNote, Paperclip,
   AlertTriangle, CheckCircle2, Package, X, Loader2, Ban,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -31,6 +31,8 @@ import { Section, AnexosTab } from './ContactDetail';
 import { GestacaoFields } from './GestacaoFields';
 import { ProcessFaturacaoFields } from './shared/ProcessFaturacaoFields';
 import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
+import { FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
+import { AppModal, ModalAlert } from './shared/AppModal';
 import { Medico, medicosApi } from '../../lib/api-medicos';
 import { parseGestacaoRegistoInput } from '../../lib/gestacao';
 
@@ -494,51 +496,29 @@ export function ContactFormPage() {
   const podeGuardar = savedContactId ? canUpdate : canCreate;
 
   return (
-    <div className="flex flex-col min-h-full bg-gray-50 dark:bg-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 md:py-5">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/contactos')} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0">
-            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          </button>
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center flex-shrink-0">
-              <span className="text-teal-700 dark:text-teal-400" style={{ fontSize: '15px', fontWeight: 700 }}>{initials || 'NC'}</span>
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-gray-900 dark:text-gray-100 truncate" style={{ fontSize: '18px', fontWeight: 600 }}>{form.nome || (editing ? 'Editar contacto' : 'Novo Contacto')}</h1>
-              <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '12px', marginTop: 2 }}>
-                {editing ? 'Edição de contacto' : 'Criação de contacto'}
-                {estadoAgendamento ? ` · ${CONTACTO_ESTADO_LABEL[estadoAgendamento]}` : ''}
-                {linked ? ` · Processo ${linked.processo}` : ''}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2 flex-shrink-0">
-            {podeGuardar && (
-              <button onClick={handleGuardar} disabled={saving} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm disabled:opacity-60" style={{ fontSize: '13px', fontWeight: 500 }}>
-                <Save className="w-4 h-4" /> <span className="hidden sm:inline">{saving ? 'A guardar…' : 'Guardar'}</span>
-              </button>
-            )}
-          </div>
-        </div>
+    <FormPageShell>
+      <FormPageBody>
+        <FormPageHeader
+          onBack={() => navigate('/contactos')}
+          title={form.nome || (editing ? 'Editar contacto' : 'Novo Contacto')}
+          subtitle={[
+            editing ? 'Edição de contacto' : 'Criação de contacto',
+            estadoAgendamento ? CONTACTO_ESTADO_LABEL[estadoAgendamento] : '',
+            linked ? `Processo ${linked.processo}` : '',
+          ].filter(Boolean).join(' · ')}
+          avatar={<FormAvatarInitials initials={initials || 'NC'} />}
+          actions={podeGuardar ? (
+            <FormPrimaryButton onClick={handleGuardar} disabled={saving}>
+              <Save className="w-4 h-4" />
+              <span className="hidden sm:inline">{saving ? 'A guardar…' : 'Guardar'}</span>
+            </FormPrimaryButton>
+          ) : undefined}
+          tabs={TABS}
+          activeTab={tab}
+          onTabChange={setTab}
+        />
 
-        <div className="flex gap-1 mt-4 overflow-x-auto">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const active = tab === t.id;
-            return (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-colors ${active ? 'bg-teal-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                style={{ fontSize: '13px', fontWeight: active ? 600 : 500 }}>
-                <Icon className="w-4 h-4" /> {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="p-4 md:p-6">
-        <div className="max-w-3xl mb-4">
+        <div className="max-w-3xl">
           {anulacao.anulado ? (
             <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200">
               <Ban className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -915,57 +895,50 @@ export function ContactFormPage() {
             )}
           </div>
         )}
-      </div>
+      </FormPageBody>
 
       {/* Modal de seleção de kit */}
       {kitModal.open && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{ fontFamily: 'Inter, sans-serif' }}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-              <h2 className="text-gray-900 dark:text-gray-100" style={{ fontSize: '16px', fontWeight: 600 }}>Selecionar kit disponível</h2>
-              <button onClick={() => { setKitModal({ open: false, loading: false, kits: [] }); setLabPreview(null); }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </button>
+        <AppModal title="Selecionar kit disponível" onClose={() => { setKitModal({ open: false, loading: false, kits: [] }); setLabPreview(null); }}>
+          {labPreview && (
+            <ModalAlert>
+              Laboratório final previsto: <strong>{labPreview.nome}</strong>
+              {labPreview.codigo ? ` (${labPreview.codigo})` : ''}
+            </ModalAlert>
+          )}
+          {kitModal.loading ? (
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 py-6 justify-center text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" /> A carregar kits…
             </div>
-            <div className="p-4 overflow-y-auto">
-              {labPreview && (
-                <div className="mb-4 px-3 py-2 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800">
-                  <p className="text-teal-800 dark:text-teal-300" style={{ fontSize: '12px' }}>
-                    Laboratório final previsto: <strong>{labPreview.nome}</strong>
-                    {labPreview.codigo ? ` (${labPreview.codigo})` : ''}
-                  </p>
-                </div>
-              )}
-              {kitModal.loading ? (
-                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 py-6 justify-center" style={{ fontSize: '13px' }}>
-                  <Loader2 className="w-4 h-4 animate-spin" /> A carregar kits…
-                </div>
-              ) : kitModal.kits.length === 0 ? (
-                <div className="py-8 text-center">
-                  <Package className="w-8 h-8 text-gray-200 dark:text-gray-700 mx-auto mb-2" />
-                  <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '13px' }}>
-                    Sem kits de {testeSelecionadoNome || 'teste seleccionado'} disponíveis neste posto.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {kitModal.kits.map((k) => (
-                    <button key={k.id} onClick={() => void handleSelecionarKit(k)} className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 hover:bg-teal-50 dark:hover:bg-teal-900/20 rounded-lg transition-colors text-left">
-                      <div>
-                        <div className="text-gray-900 dark:text-gray-100" style={{ fontSize: '13px', fontWeight: 600, fontFamily: 'monospace' }}>{k.codigo_barras}</div>
-                        <div className="text-gray-400 dark:text-gray-500" style={{ fontSize: '11px' }}>
-                          {k.teste_nome || k.tipo_kit || 'Kit'}{k.data_validade ? ` · validade ${new Date(k.data_validade).toLocaleDateString('pt-PT')}` : ''}
-                        </div>
-                      </div>
-                      <Package className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                    </button>
-                  ))}
-                </div>
-              )}
+          ) : kitModal.kits.length === 0 ? (
+            <div className="py-8 text-center">
+              <Package className="w-8 h-8 text-slate-200 dark:text-slate-700 mx-auto mb-2" />
+              <p className="text-slate-500 dark:text-slate-400 text-sm">
+                Sem kits de {testeSelecionadoNome || 'teste seleccionado'} disponíveis neste posto.
+              </p>
             </div>
-          </div>
-        </div>
+          ) : (
+            <div className="space-y-2">
+              {kitModal.kits.map((k) => (
+                <button
+                  key={k.id}
+                  type="button"
+                  onClick={() => void handleSelecionarKit(k)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/30 transition-colors text-left"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-mono">{k.codigo_barras}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      {k.teste_nome || k.tipo_kit || 'Kit'}{k.data_validade ? ` · validade ${new Date(k.data_validade).toLocaleDateString('pt-PT')}` : ''}
+                    </div>
+                  </div>
+                  <Package className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                </button>
+              ))}
+            </div>
+          )}
+        </AppModal>
       )}
-    </div>
+    </FormPageShell>
   );
 }

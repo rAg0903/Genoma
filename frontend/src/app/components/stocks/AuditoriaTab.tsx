@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ShieldCheck, Search, Loader2, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Loader2, RefreshCw } from 'lucide-react';
 import { EmptyState } from '../shared/EmptyState';
+import { CONTROL, PANEL } from '../../../lib/design-tokens';
+import { ToolbarSearchRow } from '../shared/PageToolbar';
 import { stocksApi, AuditoriaEvento } from '../../../lib/api-stocks';
 
 const TABELA_TONE: Record<string, string> = {
@@ -38,17 +40,18 @@ export function AuditoriaTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar por acao, utilizador ou tabela..." className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900" />
-        </div>
-        <button onClick={() => void load()} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
-          <RefreshCw className="w-4 h-4" /> Atualizar
-        </button>
-      </div>
+      <ToolbarSearchRow
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Pesquisar por acao, utilizador ou tabela..."
+        actions={(
+          <button type="button" onClick={() => void load()} className={CONTROL.buttonSecondary}>
+            <RefreshCw className="w-4 h-4" /> Atualizar
+          </button>
+        )}
+      />
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className={PANEL.table}>
         {loading ? (
           <div className="flex items-center justify-center py-12 text-slate-400"><Loader2 className="w-5 h-5 animate-spin mr-2" /> A carregar trilho de auditoria…</div>
         ) : error || filtered.length === 0 ? (
@@ -56,7 +59,7 @@ export function AuditoriaTab() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <thead className={`${PANEL.tableHead} text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400`}>
                 <tr>
                   <th className="px-4 py-3">Data</th>
                   <th className="px-4 py-3">Utilizador</th>

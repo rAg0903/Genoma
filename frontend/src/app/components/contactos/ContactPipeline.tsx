@@ -4,6 +4,7 @@ import {
   CONTACTO_PAGE_ESTADOS, CONTACTO_PIPELINE_COLORS, CONTACTO_PIPELINE_LABEL, getContactoPipelineEstado,
 } from '../../../lib/contactos';
 import { formatCalendarDatePt } from '../../../lib/dates';
+import { PANEL } from '../../../lib/design-tokens';
 import { EmptyState } from '../shared/EmptyState';
 
 interface ContactPipelineProps {
@@ -15,7 +16,7 @@ interface ContactPipelineProps {
 export function ContactPipeline({ contacts, onOpen, onEdit }: ContactPipelineProps) {
   if (contacts.length === 0) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+      <div className={PANEL.table}>
         <EmptyState icon={Users} title="Sem contactos" description="Nao ha contactos que correspondam aos filtros atuais." />
       </div>
     );

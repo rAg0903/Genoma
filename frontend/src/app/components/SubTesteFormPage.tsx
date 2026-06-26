@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ArrowLeft, Baby, FlaskConical, Loader2, Save } from 'lucide-react';
+import { Baby, FlaskConical, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { SubTeste } from '../data/types';
 import { findSubTeste, findTestePrincipal } from '../../lib/testes';
 import { FORM_INPUT_CLASS } from '../../lib/design-system';
+import { CONTROL } from '../../lib/design-tokens';
+import { FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
 
 const inputClass = FORM_INPUT_CLASS;
 const labelClass = 'block mb-1.5 text-gray-600 dark:text-gray-400';
@@ -189,39 +191,25 @@ export function SubTesteFormPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 md:py-5">
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={voltar} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0">
-            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          </button>
-          <div className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center flex-shrink-0">
-            <FlaskConical className="w-5 h-5 text-teal-700 dark:text-teal-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-gray-900 dark:text-gray-100 truncate" style={{ fontSize: '18px', fontWeight: 600 }}>
-              {editing ? 'Editar sub-teste' : 'Novo sub-teste'}
-            </h1>
-            <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '12px' }}>
-              {parent.nome} · {form.nome || form.codigo || 'Variante do teste'}
-            </p>
-          </div>
-          {podeGuardar && (
-            <button
-              type="submit"
-              form="sub-teste-form"
-              disabled={saving}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-60 transition-colors"
-              style={{ fontSize: '13px', fontWeight: 600 }}
-            >
+    <FormPageShell>
+      <FormPageBody>
+        <FormPageHeader
+          onBack={voltar}
+          title={editing ? 'Editar sub-teste' : 'Novo sub-teste'}
+          subtitle={`${parent.nome} · ${form.nome || form.codigo || 'Variante do teste'}`}
+          avatar={(
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center flex-shrink-0">
+              <FlaskConical className="w-5 h-5 text-teal-700 dark:text-teal-400" />
+            </div>
+          )}
+          actions={podeGuardar ? (
+            <FormPrimaryButton type="submit" form="sub-teste-form" disabled={saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {editing ? 'Gravar' : 'Criar'}
-            </button>
-          )}
-        </div>
-      </div>
+            </FormPrimaryButton>
+          ) : undefined}
+        />
 
-      <div className="p-4 md:p-6">
         <form id="sub-teste-form" onSubmit={(e) => void handleSave(e)} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 md:p-6 space-y-5 max-w-5xl">
           <div className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -320,17 +308,17 @@ export function SubTesteFormPage() {
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-            <button type="button" onClick={voltar} className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50" style={{ fontSize: '13px' }}>
+            <button type="button" onClick={voltar} className={CONTROL.buttonSecondary}>
               Voltar
             </button>
             {podeGuardar && (
-              <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-60" style={{ fontSize: '13px', fontWeight: 600 }}>
+              <FormPrimaryButton type="submit" disabled={saving}>
                 {saving ? 'A guardar…' : editing ? 'Gravar' : 'Criar'}
-              </button>
+              </FormPrimaryButton>
             )}
           </div>
         </form>
-      </div>
-    </div>
+      </FormPageBody>
+    </FormPageShell>
   );
 }

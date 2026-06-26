@@ -1,14 +1,10 @@
 import { ReactNode } from 'react';
-import { Search } from 'lucide-react';
+import { PANEL } from '../../../lib/design-tokens';
+import { ToolbarSearchRow } from '../shared/PageToolbar';
 
-export const ADMIN_SEARCH_INPUT_CLASS =
-  'pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 w-full text-slate-900 dark:text-slate-100 placeholder-slate-400';
+export const ADMIN_TABLE_PANEL_CLASS = PANEL.table;
 
-export const ADMIN_TABLE_PANEL_CLASS =
-  'bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden';
-
-export const ADMIN_TABLE_HEAD_CLASS =
-  'bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800';
+export const ADMIN_TABLE_HEAD_CLASS = PANEL.tableHead;
 
 export const ADMIN_TABLE_BODY_CLASS = 'divide-y divide-slate-100 dark:divide-slate-800';
 
@@ -37,7 +33,7 @@ type AdminTabToolbarProps = {
   action?: ReactNode;
 };
 
-/** Barra de pesquisa alargada + botão de ação (estilo Médicos). */
+/** Barra de pesquisa alargada + botão de ação. */
 export function AdminTabToolbar({
   search,
   onSearchChange,
@@ -46,21 +42,13 @@ export function AdminTabToolbar({
   action,
 }: AdminTabToolbarProps) {
   return (
-    <div className="grid w-full grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3 items-center">
-      <div className="relative min-w-0 w-full">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-        <input
-          type="text"
-          name={searchName}
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder={placeholder}
-          className={ADMIN_SEARCH_INPUT_CLASS}
-          style={{ fontSize: '13px' }}
-        />
-      </div>
-      {action ? <div className="flex shrink-0 justify-end sm:justify-start">{action}</div> : null}
-    </div>
+    <ToolbarSearchRow
+      search={search}
+      onSearchChange={onSearchChange}
+      placeholder={placeholder}
+      searchName={searchName}
+      actions={action}
+    />
   );
 }
 

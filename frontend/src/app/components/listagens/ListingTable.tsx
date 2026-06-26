@@ -3,7 +3,7 @@ import { ListingColumn, ListingRow, ListingPagination } from '../../../lib/api-l
 import { CellFormat, ListingDef } from './listingConfig';
 import { StatusBadge } from '../shared/StatusBadge';
 import { EmptyState } from '../shared/EmptyState';
-import { formatEUR, formatNumber } from '../../../lib/design-tokens';
+import { formatEUR, formatNumber, PANEL } from '../../../lib/design-tokens';
 import { formatCalendarDatePt } from '../../../lib/dates';
 import { useLanguage } from '../../../i18n/LanguageContext';
 
@@ -58,7 +58,7 @@ export function ListingTable({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div className={PANEL.table}>
       {loading ? (
         <div className="flex items-center justify-center py-16 text-slate-400">
           <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('listingsPage.table.loading', { label: listingLabel.toLowerCase() })}
