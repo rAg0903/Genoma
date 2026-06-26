@@ -7,6 +7,7 @@ import {
   contactToApiBody,
   mapApiPacienteToContact,
 } from '../../lib/pacientes';
+import { resolveTesteIdFromSelection } from '../../lib/testes';
 
 type ApiListResponse<T> = {
   data?: T[];
@@ -26,6 +27,9 @@ interface ApiProcesso {
   medico_nome?: string;
   teste_id: string;
   teste_nome?: string;
+  teste_pai_id?: string | null;
+  teste_pai_nome?: string | null;
+  sub_teste_nome?: string | null;
   empresa_id: string;
   status: string;
   data_pedido?: string;
@@ -55,6 +59,11 @@ interface ApiProcesso {
   pagamento_data?: string | null;
   recibo_numero?: string | null;
   pago?: boolean | null;
+  entidade_multibanco?: string | null;
+  referencia_multibanco?: string | null;
+  nao_gera_comissao?: boolean | null;
+  fatura_envio_email?: string | null;
+  fatura_envio_sms?: string | null;
   onde_seguida?: string | null;
   tipo_gravidez?: 'singular' | 'gemelar' | null;
   gestacao_semanas_registo?: number | null;
@@ -88,7 +97,28 @@ interface ApiTeste {
   incluir_fracao_fetal?: number | boolean | null;
   laboratorio_final_id?: string | null;
   laboratorio_processamento_id?: string | null;
+  teste_pai_id?: string | null;
+  ativo?: boolean | null;
+  sub_testes?: ApiTeste[];
 }
+
+const mapSubTesteFromApi = (t: ApiTeste): import('../data/types').SubTeste => ({
+  id: t.id,
+  teste_pai_id: t.teste_pai_id || '',
+  nome: t.nome,
+  descricao: t.descricao || '',
+  preco: Number(t.preco || 0),
+  codigo: t.codigo || '',
+  preco_compra: Number(t.preco_compra || 0),
+  preco_venda: Number(t.preco_venda || 0),
+  cromossomas: t.cromossomas ? String(t.cromossomas).split(',').map((n) => Number(n.trim())).filter((n) => !Number.isNaN(n)) : [],
+  delecoes_duplicacoes: !!t.delecoes_duplicacoes,
+  microdelecoes_microduplicacoes: !!t.microdelecoes_microduplicacoes,
+  gemeos: !!t.gemeos,
+  determinacao_sexo_fetal: !!t.determinacao_sexo_fetal,
+  incluir_fracao_fetal: t.incluir_fracao_fetal === undefined || t.incluir_fracao_fetal === null ? true : !!t.incluir_fracao_fetal,
+  ativo: t.ativo !== false,
+});
 
 const mapTesteFromApi = (t: ApiTeste): Teste => ({
   id: t.id,
@@ -110,6 +140,9 @@ const mapTesteFromApi = (t: ApiTeste): Teste => ({
   determinacao_sexo_fetal: !!t.determinacao_sexo_fetal,
   incluir_fracao_fetal: t.incluir_fracao_fetal === undefined || t.incluir_fracao_fetal === null ? true : !!t.incluir_fracao_fetal,
   laboratorio_final_id: t.laboratorio_final_id || t.laboratorio_processamento_id || null,
+  teste_pai_id: t.teste_pai_id || null,
+  ativo: t.ativo !== false,
+  sub_testes: (t.sub_testes || []).map(mapSubTesteFromApi),
 });
 
 interface ApiEmpresa {
@@ -422,10 +455,11 @@ const normalizeDate = (value: string | Date | null | undefined): string =>
 
 const mapPedidoToProcesso = (pedido: ApiProcesso): Processo => ({
   id: pedido.id,
-  numero: pedido.numero_processo || `PED-${pedido.id.slice(0, 8).toUpperCase()}`,
+  numero: pedido.numero_processo || pedido.kit_codigo || `PED-${pedido.id.slice(0, 8).toUpperCase()}`,
   paciente_id: pedido.paciente_id,
   paciente_nome: pedido.paciente_nome || '',
   medico: pedido.medico_nome || '',
+  medico_id: pedido.medico_id,
   posto: pedido.posto || '',
   kit_codigo: pedido.kit_codigo || '',
   estado: mapEstadoFromApi(pedido.status),
@@ -437,6 +471,9 @@ const mapPedidoToProcesso = (pedido: ApiProcesso): Processo => ({
   data_validacao: normalizeDate(pedido.data_validacao),
   data_envio_relatorio: normalizeDate(pedido.data_envio_relatorio),
   teste: pedido.teste_nome || '',
+  teste_id: pedido.teste_id,
+  teste_pai_nome: pedido.teste_pai_nome || undefined,
+  sub_teste_nome: pedido.sub_teste_nome || undefined,
   observacoes: pedido.notas_clinicas || '',
   responsavel_fluxo: pedido.responsavel_fluxo || '',
   relatorio_validado: !!pedido.relatorio_validado,
@@ -453,6 +490,11 @@ const mapPedidoToProcesso = (pedido: ApiProcesso): Processo => ({
   pagamento_data: normalizeDate(pedido.pagamento_data),
   recibo_numero: pedido.recibo_numero || '',
   pago: !!pedido.pago,
+  entidade_multibanco: pedido.entidade_multibanco || '',
+  referencia_multibanco: pedido.referencia_multibanco || '',
+  nao_gera_comissao: !!pedido.nao_gera_comissao,
+  fatura_envio_email: normalizeDate(pedido.fatura_envio_email) || '',
+  fatura_envio_sms: normalizeDate(pedido.fatura_envio_sms) || '',
   onde_seguida: pedido.onde_seguida || '',
   tipo_gravidez: pedido.tipo_gravidez || null,
   gestacao_semanas_registo: pedido.gestacao_semanas_registo ?? null,
@@ -604,6 +646,9 @@ export interface DataContextType {
   addTeste: (t: Omit<Teste, 'id'>) => Promise<void>;
   updateTeste: (id: string, data: Partial<Teste>) => Promise<void>;
   deleteTeste: (id: string) => Promise<void>;
+  addSubTeste: (testePaiId: string, data: Omit<import('../data/types').SubTeste, 'id' | 'teste_pai_id'>) => Promise<void>;
+  updateSubTeste: (id: string, data: Partial<import('../data/types').SubTeste>) => Promise<void>;
+  deleteSubTeste: (id: string) => Promise<void>;
 
   tiposKit: TipoKit[];
   refreshTiposKit: () => Promise<void>;
@@ -926,12 +971,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
       apiRequest<ApiListResponse<ApiEmpresa>>('/empresas', { token }),
     ]);
 
-    const medico = (medicosResponse.data || []).find((m) => m.nome === data.medico);
-    const teste = (testesResponse.data || []).find((t) => t.nome === data.teste);
+    const catalog = (testesResponse.data || []).map(mapTesteFromApi);
+    const medicoId = data.medico_id
+      || (medicosResponse.data || []).find((m) => m.nome === data.medico)?.utilizador_id;
+    const testeId = resolveTesteIdFromSelection(catalog, { testeId: data.teste_id, label: data.teste });
     const empresaId = (empresasResponse.data || [])[0]?.id;
 
-    if (!medico || !teste || !empresaId) {
-      throw new Error('Não foi possível mapear médico, teste ou empresa para criar o processo.');
+    if (!medicoId || !testeId || !empresaId) {
+      throw new Error('Não foi possível mapear médico, sub-teste ou empresa para criar o processo.');
+    }
+
+    const numeroProcesso = (data.numero?.trim() || data.kit_codigo?.trim());
+    if (!numeroProcesso) {
+      throw new Error('O código do kit é obrigatório para criar o processo.');
     }
 
     const response = await apiRequest<ApiEntityResponse<ApiProcesso>>('/processos', {
@@ -939,13 +991,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       token,
       body: {
         paciente_id: data.paciente_id,
-        medico_id: medico.utilizador_id,
-        teste_id: teste.id,
+        medico_id: medicoId,
+        teste_id: testeId,
         empresa_id: empresaId,
         status: mapEstadoToApi(data.estado),
         data_entrada: data.data_entrada || null,
         notas_clinicas: data.observacoes || null,
-        numero_processo: data.numero || null,
+        numero_processo: numeroProcesso,
         posto: data.posto || null,
         posto_id: data.posto_id || null,
         kit_codigo: data.kit_codigo || null,
@@ -975,6 +1027,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         pagamento_data: data.pagamento_data || null,
         recibo_numero: data.recibo_numero || null,
         pago: !!data.pago,
+        entidade_multibanco: data.entidade_multibanco || null,
+        referencia_multibanco: data.referencia_multibanco || null,
+        nao_gera_comissao: !!data.nao_gera_comissao,
+        fatura_envio_email: data.fatura_envio_email || null,
+        fatura_envio_sms: data.fatura_envio_sms || null,
       },
     });
 
@@ -1017,7 +1074,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       body: {
         ...(data.estado !== undefined ? { status: mapEstadoToApi(data.estado) } : {}),
         ...(data.observacoes !== undefined ? { notas_clinicas: data.observacoes } : {}),
-        ...(data.numero !== undefined ? { numero_processo: data.numero || null } : {}),
+        ...(data.numero !== undefined && data.numero.trim()
+          ? { numero_processo: data.numero.trim() }
+          : {}),
         ...(data.posto !== undefined ? { posto: data.posto || null } : {}),
         ...(data.data_entrada !== undefined ? { data_entrada: data.data_entrada || null } : {}),
         ...(data.kit_codigo !== undefined ? { kit_codigo: data.kit_codigo || null } : {}),
@@ -1041,6 +1100,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ...(data.pagamento_data !== undefined ? { pagamento_data: data.pagamento_data || null } : {}),
         ...(data.recibo_numero !== undefined ? { recibo_numero: data.recibo_numero || null } : {}),
         ...(data.pago !== undefined ? { pago: !!data.pago } : {}),
+        ...(data.entidade_multibanco !== undefined ? { entidade_multibanco: data.entidade_multibanco || null } : {}),
+        ...(data.referencia_multibanco !== undefined ? { referencia_multibanco: data.referencia_multibanco || null } : {}),
+        ...(data.nao_gera_comissao !== undefined ? { nao_gera_comissao: !!data.nao_gera_comissao } : {}),
+        ...(data.fatura_envio_email !== undefined ? { fatura_envio_email: data.fatura_envio_email || null } : {}),
+        ...(data.fatura_envio_sms !== undefined ? { fatura_envio_sms: data.fatura_envio_sms || null } : {}),
       },
     });
 
@@ -1387,7 +1451,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await refreshEmpresas();
   };
 
-  const testeToApiBody = (data: Partial<Teste>) => ({
+  const testeToApiBody = (data: Partial<Teste>, testePaiId?: string) => ({
     ...(data.nome !== undefined ? { nome: data.nome } : {}),
     ...(data.descricao !== undefined ? { descricao: data.descricao } : {}),
     ...(data.preco !== undefined ? { preco: data.preco } : {}),
@@ -1406,6 +1470,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     ...(data.determinacao_sexo_fetal !== undefined ? { determinacao_sexo_fetal: data.determinacao_sexo_fetal } : {}),
     ...(data.incluir_fracao_fetal !== undefined ? { incluir_fracao_fetal: data.incluir_fracao_fetal } : {}),
     ...(data.laboratorio_final_id !== undefined ? { laboratorio_final_id: data.laboratorio_final_id || null } : {}),
+    ...(testePaiId ? { teste_pai_id: testePaiId } : {}),
   });
 
   const addTeste = async (data: Omit<Teste, 'id'>) => {
@@ -1430,6 +1495,46 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const token = getAuthToken();
     if (!token) {
       setTestes(prev => prev.filter(t => t.id !== id));
+      return;
+    }
+    await apiRequest(`/testes/${id}`, { method: 'DELETE', token });
+    await refreshTestes();
+  };
+
+  const addSubTeste = async (testePaiId: string, data: Omit<import('../data/types').SubTeste, 'id' | 'teste_pai_id'>) => {
+    const token = getAuthToken();
+    if (!token) {
+      setTestes((prev) => prev.map((t) => (
+        t.id === testePaiId
+          ? { ...t, sub_testes: [...(t.sub_testes || []), { ...data, id: genId(), teste_pai_id: testePaiId }] }
+          : t
+      )));
+      return;
+    }
+    await apiRequest('/testes', { method: 'POST', token, body: testeToApiBody(data, testePaiId) });
+    await refreshTestes();
+  };
+
+  const updateSubTeste = async (id: string, data: Partial<import('../data/types').SubTeste>) => {
+    const token = getAuthToken();
+    if (!token) {
+      setTestes((prev) => prev.map((t) => ({
+        ...t,
+        sub_testes: (t.sub_testes || []).map((st) => (st.id === id ? { ...st, ...data } : st)),
+      })));
+      return;
+    }
+    await apiRequest(`/testes/${id}`, { method: 'PUT', token, body: testeToApiBody(data) });
+    await refreshTestes();
+  };
+
+  const deleteSubTeste = async (id: string) => {
+    const token = getAuthToken();
+    if (!token) {
+      setTestes((prev) => prev.map((t) => ({
+        ...t,
+        sub_testes: (t.sub_testes || []).filter((st) => st.id !== id),
+      })));
       return;
     }
     await apiRequest(`/testes/${id}`, { method: 'DELETE', token });
@@ -1626,7 +1731,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       requisicoesKits, addRequisicaoKit, addDescarteEnvio, updateRequisicaoKit, deleteRequisicaoKit,
       utilizadores, addUtilizador, updateUtilizador, deleteUtilizador,
       empresas, addEmpresa, updateEmpresa, deleteEmpresa,
-      testes, refreshTestes, addTeste, updateTeste, deleteTeste,
+      testes, refreshTestes, addTeste, updateTeste, deleteTeste, addSubTeste, updateSubTeste, deleteSubTeste,
       tiposKit, refreshTiposKit, addTipoKit, updateTipoKit, deleteTipoKit,
       motivosAnulacao, refreshMotivosAnulacao, addMotivoAnulacao, updateMotivoAnulacao, deleteMotivoAnulacao,
       itensPesquisa, addItemPesquisa, updateItemPesquisa, deleteItemPesquisa,

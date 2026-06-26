@@ -4,6 +4,7 @@ import { StatusBadge } from '../shared/StatusBadge';
 import { PROCESS_STATUS_STYLES } from '../../../lib/design-system';
 import { diasDesde, ultimaAtualizacao, isAtrasado } from '../../../lib/processos';
 import { formatCalendarDatePt } from '../../../lib/dates';
+import { isFaturaEmitida, isFaturaPaga } from '../../../lib/faturacao';
 
 interface ProcessTableProps {
   processos: Processo[];
@@ -59,8 +60,9 @@ export function ProcessTable({
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {processos.map((p) => {
-              const pendente = !!p.fatura_emitida && !p.pagamento_data;
-              const paga = !!p.pagamento_data;
+              const facturada = isFaturaEmitida(p);
+              const paga = isFaturaPaga(p);
+              const pendente = facturada && !paga;
               return (
                 <tr
                   key={p.id}

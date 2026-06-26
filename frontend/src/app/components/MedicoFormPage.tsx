@@ -15,6 +15,7 @@ import {
   medicosApi,
 } from '../../lib/api-medicos';
 import { Teste } from '../data/types';
+import { getTestesSelecionaveis } from '../../lib/testes';
 
 type TabId = 'identificacao' | 'condicoes' | 'relatorios' | 'notas';
 
@@ -73,7 +74,7 @@ export function MedicoFormPage() {
 
   const entidadesAtivas = useMemo(() => entidades.filter((e) => e.ativo !== false), [entidades]);
   const testesAtivos = useMemo(
-    () => [...testes.filter((t) => t.ativo !== false)].sort((a, b) => a.nome.localeCompare(b.nome, 'pt')),
+    () => [...getTestesSelecionaveis(testes)].sort((a, b) => a.nome.localeCompare(b.nome, 'pt')),
     [testes],
   );
   const testesPorId = useMemo(() => new Map(testesAtivos.map((t) => [t.id, t])), [testesAtivos]);

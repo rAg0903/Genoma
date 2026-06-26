@@ -11,6 +11,7 @@ const ContactsPage = lazy(() => import('./components/ContactsPage').then((m) => 
 const ContactFormPage = lazy(() => import('./components/ContactFormPage').then((m) => ({ default: m.ContactFormPage })));
 const ProcessesPage = lazy(() => import('./components/ProcessesPage').then((m) => ({ default: m.ProcessesPage })));
 const ProcessFormPage = lazy(() => import('./components/ProcessFormPage').then((m) => ({ default: m.ProcessFormPage })));
+const ProcessViewPage = lazy(() => import('./components/ProcessViewPage').then((m) => ({ default: m.ProcessViewPage })));
 const StocksPage = lazy(() => import('./components/StocksPage').then((m) => ({ default: m.StocksPage })));
 const ListingsPage = lazy(() => import('./components/listagens/ListingsPage').then((m) => ({ default: m.ListingsPage })));
 const SettingsPage = lazy(() => import('./components/SettingsPage').then((m) => ({ default: m.SettingsPage })));
@@ -20,6 +21,7 @@ const LaboratorioFormPage = lazy(() => import('./components/LocalFormPage').then
 const LaboratorioFinalFormPage = lazy(() => import('./components/LocalFormPage').then((m) => ({ default: m.LaboratorioFinalFormPage })));
 const EntidadeFormPage = lazy(() => import('./components/LocalFormPage').then((m) => ({ default: m.EntidadeFormPage })));
 const TesteFormPage = lazy(() => import('./components/TesteFormPage').then((m) => ({ default: m.TesteFormPage })));
+const SubTesteFormPage = lazy(() => import('./components/SubTesteFormPage').then((m) => ({ default: m.SubTesteFormPage })));
 const ProfilePage = lazy(() => import('./components/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const NotificationsPage = lazy(() => import('./components/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -151,6 +153,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'processos/:id',
+        Component: () => withSuspense(
+          <ProtectedRoute module="processos">
+            <ProcessViewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: 'processos/:id/editar',
         Component: () => withSuspense(
           <ProtectedRoute module="processos">
@@ -267,6 +277,22 @@ export const router = createBrowserRouter([
         Component: () => withSuspense(
           <ProtectedRoute module="definicoes">
             <TesteFormPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'definicoes/testes/:parentId/sub-testes/novo',
+        Component: () => withSuspense(
+          <ProtectedRoute module="definicoes">
+            <SubTesteFormPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'definicoes/testes/:parentId/sub-testes/:subId/editar',
+        Component: () => withSuspense(
+          <ProtectedRoute module="definicoes">
+            <SubTesteFormPage />
           </ProtectedRoute>
         ),
       },

@@ -8,6 +8,7 @@ import { useData } from '../context/DataContext';
 import { Utilizador, Empresa, Teste, TipoKit } from '../data/types';
 import { toast } from 'sonner';
 import { ADD_ACTION_BUTTON_CLASS, FORM_INPUT_CLASS } from '../../lib/design-system';
+import { formatSubTestesResumo, getTestesPrincipais } from '../../lib/testes';
 import { StatusBadge } from './shared/StatusBadge';
 import { UserAvatar } from './shared/UserAvatar';
 import { AdminModuleHeader } from './definicoes/AdminModuleHeader';
@@ -443,7 +444,7 @@ function TestesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; ca
   const { testes, deleteTeste } = useData();
   const [search, setSearch] = useState('');
 
-  const filtered = testes.filter(t => t.nome.toLowerCase().includes(search.toLowerCase()) || t.codigo.toLowerCase().includes(search.toLowerCase()));
+  const filtered = getTestesPrincipais(testes).filter(t => t.nome.toLowerCase().includes(search.toLowerCase()) || t.codigo.toLowerCase().includes(search.toLowerCase()));
   const openNew = () => navigate('/definicoes/testes/novo');
   const openEdit = (t: Teste) => navigate(`/definicoes/testes/${t.id}/editar`);
   const handleDelete = (id: string, nome: string) => {
@@ -465,7 +466,7 @@ function TestesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; ca
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className={ADMIN_TABLE_HEAD_CLASS}>
-              <tr>{['Código', 'Nome', 'Descrição', 'Preço', 'Ações'].map(h => (
+              <tr>{['Código', 'Nome', 'Descrição', 'Preços (sub-testes)', 'Ações'].map(h => (
                 <AdminTableHeadCell key={h} align={h === 'Ações' ? 'right' : 'left'}>{h}</AdminTableHeadCell>
               ))}</tr>
             </thead>
@@ -475,7 +476,7 @@ function TestesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; ca
                   <td className="px-4 py-3"><span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">{t.codigo}</span></td>
                   <td className="px-4 py-3 text-[13px] font-medium text-slate-800 dark:text-slate-100">{t.nome}</td>
                   <td className="px-4 py-3 text-[12px] text-slate-500 dark:text-slate-400 max-w-[250px]">{t.descricao}</td>
-                  <td className="px-4 py-3 text-[14px] font-semibold text-slate-800 dark:text-slate-100">{t.preco.toFixed(2)} €</td>
+                  <td className="px-4 py-3 text-[13px] font-medium text-slate-500 dark:text-slate-400">{formatSubTestesResumo(t)}</td>
                   <td className="px-4 py-3">
                     <AdminRowActions>
                       {canUpdate && <button type="button" onClick={() => openEdit(t)} className={ADMIN_ACTION_BTN_CLASS}><Edit className="w-4 h-4" /></button>}

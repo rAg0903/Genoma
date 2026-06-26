@@ -6,9 +6,17 @@ const baseSelect = `
          pr.observacoes AS notas_clinicas,
          p.nome AS paciente_nome,
          p.email AS paciente_email,
+         p.telemovel AS paciente_telemovel,
+         p.data_nascimento AS paciente_data_nascimento,
          u.nome AS medico_nome,
          u.email AS medico_email,
-         t.nome AS teste_nome,
+         t.nome AS sub_teste_nome,
+         t.teste_pai_id,
+         tp.nome AS teste_pai_nome,
+         CASE
+           WHEN tp.id IS NOT NULL THEN CONCAT(tp.nome, ' — ', t.nome)
+           ELSE t.nome
+         END AS teste_nome,
          t.tempo_resposta_dias,
          e.nome AS empresa_nome,
          k.codigo_barras AS kit_codigo
@@ -17,6 +25,7 @@ const baseSelect = `
   JOIN medicos m ON pr.medico_id = m.utilizador_id
   JOIN utilizadores u ON m.utilizador_id = u.id
   LEFT JOIN testes t ON pr.teste_id = t.id
+  LEFT JOIN testes tp ON t.teste_pai_id = tp.id
   LEFT JOIN empresas e ON pr.empresa_id = e.id
   LEFT JOIN kits k ON pr.kit_id = k.id
 `;
@@ -222,7 +231,9 @@ exports.update = async (id, data) => {
     setIfDefined('teste_id', data.teste_id);
     setIfDefined('data_entrada', data.data_entrada || null);
     setIfDefined('observacoes', data.observacoes);
-    setIfDefined('numero_processo', data.numero_processo || null);
+    if (data.numero_processo !== undefined && data.numero_processo != null && String(data.numero_processo).trim() !== '') {
+      setIfDefined('numero_processo', String(data.numero_processo).trim());
+    }
     setIfDefined('posto', data.posto || null);
     setIfDefined('posto_id', data.posto_id || null);
     setIfDefined('kit_id', data.kit_id || null);
@@ -247,6 +258,11 @@ exports.update = async (id, data) => {
     if (data.pagamento_data !== undefined) setIfDefined('pagamento_data', data.pagamento_data || null);
     if (data.recibo_numero !== undefined) setIfDefined('recibo_numero', data.recibo_numero || null);
     if (data.pago !== undefined) setIfDefined('pago', data.pago ? 1 : 0);
+    if (data.entidade_multibanco !== undefined) setIfDefined('entidade_multibanco', data.entidade_multibanco || null);
+    if (data.referencia_multibanco !== undefined) setIfDefined('referencia_multibanco', data.referencia_multibanco || null);
+    if (data.nao_gera_comissao !== undefined) setIfDefined('nao_gera_comissao', data.nao_gera_comissao ? 1 : 0);
+    if (data.fatura_envio_email !== undefined) setIfDefined('fatura_envio_email', data.fatura_envio_email || null);
+    if (data.fatura_envio_sms !== undefined) setIfDefined('fatura_envio_sms', data.fatura_envio_sms || null);
 
     if (updates.length === 0) return false;
 

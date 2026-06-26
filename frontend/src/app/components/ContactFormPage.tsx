@@ -2,24 +2,34 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft, Save, User, Phone, MapPin, Baby, Syringe, Receipt, StickyNote, Paperclip,
-  AlertTriangle, CheckCircle2, Package, X, Loader2,
+  AlertTriangle, CheckCircle2, Package, X, Loader2, Ban,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPostalCodeAutofillHandlers } from '../../lib/postal-code-pt';
 import { filterPostosNearContact, formatPostoProximidadeMotivo, hasValidContactPostalCode } from '../../lib/posto-proximity';
+import { getTestesComSubTestes, getTestesSelecionaveisComLabel, resolveParentFromTesteId, resolvePrecoTesteSelecionavel, resolveTesteSelecionavelLabel } from '../../lib/testes';
 import { Contact, Processo } from '../data/types';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { apiRequest } from '../../lib/api';
 import { getAuthToken } from '../../lib/api-processos';
-import {
-  buildContactClinicalPayload, buildContactPosConversao, contactTemProcessoAtivo,
+import { buildContactClinicalPayload, buildContactPosConversao, contactTemProcessoAtivo,
   CONTACTO_ESTADO_LABEL, findProcessoDoContacto, isProcessoLaboratorio,
 } from '../../lib/contactos';
 import { todayLocal } from '../../lib/dates';
+import {
+  buildFaturacaoPayload,
+  emptyProcessFaturacao,
+  ProcessFaturacaoData,
+  validateFaturacaoData,
+} from '../../lib/process-form';
+import { extractFaturacaoFromContact, mergeFaturacaoIntoContact } from '../../lib/faturacao';
 import { ApiPaciente, mapApiPacienteToContact } from '../../lib/pacientes';
 import { Section, AnexosTab } from './ContactDetail';
 import { GestacaoFields } from './GestacaoFields';
+import { ProcessFaturacaoFields } from './shared/ProcessFaturacaoFields';
+import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
 import { Medico, medicosApi } from '../../lib/api-medicos';
 import { parseGestacaoRegistoInput } from '../../lib/gestacao';
 
@@ -45,7 +55,7 @@ const emptyForm: Omit<Contact, 'id' | 'created_at'> = {
 const today = todayLocal;
 
 const emptyGravidez = {
-  medico_id: '', entidade_id: '', onde_seguida: '', teste_id: '', tipo_gravidez: 'Singular',
+  medico_id: '', entidade_id: '', onde_seguida: '', teste_pai_id: '', teste_id: '', tipo_gravidez: 'Singular',
   gestacao_semanas_registo: '', gestacao_dias_registo: '', gestacao_registada_em: '',
 };
 const emptyColheita = { posto_id: '', data_prevista: '', data_efetiva: '' };
@@ -55,14 +65,16 @@ interface KitOpcao { id: string; codigo_barras: string; tracking: string; tipo_k
 export function ContactFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const {
-    contacts, addContact, updateContact, processos, addProcesso,
-    postos, testes, getPostoStock, getPostoKitsDisponiveis, marcarKitUtilizado,
+    contacts, addContact, updateContact, processos, addProcesso, updateProcesso,
+    postos, testes, motivosAnulacao, getPostoStock, getPostoKitsDisponiveis, marcarKitUtilizado,
     getAnexosByPaciente, addAnexo, deleteAnexo,
   } = useData();
   const { hasPermission } = useAuth();
   const canUpdate = hasPermission('contactos', 'update');
   const canCreate = hasPermission('contactos', 'create');
+  const canUpdateProcesso = hasPermission('processos', 'update');
 
   const editing = Boolean(id);
   const [tab, setTab] = useState<TabId>('identificacao');
@@ -100,8 +112,13 @@ export function ContactFormPage() {
       cidade: form.cidade,
     });
   }, [contactoTemMoradaParaColheita, postosAtivos, form.codigo_postal, form.distrito, form.cidade]);
-  const testeSelecionado = useMemo(
-    () => testes.find((t) => t.id === gravidez.teste_id),
+  const testesComSubTestes = useMemo(() => getTestesComSubTestes(testes), [testes]);
+  const subTestesDoPai = useMemo(() => {
+    const pai = testesComSubTestes.find((t) => t.id === gravidez.teste_pai_id);
+    return (pai?.sub_testes || []).filter((st) => st.ativo !== false);
+  }, [testesComSubTestes, gravidez.teste_pai_id]);
+  const testeSelecionadoNome = useMemo(
+    () => resolveTesteSelecionavelLabel(testes, gravidez.teste_id),
     [testes, gravidez.teste_id],
   );
   const entidadesDoMedico = useMemo(() => {
@@ -124,12 +141,26 @@ export function ContactFormPage() {
   const contactProcessos = savedContactId
     ? processos.filter((p) => p.paciente_id === savedContactId && isProcessoLaboratorio(p.estado))
     : [];
+  const [contactFaturacao, setContactFaturacao] = useState<ProcessFaturacaoData>(emptyProcessFaturacao());
+  const [anulacao, setAnulacao] = useState({ anulado: false, motivo_anulacao_id: '' });
+  const canEditFaturacao = canUpdate || canCreate;
+  const motivosAtivos = useMemo(
+    () => motivosAnulacao.filter((m) => m.ativo !== false),
+    [motivosAnulacao],
+  );
 
-  const buildPayload = () => buildContactClinicalPayload(
-    form,
-    { ...gravidez, onde_seguida: ondeSeguidaNome },
-    colheita,
-    notas,
+  const buildPayload = () => mergeFaturacaoIntoContact(
+    {
+      ...buildContactClinicalPayload(
+        form,
+        { ...gravidez, onde_seguida: ondeSeguidaNome },
+        colheita,
+        notas,
+      ),
+      estado_contacto: anulacao.anulado ? 'Cancelado' : null,
+      motivo_anulacao_id: anulacao.anulado ? (anulacao.motivo_anulacao_id || null) : null,
+    },
+    contactFaturacao,
   );
   const hydratedIdRef = useRef<string | null>(null);
 
@@ -143,6 +174,7 @@ export function ContactFormPage() {
       medico_id: c.medico_id || '',
       entidade_id: '',
       onde_seguida: c.onde_seguida || '',
+      teste_pai_id: resolveParentFromTesteId(testes, c.teste_id)?.id || '',
       teste_id: c.teste_id || '',
       tipo_gravidez: c.tipo_gravidez === 'gemelar' ? 'Gemelar' : 'Singular',
       gestacao_semanas_registo: c.gestacao_semanas_registo != null ? String(c.gestacao_semanas_registo) : '',
@@ -156,6 +188,11 @@ export function ContactFormPage() {
     }));
     setNotas(c.notas_internas || '');
     setEstadoAgendamento(c.estado_agendamento || null);
+    setContactFaturacao(extractFaturacaoFromContact(c));
+    setAnulacao({
+      anulado: c.estado_contacto === 'Cancelado',
+      motivo_anulacao_id: c.motivo_anulacao_id || '',
+    });
     setSavedContactId(c.id);
   };
 
@@ -170,6 +207,8 @@ export function ContactFormPage() {
     setNotas('');
     setEstadoAgendamento(null);
     setLinked(null);
+    setContactFaturacao(emptyProcessFaturacao());
+    setAnulacao({ anulado: false, motivo_anulacao_id: '' });
     setTab('identificacao');
   }, [id]);
 
@@ -218,6 +257,16 @@ export function ContactFormPage() {
       .then((data) => setMedicos(data || []))
       .catch(() => setMedicos([]));
   }, []);
+
+  useEffect(() => {
+    const preco = resolvePrecoTesteSelecionavel(testes, gravidez.teste_id);
+    if (preco == null) return;
+    setContactFaturacao((prev) => ({
+      ...prev,
+      valor_base: preco,
+      valor_final: Number((preco * (1 - Number(prev.desconto_percentual || 0) / 100)).toFixed(2)),
+    }));
+  }, [gravidez.teste_id, testes]);
 
   // Resolver entidade_id a partir do nome guardado (contactos já existentes)
   useEffect(() => {
@@ -273,13 +322,13 @@ export function ContactFormPage() {
 
   const validarIdentificacao = (): boolean => {
     if (!form.nome.trim()) { toast.error('Nome completo é obrigatório.'); setTab('identificacao'); return false; }
-    if (!form.data_nascimento) { toast.error('Data de nascimento é obrigatória.'); setTab('identificacao'); return false; }
-    if (!form.genero) { toast.error('Género é obrigatório.'); setTab('identificacao'); return false; }
+    if (!form.telemovel.trim()) { toast.error('Telemóvel é obrigatório.'); setTab('identificacao'); return false; }
     return true;
   };
 
   // Garante que o contacto está gravado (devolve o id) — usado antes de associar kit.
   const ensureSaved = async (): Promise<string | null> => {
+    if (!validarIdentificacao()) return null;
     const payload = buildPayload();
     if (savedContactId) {
       if (canUpdate) {
@@ -294,7 +343,6 @@ export function ContactFormPage() {
       }
       return savedContactId;
     }
-    if (!validarIdentificacao()) return null;
     try {
       const created = await addContact(payload);
       applyContactToForm(created);
@@ -308,6 +356,19 @@ export function ContactFormPage() {
 
   const handleGuardar = async () => {
     if (!validarIdentificacao()) return;
+    if (anulacao.anulado && !anulacao.motivo_anulacao_id) {
+      toast.error(t('pages.contacts.form.voidReasonRequired'));
+      setTab('identificacao');
+      return;
+    }
+    if (!anulacao.anulado) {
+      const fatErr = validateFaturacaoData(contactFaturacao);
+      if (fatErr) {
+        toast.error(fatErr);
+        setTab('faturacao');
+        return;
+      }
+    }
     setSaving(true);
     try {
       const isNew = !savedContactId;
@@ -319,6 +380,12 @@ export function ContactFormPage() {
       setEstadoAgendamento(saved.estado_agendamento ?? null);
       if (payload.gestacao_registada_em) {
         setGravidez((g) => ({ ...g, gestacao_registada_em: payload.gestacao_registada_em || '' }));
+      }
+
+      if (contactProcessos.length > 0 && canUpdateProcesso) {
+        for (const p of contactProcessos) {
+          await updateProcesso(p.id, buildFaturacaoPayload(contactFaturacao));
+        }
       }
 
       toast.success(isNew ? 'Contacto criado com sucesso!' : 'Contacto atualizado com sucesso!');
@@ -338,9 +405,14 @@ export function ContactFormPage() {
   const handleDataEfetiva = async (value: string) => {
     setColheita((c) => ({ ...c, data_efetiva: value }));
     if (!value || linked) return;
+    if (anulacao.anulado) {
+      toast.error(t('pages.contacts.form.voidedBannerDetail'));
+      setColheita((c) => ({ ...c, data_efetiva: '' }));
+      return;
+    }
     if (!colheita.posto_id) { toast.error('Selecione primeiro o Posto de Colheita.'); return; }
     if (!gravidez.medico_id || !gravidez.teste_id) {
-      toast.error('Selecione Médico e Teste no separador Gravidez antes de associar o kit.');
+      toast.error(t('pages.contacts.form.selectPackGravidez'));
       setTab('gravidez');
       return;
     }
@@ -381,6 +453,7 @@ export function ContactFormPage() {
         paciente_id: contactId,
         paciente_nome: form.nome,
         medico: medicos.find((m) => m.utilizador_id === gravidez.medico_id)?.nome || '',
+        medico_id: gravidez.medico_id,
         posto: postoNome,
         posto_id: colheita.posto_id || undefined,
         kit_codigo: kit.codigo_barras,
@@ -388,13 +461,15 @@ export function ContactFormPage() {
         data_entrada: today(),
         data_colheita: colheita.data_efetiva || today(),
         data_colheita_prevista: colheita.data_prevista || undefined,
-        teste: testes.find((t) => t.id === gravidez.teste_id)?.nome || '',
+        teste_id: gravidez.teste_id,
+        teste: resolveTesteSelecionavelLabel(testes, gravidez.teste_id),
         observacoes: notas || undefined,
         onde_seguida: ondeSeguidaNome || undefined,
         tipo_gravidez: gravidez.tipo_gravidez === 'Gemelar' ? 'gemelar' : gravidez.tipo_gravidez === 'Singular' ? 'singular' : null,
         gestacao_semanas_registo: gestacao?.semanas ?? null,
         gestacao_dias_registo: gestacao?.dias ?? null,
         gestacao_registada_em: gestacaoDataRegisto || undefined,
+        ...buildFaturacaoPayload(contactFaturacao),
       };
       const processo = await addProcesso(novoProcesso);
       await updateContact(contactId, buildContactPosConversao(form));
@@ -461,6 +536,24 @@ export function ContactFormPage() {
       </div>
 
       <div className="p-4 md:p-6">
+        <div className="max-w-3xl mb-4">
+          {anulacao.anulado ? (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200">
+              <Ban className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 600 }}>{t('pages.contacts.form.voidedBanner')}</p>
+                <p className="mt-0.5 opacity-90" style={{ fontSize: '13px' }}>{t('pages.contacts.form.voidedBannerDetail')}</p>
+              </div>
+            </div>
+          ) : (
+            <FaturacaoAlertBanner
+              value={contactFaturacao}
+              context="contacto"
+              onGoToFaturacao={() => setTab('faturacao')}
+            />
+          )}
+        </div>
+
         {tab === 'identificacao' && (
           <div className="space-y-4 max-w-3xl">
             <Section title="Informação Pessoal" icon={User}>
@@ -470,11 +563,11 @@ export function ContactFormPage() {
                   <input className={inputClass} value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Nome completo do paciente" style={{ fontSize: '14px' }} />
                 </div>
                 <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Data de Nascimento <span className="text-red-500">*</span></label>
+                  <label className={labelClass} style={{ fontSize: '13px' }}>Data de Nascimento</label>
                   <input type="date" className={inputClass} value={form.data_nascimento} onChange={(e) => setForm({ ...form, data_nascimento: e.target.value })} style={{ fontSize: '14px' }} />
                 </div>
                 <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Género <span className="text-red-500">*</span></label>
+                  <label className={labelClass} style={{ fontSize: '13px' }}>Género</label>
                   <select className={inputClass} value={form.genero} onChange={(e) => setForm({ ...form, genero: e.target.value })} style={{ fontSize: '14px' }}>
                     <option value="Feminino">Feminino</option>
                     <option value="Masculino">Masculino</option>
@@ -497,7 +590,7 @@ export function ContactFormPage() {
             <Section title="Contacto" icon={Phone}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Telemóvel</label>
+                  <label className={labelClass} style={{ fontSize: '13px' }}>Telemóvel <span className="text-red-500">*</span></label>
                   <input className={inputClass} value={form.telemovel} onChange={(e) => setForm({ ...form, telemovel: e.target.value })} placeholder="+351 900 000 000" style={{ fontSize: '14px' }} />
                 </div>
                 <div>
@@ -530,6 +623,52 @@ export function ContactFormPage() {
                 </div>
               </div>
               <p className="text-gray-400 dark:text-gray-500 mt-2" style={{ fontSize: '11px' }}>Distrito/Cidade podem ser preenchidos automaticamente a partir do Código Postal.</p>
+            </Section>
+
+            <Section title={t('pages.contacts.form.voided')} icon={Ban}>
+              <div className="space-y-3">
+                <label className="inline-flex items-center gap-2.5 text-gray-700 dark:text-gray-300 cursor-pointer" style={{ fontSize: '14px' }}>
+                  <input
+                    type="checkbox"
+                    checked={anulacao.anulado}
+                    onChange={(e) => setAnulacao({
+                      anulado: e.target.checked,
+                      motivo_anulacao_id: e.target.checked ? anulacao.motivo_anulacao_id : '',
+                    })}
+                    disabled={!canEditFaturacao}
+                    className="w-4 h-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                  />
+                  <span style={{ fontWeight: 500 }}>{t('pages.contacts.form.voided')}</span>
+                </label>
+
+                {anulacao.anulado && (
+                  <div className="pl-6 max-w-md">
+                    <label className={labelClass} style={{ fontSize: '13px' }}>
+                      {t('pages.contacts.form.voidReason')} <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className={inputClass}
+                      value={anulacao.motivo_anulacao_id}
+                      onChange={(e) => setAnulacao({ ...anulacao, motivo_anulacao_id: e.target.value })}
+                      disabled={!canEditFaturacao}
+                      style={{ fontSize: '14px' }}
+                    >
+                      <option value="">{t('pages.contacts.form.selectVoidReason')}</option>
+                      {motivosAtivos.map((m) => (
+                        <option key={m.id} value={m.id}>{m.nome}</option>
+                      ))}
+                    </select>
+                    {motivosAtivos.length === 0 && (
+                      <p className="text-amber-600 dark:text-amber-400 mt-1" style={{ fontSize: '11px' }}>
+                        Sem motivos configurados. Adicione em Administração → Motivos de anulação.
+                      </p>
+                    )}
+                    <p className="text-gray-500 dark:text-gray-400 mt-2" style={{ fontSize: '12px' }}>
+                      {t('pages.contacts.form.voidHint')}
+                    </p>
+                  </div>
+                )}
+              </div>
             </Section>
           </div>
         )}
@@ -578,10 +717,37 @@ export function ContactFormPage() {
                 </div>
                 <div>
                   <label className={labelClass} style={{ fontSize: '13px' }}>Teste</label>
-                  <select className={inputClass} value={gravidez.teste_id} onChange={(e) => setGravidez({ ...gravidez, teste_id: e.target.value })} style={{ fontSize: '14px' }}>
+                  <select
+                    className={inputClass}
+                    value={gravidez.teste_pai_id}
+                    onChange={(e) => setGravidez({ ...gravidez, teste_pai_id: e.target.value, teste_id: '' })}
+                    style={{ fontSize: '14px' }}
+                  >
                     <option value="">Selecione...</option>
-                    {testes.filter((t) => t.ativo !== false).map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                    {testesComSubTestes.map((t) => (
+                      <option key={t.id} value={t.id}>{t.nome}</option>
+                    ))}
                   </select>
+                </div>
+                <div>
+                  <label className={labelClass} style={{ fontSize: '13px' }}>{t('pages.contacts.form.pack')}</label>
+                  <select
+                    className={`${inputClass} ${!gravidez.teste_pai_id ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    value={gravidez.teste_id}
+                    onChange={(e) => setGravidez({ ...gravidez, teste_id: e.target.value })}
+                    disabled={!gravidez.teste_pai_id}
+                    style={{ fontSize: '14px' }}
+                  >
+                    <option value="">
+                      {gravidez.teste_pai_id ? t('pages.contacts.form.selectPack') : t('pages.contacts.form.selectTestFirst')}
+                    </option>
+                    {subTestesDoPai.map((st) => (
+                      <option key={st.id} value={st.id}>{st.nome}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {t('pages.contacts.form.packHint')}
+                  </p>
                 </div>
                 <div>
                   <label className={labelClass} style={{ fontSize: '13px' }}>Tipo de gravidez</label>
@@ -663,7 +829,7 @@ export function ContactFormPage() {
                 <div className="mt-3">
                   {!gravidez.teste_id ? (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400" style={{ fontSize: '12px' }}>
-                      <AlertTriangle className="w-4 h-4" /> Selecione o teste no separador Gravidez para verificar kits disponíveis no posto.
+                      <AlertTriangle className="w-4 h-4" /> {t('pages.contacts.form.selectPackStock')}
                     </div>
                   ) : checkingStock ? (
                     <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400" style={{ fontSize: '12px' }}>
@@ -671,11 +837,11 @@ export function ContactFormPage() {
                     </div>
                   ) : stockInfo && stockInfo.disponiveis > 0 ? (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400" style={{ fontSize: '12px' }}>
-                      <CheckCircle2 className="w-4 h-4" /> {stockInfo.disponiveis} kit(s) de {testeSelecionado?.nome || 'teste seleccionado'} disponível(eis) neste posto.
+                      <CheckCircle2 className="w-4 h-4" /> {stockInfo.disponiveis} kit(s) de {testeSelecionadoNome || 'teste seleccionado'} disponível(eis) neste posto.
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400" style={{ fontSize: '12px' }}>
-                      <AlertTriangle className="w-4 h-4" /> Atenção: o posto {postos.find((p) => p.id === colheita.posto_id)?.nome || ''} não possui kits de {testeSelecionado?.nome || 'teste seleccionado'} para a data selecionada. O registo não é bloqueado.
+                      <AlertTriangle className="w-4 h-4" /> Atenção: o posto {postos.find((p) => p.id === colheita.posto_id)?.nome || ''} não possui kits de {testeSelecionadoNome || 'teste seleccionado'} para a data selecionada. O registo não é bloqueado.
                     </div>
                   )}
                 </div>
@@ -702,18 +868,14 @@ export function ContactFormPage() {
         {tab === 'faturacao' && (
           <div className="space-y-4 max-w-3xl">
             <Section title="Faturação" icon={Receipt}>
-              {contactProcessos.length === 0 ? (
-                <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '13px' }}>A faturação é gerida no processo, criado automaticamente após a colheita.</p>
-              ) : (
-                <div className="space-y-2">
-                  {contactProcessos.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <span className="text-gray-900 dark:text-gray-100" style={{ fontSize: '13px', fontWeight: 500 }}>{p.numero}</span>
-                      <span className="text-gray-400 dark:text-gray-500" style={{ fontSize: '12px' }}>{Number(p.valor_final || 0).toFixed(2)} €</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <p className="text-gray-500 dark:text-gray-400 mb-4" style={{ fontSize: '13px' }}>
+                Emita a fatura ao criar o contacto. Os dados são transferidos para o processo após a colheita.
+              </p>
+              <ProcessFaturacaoFields
+                value={contactFaturacao}
+                onChange={setContactFaturacao}
+                canUpdate={canEditFaturacao}
+              />
             </Section>
           </div>
         )}
@@ -773,7 +935,7 @@ export function ContactFormPage() {
                 <div className="py-8 text-center">
                   <Package className="w-8 h-8 text-gray-200 dark:text-gray-700 mx-auto mb-2" />
                   <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '13px' }}>
-                    Sem kits de {testeSelecionado?.nome || 'teste seleccionado'} disponíveis neste posto.
+                    Sem kits de {testeSelecionadoNome || 'teste seleccionado'} disponíveis neste posto.
                   </p>
                 </div>
               ) : (

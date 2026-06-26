@@ -25,6 +25,9 @@ import {
 } from '../../lib/process-form';
 import { Section, AnexosTab } from './ContactDetail';
 import { ProcessResultadoTab } from './processos/ProcessResultadoTab';
+import { ProcessFaturacaoFields } from './shared/ProcessFaturacaoFields';
+import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
+import { extractFaturacaoFromProcesso } from '../../lib/process-form';
 
 type TabId = 'identificacao' | 'gravidez' | 'colheita' | 'faturacao' | 'resultados' | 'kits' | 'notas' | 'anexos';
 
@@ -131,7 +134,7 @@ export function ProcessFormPage() {
     try {
       await updateProcesso(processo.id, buildProcessSubmitPayload(form));
       toast.success('Processo atualizado!');
-      navigate('/processos');
+      navigate(`/processos/${processo.id}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao guardar processo.');
     } finally {
@@ -157,7 +160,7 @@ export function ProcessFormPage() {
     <div className="flex flex-col min-h-full bg-gray-50 dark:bg-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 md:px-6 py-4 md:py-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/processos')} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0">
+          <button onClick={() => navigate(`/processos/${processo.id}`)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0">
             <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -199,6 +202,13 @@ export function ProcessFormPage() {
 
       <div className="p-4 md:p-6">
         <div className="space-y-4 max-w-4xl">
+          {form && (
+            <FaturacaoAlertBanner
+              value={extractFaturacaoFromProcesso({ ...processo, ...form })}
+              context="processo"
+              onGoToFaturacao={() => setTab('faturacao')}
+            />
+          )}
           {tab === 'identificacao' && (
             <div className="space-y-4">
               <Section title="Processo" icon={FileText}>
@@ -264,7 +274,6 @@ export function ProcessFormPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <ReadOnlyField label="Médico" value={form.medico} />
                 <ReadOnlyField label="Onde é seguida" value={form.onde_seguida || paciente?.onde_seguida || ''} />
-                <ReadOnlyField label="Teste" value={form.teste} />
                 <ReadOnlyField
                   label="Tipo de gravidez"
                   value={tipoGravidezLabel(form.tipo_gravidez ?? paciente?.tipo_gravidez ?? null)}
@@ -304,58 +313,12 @@ export function ProcessFormPage() {
 
           {tab === 'faturacao' && (
             <Section title="Faturação" icon={Receipt}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Valor Base (€)</label>
-                  <input type="number" min={0} step="0.01" value={form.valor_base ?? 0} onChange={(e) => setForm({ ...form, valor_base: Number(e.target.value || 0), valor_final: Number((Number(e.target.value || 0) * (1 - Number(form.desconto_percentual || 0) / 100)).toFixed(2)) })} className={inputClass} style={{ fontSize: '14px' }} disabled={!canUpdate} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Desconto (%)</label>
-                  <input type="number" min={0} max={100} step="0.1" value={form.desconto_percentual ?? 0} onChange={(e) => setForm({ ...form, desconto_percentual: Number(e.target.value || 0), valor_final: Number((Number(form.valor_base || 0) * (1 - Number(e.target.value || 0) / 100)).toFixed(2)) })} className={inputClass} style={{ fontSize: '14px' }} disabled={!canUpdate} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Valor Final (€)</label>
-                  <input type="number" value={form.valor_final ?? 0} readOnly className={readOnlyClass} style={{ fontSize: '14px' }} />
-                </div>
-                <div className="flex items-end">
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, desconto_percentual: 10, valor_final: Number((Number(form.valor_base || 0) * 0.9).toFixed(2)) })}
-                    disabled={!canUpdate}
-                    className="w-full px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 disabled:opacity-50"
-                    style={{ fontSize: '13px', fontWeight: 500 }}
-                  >
-                    Aplicar 10% Médico
-                  </button>
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300" style={{ fontSize: '13px' }}>
-                    <input type="checkbox" checked={!!form.fatura_emitida} onChange={(e) => setForm({ ...form, fatura_emitida: e.target.checked, fatura_data_emissao: e.target.checked && !form.fatura_data_emissao ? todayLocal() : form.fatura_data_emissao })} disabled={!canUpdate} />
-                    Fatura emitida
-                  </label>
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Nº Fatura</label>
-                  <input type="text" value={form.fatura_numero || ''} onChange={(e) => setForm({ ...form, fatura_numero: e.target.value })} className={inputClass} style={{ fontSize: '14px' }} disabled={!canUpdate} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Data Emissão</label>
-                  <input type="date" value={form.fatura_data_emissao || ''} onChange={(e) => setForm({ ...form, fatura_data_emissao: e.target.value, fatura_emitida: !!e.target.value || form.fatura_emitida })} className={inputClass} style={{ fontSize: '14px' }} disabled={!canUpdate} />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300" style={{ fontSize: '13px' }}>
-                    <input type="checkbox" checked={!!form.pago} onChange={(e) => setForm({ ...form, pago: e.target.checked, pagamento_data: e.target.checked && !form.pagamento_data ? todayLocal() : form.pagamento_data })} disabled={!canUpdate} />
-                    Pago
-                  </label>
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Data Pagamento</label>
-                  <input type="date" value={form.pagamento_data || ''} onChange={(e) => setForm({ ...form, pagamento_data: e.target.value, pago: e.target.value ? true : form.pago })} className={inputClass} style={{ fontSize: '14px' }} disabled={!canUpdate} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Nº Recibo</label>
-                  <input type="text" value={form.recibo_numero || ''} onChange={(e) => setForm({ ...form, recibo_numero: e.target.value })} className={inputClass} style={{ fontSize: '14px' }} disabled={!canUpdate} />
-                </div>
+              <div className="max-w-3xl">
+                <ProcessFaturacaoFields
+                  value={form}
+                  onChange={(fat) => setForm({ ...form, ...fat })}
+                  canUpdate={canUpdate}
+                />
               </div>
             </Section>
           )}

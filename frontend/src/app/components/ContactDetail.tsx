@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Edit, Trash2, Phone, MapPin, User, FileText, Baby, Syringe, Receipt, StickyNote, Paperclip, Plus, Download } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Phone, MapPin, User, FileText, Baby, Syringe, Receipt, StickyNote, Paperclip, Plus, Download, Ban } from 'lucide-react';
 import { toast } from 'sonner';
-import { Contact, Anexo } from '../data/types';
+import { Contact, Anexo, Processo } from '../data/types';
 import { useData } from '../context/DataContext';
-import { CONTACTO_PIPELINE_LABEL, getContactoPipelineEstado, isProcessoLaboratorio } from '../../lib/contactos';
+import { CONTACTO_PIPELINE_LABEL, getContactoPipelineEstado, isContactoCancelado, isProcessoLaboratorio } from '../../lib/contactos';
 import { formatCalendarDatePt } from '../../lib/dates';
+import { extractFaturacaoFromContact, resolveFaturacao } from '../../lib/faturacao';
 import { calcularDataPartoPrevista, calcularGestacaoAtual, formatDataPartoPt } from '../../lib/gestacao';
+import { resolveTesteSelecionavelLabel } from '../../lib/testes';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { ProcessFaturacaoView } from './shared/ProcessFaturacaoFields';
+import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
 
 interface ContactDetailProps {
   contact: Contact;
@@ -52,13 +57,17 @@ const TABS: { id: TabId; label: string; icon: typeof User }[] = [
 ];
 
 const formatDate = (value?: string) => formatCalendarDatePt(value);
-const formatMoney = (value?: number) => `${Number(value || 0).toFixed(2)} €`;
 
 export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = true, canDelete = true }: ContactDetailProps) {
-  const { processos, testes, postos, getAnexosByPaciente, addAnexo, deleteAnexo } = useData();
+  const { processos, testes, postos, motivosAnulacao, getAnexosByPaciente, addAnexo, deleteAnexo } = useData();
+  const { t } = useLanguage();
   const [tab, setTab] = useState<TabId>('identificacao');
   const contactProcessos = processos.filter((p) => p.paciente_id === contact.id && isProcessoLaboratorio(p.estado));
-  const testeNome = testes.find((t) => t.id === contact.teste_id)?.nome || '';
+  const faturacao = resolveFaturacao(contact, contactProcessos[0]);
+  const motivoAnulacaoNome = contact.motivo_anulacao_id
+    ? motivosAnulacao.find((m) => m.id === contact.motivo_anulacao_id)?.nome || ''
+    : '';
+  const testeNome = resolveTesteSelecionavelLabel(testes, contact.teste_id);
   const postoNome = postos.find((p) => p.id === contact.posto_colheita_id)?.nome || '';
 
   return (
@@ -121,10 +130,29 @@ export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = t
       </div>
 
       <div className="p-4 md:p-6">
-        {tab === 'identificacao' && <IdentificacaoTab contact={contact} />}
+        <div className="max-w-3xl mb-4">
+          {isContactoCancelado(contact) ? (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200">
+              <Ban className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 600 }}>{t('pages.contacts.form.voidedBanner')}</p>
+                <p className="mt-0.5 opacity-90" style={{ fontSize: '13px' }}>
+                  {motivoAnulacaoNome
+                    ? `${t('pages.contacts.form.voidReason')}: ${motivoAnulacaoNome}`
+                    : t('pages.contacts.form.voidedBannerDetail')}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <FaturacaoAlertBanner value={faturacao} context="contacto" onGoToFaturacao={() => setTab('faturacao')} />
+          )}
+        </div>
+        {tab === 'identificacao' && (
+          <IdentificacaoTab contact={contact} motivoAnulacaoNome={motivoAnulacaoNome} />
+        )}
         {tab === 'gravidez' && <GravidezTab contact={contact} testeNome={testeNome} processos={contactProcessos} />}
         {tab === 'colheita' && <ColheitaTab contact={contact} postoNome={postoNome} processos={contactProcessos} estadoBadge={estadoBadge} />}
-        {tab === 'faturacao' && <FaturacaoTab processos={contactProcessos} />}
+        {tab === 'faturacao' && <FaturacaoTab faturacao={faturacao} />}
         {tab === 'notas' && <NotasTab contact={contact} processos={contactProcessos} />}
         {tab === 'anexos' && (
           <AnexosTab
@@ -162,7 +190,8 @@ export function InfoField({ label, value, mono }: { label: string; value: string
   );
 }
 
-function IdentificacaoTab({ contact }: { contact: Contact }) {
+function IdentificacaoTab({ contact, motivoAnulacaoNome }: { contact: Contact; motivoAnulacaoNome: string }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-4 max-w-3xl">
       <Section title="Informação Pessoal" icon={User}>
@@ -191,11 +220,23 @@ function IdentificacaoTab({ contact }: { contact: Contact }) {
           <InfoField label="País" value={contact.pais} />
         </div>
       </Section>
+      {isContactoCancelado(contact) && (
+        <Section title={t('pages.contacts.form.voided')} icon={Ban}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InfoField label={t('pages.contacts.form.voided')} value="Sim" />
+            <InfoField label={t('pages.contacts.form.voidReason')} value={motivoAnulacaoNome} />
+            {contact.data_anulacao && (
+              <InfoField label="Data de anulação" value={formatDate(contact.data_anulacao)} />
+            )}
+          </div>
+        </Section>
+      )}
     </div>
   );
 }
 
 function GravidezTab({ contact, testeNome, processos }: { contact: Contact; testeNome: string; processos: { id: string; numero: string; teste: string; data_colheita?: string }[] }) {
+  const { t } = useLanguage();
   const hasContactData = !!(
     contact.medico_id || contact.teste_id || contact.onde_seguida
     || contact.gestacao_semanas_registo != null || contact.gestacao_dias_registo != null
@@ -220,7 +261,7 @@ function GravidezTab({ contact, testeNome, processos }: { contact: Contact; test
     <Section title="Gravidez" icon={Baby}>
       {hasContactData ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-          <InfoField label="Teste" value={testeNome} />
+          <InfoField label={t('pages.contacts.form.pack')} value={testeNome} />
           <InfoField label="Tipo de gravidez" value={contact.tipo_gravidez === 'gemelar' ? 'Gemelar' : contact.tipo_gravidez === 'singular' ? 'Singular' : ''} />
           <InfoField label="Onde é seguida" value={contact.onde_seguida || ''} />
           {contact.gestacao_semanas_registo != null && (
@@ -288,30 +329,10 @@ function ColheitaTab({ contact, postoNome, processos, estadoBadge }: { contact: 
   );
 }
 
-function FaturacaoTab({ processos }: { processos: { id: string; numero: string; valor_final?: number; fatura_emitida?: boolean; fatura_numero?: string; pagamento_data?: string }[] }) {
+function FaturacaoTab({ faturacao }: { faturacao: ReturnType<typeof extractFaturacaoFromContact> }) {
   return (
     <Section title="Faturação" icon={Receipt}>
-      {processos.length === 0 ? (
-        <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '13px' }}>Sem faturação associada.</p>
-      ) : (
-        <div className="space-y-2">
-          {processos.map((p) => {
-            const estado = p.pagamento_data ? 'Pago' : (p.fatura_emitida ? 'Fatura emitida' : 'Sem fatura');
-            const cls = p.pagamento_data
-              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-              : (p.fatura_emitida ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400');
-            return (
-              <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <div>
-                  <div className="text-gray-900 dark:text-gray-100" style={{ fontSize: '13px', fontWeight: 500 }}>{p.numero}</div>
-                  <div className="text-gray-400 dark:text-gray-500" style={{ fontSize: '12px' }}>{formatMoney(p.valor_final)}{p.fatura_numero ? ` · Fatura ${p.fatura_numero}` : ''}</div>
-                </div>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{estado}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <ProcessFaturacaoView value={faturacao} />
     </Section>
   );
 }

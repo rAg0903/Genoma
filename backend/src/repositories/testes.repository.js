@@ -1,5 +1,29 @@
 const pool = require('../config/database');
 
+exports.findAllPrincipais = async () => {
+    const connection = await pool.getConnection();
+    try {
+        const [parents] = await connection.execute(
+            'SELECT * FROM testes WHERE teste_pai_id IS NULL ORDER BY nome ASC',
+        );
+        const [children] = await connection.execute(
+            'SELECT * FROM testes WHERE teste_pai_id IS NOT NULL ORDER BY nome ASC',
+        );
+        const byParent = new Map();
+        for (const row of children) {
+            const list = byParent.get(row.teste_pai_id) || [];
+            list.push(row);
+            byParent.set(row.teste_pai_id, list);
+        }
+        return parents.map((parent) => ({
+            ...parent,
+            sub_testes: byParent.get(parent.id) || [],
+        }));
+    } finally {
+        connection.release();
+    }
+};
+
 exports.findAll = async () => {
     const connection = await pool.getConnection();
     try {
@@ -20,10 +44,35 @@ exports.findById = async (id) => {
     }
 };
 
-exports.findByNome = async (nome) => {
+exports.findSubTestesByPaiId = async (paiId) => {
     const connection = await pool.getConnection();
     try {
-        const [rows] = await connection.execute('SELECT * FROM testes WHERE nome = ?', [nome]);
+        const [rows] = await connection.execute(
+            'SELECT * FROM testes WHERE teste_pai_id = ? ORDER BY nome ASC',
+            [paiId],
+        );
+        return rows;
+    } finally {
+        connection.release();
+    }
+};
+
+exports.findByNome = async (nome, { testePaiId = undefined, excludeId = null } = {}) => {
+    const connection = await pool.getConnection();
+    try {
+        let sql = 'SELECT * FROM testes WHERE nome = ?';
+        const params = [nome];
+        if (testePaiId === null) {
+            sql += ' AND teste_pai_id IS NULL';
+        } else if (testePaiId !== undefined) {
+            sql += ' AND teste_pai_id = ?';
+            params.push(testePaiId);
+        }
+        if (excludeId) {
+            sql += ' AND id != ?';
+            params.push(excludeId);
+        }
+        const [rows] = await connection.execute(sql, params);
         return rows[0] || null;
     } finally {
         connection.release();
@@ -34,7 +83,7 @@ const META_COLUMNS = [
     'codigo', 'preco_compra', 'preco_venda', 'tempo_resposta_dias', 'gestacao_minima_semanas',
     'tipo_teste', 'empresa', 'tipo_kit', 'cromossomas',
     'delecoes_duplicacoes', 'microdelecoes_microduplicacoes', 'gemeos', 'incluir_fracao_fetal',
-    'laboratorio_processamento_id', 'determinacao_sexo_fetal',
+    'laboratorio_processamento_id', 'determinacao_sexo_fetal', 'teste_pai_id',
 ];
 
 exports.create = async (data) => {
@@ -108,6 +157,19 @@ exports.delete = async (id) => {
     try {
         const result = await connection.execute('DELETE FROM testes WHERE id = ?', [id]);
         return result[0].affectedRows > 0;
+    } finally {
+        connection.release();
+    }
+};
+
+exports.countSubTestes = async (testeId) => {
+    const connection = await pool.getConnection();
+    try {
+        const [rows] = await connection.execute(
+            'SELECT COUNT(*) as count FROM testes WHERE teste_pai_id = ?',
+            [testeId],
+        );
+        return rows[0].count;
     } finally {
         connection.release();
     }

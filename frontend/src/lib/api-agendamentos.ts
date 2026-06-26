@@ -57,6 +57,18 @@ export const agendamentosApi = {
 
   // Dados de referencia para o formulario
   medicos: () => apiRequest<{ data: { utilizador_id: string; nome: string }[] }>(`/medicos`, { token: t() }).then((r) => r.data || []),
-  testes: () => apiRequest<{ data: { id: string; nome: string }[] }>(`/testes`, { token: t() }).then((r) => r.data || []),
+  testes: () => apiRequest<{ data: { id: string; nome: string; sub_testes?: { id: string; nome: string }[] }[] }>(`/testes`, { token: t() }).then((r) => {
+    const flat: { id: string; nome: string }[] = [];
+    for (const t of r.data || []) {
+      if (t.sub_testes?.length) {
+        for (const st of t.sub_testes) {
+          flat.push({ id: st.id, nome: `${t.nome} — ${st.nome}` });
+        }
+      } else {
+        flat.push({ id: t.id, nome: t.nome });
+      }
+    }
+    return flat.sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+  }),
   empresas: () => apiRequest<{ data: { id: string; nome?: string; tipo_empresa?: string | null }[] }>(`/empresas`, { token: t() }).then((r) => r.data || []),
 };

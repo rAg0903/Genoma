@@ -12,6 +12,34 @@ export const PROCESS_PIPELINE_ESTADOS: EstadoProcesso[] = [
   'Faturado',
 ];
 
+/** Colunas do kanban — agrupa estados equivalentes numa unica etapa visual. */
+export const PROCESS_PIPELINE_COLUMNS: {
+  key: string;
+  label: string;
+  estados: EstadoProcesso[];
+}[] = [
+  { key: 'Colheita Realizada', label: 'Colheita Realizada', estados: ['Colheita Realizada'] },
+  {
+    key: 'lab_analise',
+    label: 'Enviado ao Laboratório p/ Análise',
+    estados: ['Enviado Laboratorio', 'Em Analise'],
+  },
+  { key: 'Resultado Disponivel', label: 'Resultado Disponivel', estados: ['Resultado Disponivel'] },
+  { key: 'Validado', label: 'Validado', estados: ['Validado'] },
+  { key: 'Faturado', label: 'Faturado', estados: ['Faturado'] },
+];
+
+/** Filtros/chips da pagina Processos (estados agrupados). */
+export const PROCESSOS_PAGE_ESTADOS: { key: string; estados: EstadoProcesso[] }[] = [
+  ...PROCESS_PIPELINE_COLUMNS.map((c) => ({ key: c.key, estados: c.estados })),
+  { key: 'Cancelado', estados: ['Cancelado'] },
+];
+
+export const processoMatchesEstadoFilter = (estado: EstadoProcesso, filterKey: string): boolean => {
+  const entry = PROCESSOS_PAGE_ESTADOS.find((e) => e.key === filterKey);
+  return entry ? entry.estados.includes(estado) : estado === filterKey;
+};
+
 /** Pipeline completo (inclui fases de contacto, para transicoes legacy). */
 export const PIPELINE_ESTADOS: EstadoProcesso[] = [
   'Agendado',
@@ -21,14 +49,17 @@ export const PIPELINE_ESTADOS: EstadoProcesso[] = [
 
 export const TODOS_ESTADOS: EstadoProcesso[] = [...PIPELINE_ESTADOS, 'Cancelado'];
 
-export const PROCESSOS_PAGE_ESTADOS: EstadoProcesso[] = [...PROCESS_PIPELINE_ESTADOS, 'Cancelado'];
+export const PROCESSOS_PAGE_ESTADOS_LEGACY: EstadoProcesso[] = [...PROCESS_PIPELINE_ESTADOS, 'Cancelado'];
+
+/** @deprecated Use PROCESSOS_PAGE_ESTADOS com chaves agrupadas. */
+export const PROCESSOS_PAGE_ESTADO_KEYS = PROCESSOS_PAGE_ESTADOS.map((e) => e.key);
 
 /** Espelha TRANSICOES_VALIDAS do backend (processos.service.js). */
 export const TRANSICOES_VALIDAS: Record<EstadoProcesso, EstadoProcesso[]> = {
   Agendado: ['Kit Reservado', 'Cancelado'],
   'Kit Reservado': ['Colheita Realizada', 'Agendado', 'Cancelado'],
-  'Colheita Realizada': ['Enviado Laboratorio', 'Cancelado'],
-  'Enviado Laboratorio': ['Em Analise', 'Cancelado'],
+  'Colheita Realizada': ['Em Analise', 'Cancelado'],
+  'Enviado Laboratorio': ['Resultado Disponivel', 'Cancelado'],
   'Em Analise': ['Resultado Disponivel', 'Cancelado'],
   'Resultado Disponivel': ['Validado', 'Cancelado'],
   Validado: ['Faturado', 'Cancelado'],
@@ -45,8 +76,8 @@ export const ESTADO_LABEL: Record<EstadoProcesso, string> = {
   Agendado: 'Agendado',
   'Kit Reservado': 'Kit Reservado',
   'Colheita Realizada': 'Colheita Realizada',
-  'Enviado Laboratorio': 'Enviado ao Laboratorio',
-  'Em Analise': 'Em Analise',
+  'Enviado Laboratorio': 'Enviado ao Laboratório p/ Análise',
+  'Em Analise': 'Enviado ao Laboratório p/ Análise',
   'Resultado Disponivel': 'Resultado Disponivel',
   Validado: 'Validado',
   Faturado: 'Faturado',
@@ -57,8 +88,7 @@ export const ESTADO_LABEL: Record<EstadoProcesso, string> = {
 export const ACAO_LABEL: Partial<Record<EstadoProcesso, string>> = {
   'Kit Reservado': 'Reservar kit',
   'Colheita Realizada': 'Registar colheita',
-  'Enviado Laboratorio': 'Enviar ao laboratorio',
-  'Em Analise': 'Iniciar analise',
+  'Em Analise': 'Enviar ao laboratório para análise',
   'Resultado Disponivel': 'Registar resultado',
   Validado: 'Validar',
   Faturado: 'Emitir fatura',

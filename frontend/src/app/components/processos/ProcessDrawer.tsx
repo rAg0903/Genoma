@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
-  Edit, Trash2, FileText, Send, CheckCircle2, ExternalLink, Loader2, Wallet,
+  Edit, Trash2, FileText, Send, CheckCircle2, ExternalLink, Loader2, Wallet, Eye, ChevronRight,
 } from 'lucide-react';
 import { Processo } from '../../data/types';
 import { DetailDrawer, DrawerTab } from '../shared/DetailDrawer';
@@ -23,6 +23,7 @@ interface ProcessDrawerProps {
   processo: Processo | null;
   open: boolean;
   onClose: () => void;
+  onView: (p: Processo) => void;
   onEdit: (p: Processo) => void;
   onDelete: (p: Processo) => void;
   onUpdateEstado: (p: Processo, destino: EstadoProcesso) => Promise<void> | void;
@@ -67,7 +68,7 @@ function buildTimeline(p: Processo): TimelineStep[] {
 }
 
 export function ProcessDrawer({
-  processo, open, onClose, onEdit, onDelete, onUpdateEstado, onChanged, canUpdate, canDelete, renderTrace,
+  processo, open, onClose, onView, onEdit, onDelete, onUpdateEstado, onChanged, canUpdate, canDelete, renderTrace,
 }: ProcessDrawerProps) {
   const [tab, setTab] = useState<TabId>('resumo');
 
@@ -101,7 +102,7 @@ export function ProcessDrawer({
       activeTab={tab}
       onTabChange={setTab}
     >
-      {tab === 'resumo' && <ResumoTab processo={processo} onUpdateEstado={onUpdateEstado} canUpdate={canUpdate} />}
+      {tab === 'resumo' && <ResumoTab processo={processo} onView={onView} onUpdateEstado={onUpdateEstado} canUpdate={canUpdate} />}
       {tab === 'workflow' && <WorkflowTab processo={processo} onUpdateEstado={onUpdateEstado} canUpdate={canUpdate} />}
       {tab === 'resultado' && <ProcessResultadoTab processo={processo} canUpdate={canUpdate} onChanged={onChanged} />}
       {tab === 'relatorio' && <RelatorioTab processo={processo} canUpdate={canUpdate} onChanged={onChanged} />}
@@ -112,34 +113,44 @@ export function ProcessDrawer({
   );
 }
 
-function ResumoTab({ processo, onUpdateEstado, canUpdate }: { processo: Processo; onUpdateEstado: ProcessDrawerProps['onUpdateEstado']; canUpdate: boolean }) {
+function ResumoTab({
+  processo, onView, onUpdateEstado, canUpdate,
+}: {
+  processo: Processo;
+  onView: ProcessDrawerProps['onView'];
+  onUpdateEstado: ProcessDrawerProps['onUpdateEstado'];
+  canUpdate: boolean;
+}) {
   return (
     <div className="space-y-5">
-      {canUpdate && (
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-4 py-3">
-          <div>
-            <div className="text-xs text-slate-400">Estado atual</div>
-            <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{ESTADO_LABEL[processo.estado]}</div>
-          </div>
-          <StateTransitionMenu estado={processo.estado} onTransition={(d) => onUpdateEstado(processo, d)} />
-        </div>
-      )}
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Paciente" value={processo.paciente_nome} />
-        <Field label="Medico" value={processo.medico} />
-        <Field label="Posto" value={processo.posto} />
-        <Field label="Teste" value={processo.teste} />
-        <Field label="Kit" value={<span className="font-mono">{processo.kit_codigo || '—'}</span>} />
-        <Field label="Data de entrada" value={fmt(processo.data_entrada)} />
-        <Field label="Data de colheita" value={fmt(processo.data_colheita)} />
-        <Field label="Responsavel" value={processo.responsavel_fluxo} />
-      </div>
-      {processo.observacoes && (
+      <div className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 px-4 py-3">
         <div>
-          <div className="text-[11px] uppercase tracking-wide text-slate-400 mb-1">Observacoes</div>
-          <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/40 rounded-lg p-3">{processo.observacoes}</p>
+          <div className="text-xs text-slate-400">Estado atual</div>
+          <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{ESTADO_LABEL[processo.estado]}</div>
         </div>
-      )}
+        {canUpdate && (
+          <StateTransitionMenu estado={processo.estado} onTransition={(d) => onUpdateEstado(processo, d)} />
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onView(processo)}
+        className="w-full flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-4 text-left hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-sm transition group"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0 group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition">
+            <Eye className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Ver ficha do processo</div>
+            <div className="text-xs text-slate-400 mt-0.5 truncate">
+              {processo.paciente_nome} · {processo.teste}
+            </div>
+          </div>
+        </div>
+        <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600 group-hover:text-teal-500 flex-shrink-0 transition" />
+      </button>
     </div>
   );
 }

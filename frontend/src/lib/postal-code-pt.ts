@@ -96,11 +96,10 @@ export function mergePostalLookup<T extends PostalAddressFields>(
   options: PostalAutofillOptions = DEFAULT_AUTOFILL_OPTIONS,
 ): T {
   const opts = { ...DEFAULT_AUTOFILL_OPTIONS, ...options };
-  const hasValue = (value?: string) => Boolean(String(value ?? '').trim());
   const patch: PostalAddressFields = { codigo_postal: lookup.codigo_postal };
-  if (opts.fillPais) patch.pais = hasValue(prev.pais) ? prev.pais : (lookup.pais || 'Portugal');
-  if (opts.fillDistrito) patch.distrito = hasValue(prev.distrito) ? prev.distrito : lookup.distrito;
-  if (opts.fillCidade) patch.cidade = hasValue(prev.cidade) ? prev.cidade : lookup.cidade;
+  if (opts.fillPais) patch.pais = lookup.pais || 'Portugal';
+  if (opts.fillDistrito) patch.distrito = lookup.distrito;
+  if (opts.fillCidade) patch.cidade = lookup.cidade;
   return { ...prev, ...patch };
 }
 
@@ -121,7 +120,17 @@ export function createPostalCodeAutofillHandlers<T extends PostalAddressFields>(
   };
 
   const handleCodigoPostalChange = (value: string) => {
-    setForm((prev) => ({ ...prev, codigo_postal: value }));
+    setForm((prev) => {
+      const oldNorm = normalizePortuguesePostalCode(prev.codigo_postal || '');
+      const newNorm = normalizePortuguesePostalCode(value);
+      const next = { ...prev, codigo_postal: value } as T;
+      if (newNorm && newNorm !== oldNorm) {
+        const opts = { ...DEFAULT_AUTOFILL_OPTIONS, ...options };
+        if (opts.fillCidade) next.cidade = '';
+        if (opts.fillDistrito) next.distrito = '';
+      }
+      return next;
+    });
     void autofillFromCp(value);
   };
 

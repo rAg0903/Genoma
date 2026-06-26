@@ -30,6 +30,11 @@ exports.getFaturacao = async (processoId, user) => {
     pagamento_data: processo.pagamento_data || null,
     recibo_numero: processo.recibo_numero || '',
     pago: !!processo.pago || !!processo.pagamento_data,
+    entidade_multibanco: processo.entidade_multibanco || '',
+    referencia_multibanco: processo.referencia_multibanco || '',
+    nao_gera_comissao: !!processo.nao_gera_comissao,
+    fatura_envio_email: processo.fatura_envio_email || null,
+    fatura_envio_sms: processo.fatura_envio_sms || null,
     registos,
   };
 };

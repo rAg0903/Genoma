@@ -22,15 +22,16 @@ exports.create = async (data, user) => {
         throw new Error('Nome do paciente é obrigatório');
     }
 
-    if (!data.data_nascimento) {
-        throw new Error('Data de nascimento é obrigatória');
+    if (!data.telemovel || !String(data.telemovel).trim()) {
+        throw new Error('Telemóvel é obrigatório');
     }
 
-    // Validar data de nascimento
-    const dataNasc = new Date(data.data_nascimento);
-    const hoje = new Date();
-    if (dataNasc >= hoje) {
-        throw new Error('Data de nascimento inválida');
+    if (data.data_nascimento) {
+        const dataNasc = new Date(data.data_nascimento);
+        const hoje = new Date();
+        if (dataNasc >= hoje) {
+            throw new Error('Data de nascimento inválida');
+        }
     }
 
     // Validar NIF se fornecido
@@ -60,7 +61,7 @@ exports.create = async (data, user) => {
 
     const paciente = await pacientesRepository.create({
         nome: data.nome.trim(),
-        data_nascimento: data.data_nascimento,
+        data_nascimento: data.data_nascimento || null,
         genero: data.genero || null,
         nif: data.nif ? data.nif.trim() : null,
         telemovel: data.telemovel ? data.telemovel.trim() : null,
@@ -116,7 +117,13 @@ exports.update = async (id, data, user) => {
         }
     }
 
-    if (data.data_nascimento !== undefined) {
+    if (data.telemovel !== undefined) {
+        if (!data.telemovel || !String(data.telemovel).trim()) {
+            throw new Error('Telemóvel é obrigatório');
+        }
+    }
+
+    if (data.data_nascimento !== undefined && data.data_nascimento) {
         const dataNasc = new Date(data.data_nascimento);
         const hoje = new Date();
         if (dataNasc >= hoje) {
@@ -151,7 +158,7 @@ exports.update = async (id, data, user) => {
 
     const updateData = {};
     if (data.nome !== undefined) updateData.nome = data.nome.trim();
-    if (data.data_nascimento !== undefined) updateData.data_nascimento = data.data_nascimento;
+    if (data.data_nascimento !== undefined) updateData.data_nascimento = data.data_nascimento || null;
     if (data.genero !== undefined) updateData.genero = data.genero;
     if (data.nif !== undefined) updateData.nif = data.nif ? data.nif.trim() : null;
     if (data.telemovel !== undefined) updateData.telemovel = data.telemovel ? data.telemovel.trim() : null;
@@ -174,6 +181,36 @@ exports.update = async (id, data, user) => {
     if (data.data_colheita_prevista !== undefined) updateData.data_colheita_prevista = data.data_colheita_prevista || null;
     if (data.notas_internas !== undefined) updateData.notas_internas = data.notas_internas ? String(data.notas_internas).trim() : null;
     if (data.estado_agendamento !== undefined) updateData.estado_agendamento = normalizeEstadoAgendamento(data.estado_agendamento);
+
+    if (data.estado_contacto !== undefined) {
+        if (data.estado_contacto !== null && data.estado_contacto !== 'Cancelado') {
+            throw new Error('Estado de contacto inválido');
+        }
+        updateData.estado_contacto = data.estado_contacto;
+        if (data.estado_contacto === null) {
+            updateData.motivo_anulacao_id = null;
+            updateData.data_anulacao = null;
+        } else if (data.data_anulacao === undefined && !paciente.data_anulacao) {
+            updateData.data_anulacao = new Date().toISOString().slice(0, 10);
+        }
+    }
+    if (data.motivo_anulacao_id !== undefined) updateData.motivo_anulacao_id = data.motivo_anulacao_id || null;
+    if (data.data_anulacao !== undefined) updateData.data_anulacao = data.data_anulacao || null;
+
+    const estadoResultante = data.estado_contacto !== undefined ? data.estado_contacto : paciente.estado_contacto;
+    const motivoResultante = data.motivo_anulacao_id !== undefined ? data.motivo_anulacao_id : paciente.motivo_anulacao_id;
+    if (estadoResultante === 'Cancelado' && !motivoResultante) {
+        throw new Error('Motivo de anulação é obrigatório quando o contacto está anulado');
+    }
+
+    const passthrough = [
+        'fatura_emitida', 'fatura_numero', 'fatura_data_emissao', 'valor_base', 'desconto_percentual',
+        'valor_final', 'pagamento_data', 'recibo_numero', 'pago', 'entidade_multibanco', 'referencia_multibanco',
+        'nao_gera_comissao', 'fatura_envio_email', 'fatura_envio_sms',
+    ];
+    for (const key of passthrough) {
+        if (data[key] !== undefined) updateData[key] = data[key];
+    }
 
     await pacientesRepository.update(id, updateData);
 

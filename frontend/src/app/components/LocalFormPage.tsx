@@ -15,6 +15,7 @@ import {
 } from '../data/types';
 import { Section } from './ContactDetail';
 import { LaboratorioPostosPanel } from './LaboratorioPostosPanel';
+import { getTestesSelecionaveis } from '../../lib/testes';
 
 export type LocalKind = 'posto' | 'laboratorio' | 'entidade';
 
@@ -202,7 +203,7 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
   );
 
   const testesAtivos = useMemo(
-    () => [...testes.filter((t) => t.ativo !== false)].sort((a, b) => a.nome.localeCompare(b.nome, 'pt')),
+    () => [...getTestesSelecionaveis(testes)].sort((a, b) => a.nome.localeCompare(b.nome, 'pt')),
     [testes],
   );
 

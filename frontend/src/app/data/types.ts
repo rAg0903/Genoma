@@ -26,9 +26,25 @@ export interface Contact {
   data_colheita_prevista?: string;
   notas_internas?: string;
   estado_agendamento?: EstadoContactoAgendamento | null;
-  /** Reservado para cancelamento futuro (apenas visual por agora). */
+  /** Cancelado quando anulado pelo utilizador. */
   estado_contacto?: 'Cancelado' | null;
+  motivo_anulacao_id?: string | null;
+  data_anulacao?: string | null;
   created_at: string;
+  fatura_emitida?: boolean;
+  fatura_numero?: string;
+  fatura_data_emissao?: string;
+  valor_base?: number;
+  desconto_percentual?: number;
+  valor_final?: number;
+  pagamento_data?: string;
+  recibo_numero?: string;
+  pago?: boolean;
+  entidade_multibanco?: string;
+  referencia_multibanco?: string;
+  nao_gera_comissao?: boolean;
+  fatura_envio_email?: string;
+  fatura_envio_sms?: string;
 }
 
 export interface Anexo {
@@ -48,6 +64,7 @@ export interface Processo {
   paciente_id: string;
   paciente_nome: string;
   medico: string;
+  medico_id?: string;
   posto: string;
   kit_codigo: string;
   estado: 'Agendado' | 'Kit Reservado' | 'Colheita Realizada' | 'Enviado Laboratorio' | 'Em Analise' | 'Resultado Disponivel' | 'Validado' | 'Faturado' | 'Cancelado';
@@ -59,6 +76,9 @@ export interface Processo {
   data_validacao?: string;
   data_envio_relatorio?: string;
   teste: string;
+  teste_id?: string;
+  teste_pai_nome?: string;
+  sub_teste_nome?: string;
   observacoes?: string;
   responsavel_fluxo?: string;
   relatorio_validado?: boolean;
@@ -75,6 +95,11 @@ export interface Processo {
   pagamento_data?: string;
   recibo_numero?: string;
   pago?: boolean;
+  entidade_multibanco?: string;
+  referencia_multibanco?: string;
+  nao_gera_comissao?: boolean;
+  fatura_envio_email?: string;
+  fatura_envio_sms?: string;
   /** Snapshot do contacto no momento da conversão */
   onde_seguida?: string;
   tipo_gravidez?: 'singular' | 'gemelar' | null;
@@ -180,6 +205,24 @@ export interface Empresa {
   ativo?: boolean;
 }
 
+export interface SubTeste {
+  id: string;
+  teste_pai_id: string;
+  nome: string;
+  descricao: string;
+  preco: number;
+  codigo: string;
+  preco_compra?: number;
+  preco_venda?: number;
+  cromossomas?: number[];
+  delecoes_duplicacoes?: boolean;
+  microdelecoes_microduplicacoes?: boolean;
+  gemeos?: boolean;
+  determinacao_sexo_fetal?: boolean;
+  incluir_fracao_fetal?: boolean;
+  ativo?: boolean;
+}
+
 export interface Teste {
   id: string;
   nome: string;
@@ -200,6 +243,9 @@ export interface Teste {
   gemeos?: boolean;
   determinacao_sexo_fetal?: boolean;
   incluir_fracao_fetal?: boolean;
+  teste_pai_id?: string | null;
+  sub_testes?: SubTeste[];
+  ativo?: boolean;
 }
 
 export interface ItemPesquisa {

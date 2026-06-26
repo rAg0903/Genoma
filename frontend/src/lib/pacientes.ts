@@ -27,7 +27,24 @@ export interface ApiPaciente {
   data_colheita_prevista?: string | null;
   notas_internas?: string | null;
   estado_agendamento?: 'Agendado' | 'Kit Reservado' | null;
+  estado_contacto?: 'Cancelado' | null;
+  motivo_anulacao_id?: string | null;
+  data_anulacao?: string | null;
   created_at: string;
+  fatura_emitida?: boolean;
+  fatura_numero?: string | null;
+  fatura_data_emissao?: string | null;
+  valor_base?: number | null;
+  desconto_percentual?: number | null;
+  valor_final?: number | null;
+  pagamento_data?: string | null;
+  recibo_numero?: string | null;
+  pago?: boolean | null;
+  entidade_multibanco?: string | null;
+  referencia_multibanco?: string | null;
+  nao_gera_comissao?: boolean | null;
+  fatura_envio_email?: string | null;
+  fatura_envio_sms?: string | null;
 }
 
 export const mapGeneroFromApi = (genero: string | null | undefined): string => {
@@ -68,7 +85,24 @@ export const mapApiPacienteToContact = (paciente: ApiPaciente): Contact => ({
   data_colheita_prevista: normalizeCalendarDate(paciente.data_colheita_prevista) || undefined,
   notas_internas: paciente.notas_internas || undefined,
   estado_agendamento: paciente.estado_agendamento || null,
+  estado_contacto: paciente.estado_contacto === 'Cancelado' ? 'Cancelado' : null,
+  motivo_anulacao_id: paciente.motivo_anulacao_id || undefined,
+  data_anulacao: normalizeCalendarDate(paciente.data_anulacao) || undefined,
   created_at: paciente.created_at,
+  fatura_emitida: paciente.fatura_emitida || false,
+  fatura_numero: paciente.fatura_numero || undefined,
+  fatura_data_emissao: normalizeCalendarDate(paciente.fatura_data_emissao) || undefined,
+  valor_base: paciente.valor_base != null ? Number(paciente.valor_base) : undefined,
+  desconto_percentual: paciente.desconto_percentual != null ? Number(paciente.desconto_percentual) : undefined,
+  valor_final: paciente.valor_final != null ? Number(paciente.valor_final) : undefined,
+  pagamento_data: normalizeCalendarDate(paciente.pagamento_data) || undefined,
+  recibo_numero: paciente.recibo_numero || undefined,
+  pago: paciente.pago || false,
+  entidade_multibanco: paciente.entidade_multibanco || undefined,
+  referencia_multibanco: paciente.referencia_multibanco || undefined,
+  nao_gera_comissao: paciente.nao_gera_comissao || false,
+  fatura_envio_email: normalizeCalendarDate(paciente.fatura_envio_email) || undefined,
+  fatura_envio_sms: normalizeCalendarDate(paciente.fatura_envio_sms) || undefined,
 });
 
 export const contactToApiBody = (data: Omit<Contact, 'id' | 'created_at'>) => ({
@@ -96,4 +130,21 @@ export const contactToApiBody = (data: Omit<Contact, 'id' | 'created_at'>) => ({
   data_colheita_prevista: data.data_colheita_prevista || null,
   notas_internas: data.notas_internas || null,
   estado_agendamento: data.estado_agendamento || null,
+  estado_contacto: data.estado_contacto || null,
+  motivo_anulacao_id: data.motivo_anulacao_id || null,
+  data_anulacao: data.data_anulacao || null,
+  fatura_emitida: data.fatura_emitida ?? false,
+  fatura_numero: data.fatura_numero || null,
+  fatura_data_emissao: data.fatura_data_emissao || null,
+  valor_base: data.valor_base ?? 0,
+  desconto_percentual: data.desconto_percentual ?? 0,
+  valor_final: data.valor_final ?? 0,
+  pagamento_data: data.pagamento_data || null,
+  recibo_numero: data.recibo_numero || null,
+  pago: data.pago ?? false,
+  entidade_multibanco: data.entidade_multibanco || null,
+  referencia_multibanco: data.referencia_multibanco || null,
+  nao_gera_comissao: data.nao_gera_comissao ?? false,
+  fatura_envio_email: data.fatura_envio_email || null,
+  fatura_envio_sms: data.fatura_envio_sms || null,
 });

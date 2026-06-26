@@ -34,6 +34,11 @@ export const emptyProcessForm = (): ProcessFormData => ({
   pagamento_data: '',
   recibo_numero: '',
   pago: false,
+  entidade_multibanco: '',
+  referencia_multibanco: '',
+  nao_gera_comissao: false,
+  fatura_envio_email: '',
+  fatura_envio_sms: '',
 });
 
 export const processToFormData = (processo: Processo): ProcessFormData => ({
@@ -68,12 +73,76 @@ export const processToFormData = (processo: Processo): ProcessFormData => ({
   pagamento_data: processo.pagamento_data || '',
   recibo_numero: processo.recibo_numero || '',
   pago: processo.pago || false,
+  entidade_multibanco: processo.entidade_multibanco || '',
+  referencia_multibanco: processo.referencia_multibanco || '',
+  nao_gera_comissao: processo.nao_gera_comissao || false,
+  fatura_envio_email: processo.fatura_envio_email || '',
+  fatura_envio_sms: processo.fatura_envio_sms || '',
   onde_seguida: processo.onde_seguida || '',
   tipo_gravidez: processo.tipo_gravidez || null,
   gestacao_semanas_registo: processo.gestacao_semanas_registo ?? null,
   gestacao_dias_registo: processo.gestacao_dias_registo ?? null,
   gestacao_registada_em: processo.gestacao_registada_em || '',
 });
+
+export type ProcessFaturacaoData = Pick<Processo,
+  | 'valor_base' | 'desconto_percentual' | 'valor_final'
+  | 'fatura_numero' | 'fatura_data_emissao' | 'fatura_emitida'
+  | 'entidade_multibanco' | 'referencia_multibanco' | 'nao_gera_comissao'
+  | 'fatura_envio_email' | 'fatura_envio_sms'
+  | 'pago' | 'pagamento_data' | 'recibo_numero'
+>;
+
+export const emptyProcessFaturacao = (): ProcessFaturacaoData => ({
+  valor_base: 0,
+  desconto_percentual: 0,
+  valor_final: 0,
+  fatura_emitida: false,
+  fatura_numero: '',
+  fatura_data_emissao: '',
+  entidade_multibanco: '',
+  referencia_multibanco: '',
+  nao_gera_comissao: false,
+  fatura_envio_email: '',
+  fatura_envio_sms: '',
+  pago: false,
+  pagamento_data: '',
+  recibo_numero: '',
+});
+
+export const extractFaturacaoFromProcesso = (processo: Processo): ProcessFaturacaoData => ({
+  valor_base: processo.valor_base || 0,
+  desconto_percentual: processo.desconto_percentual || 0,
+  valor_final: processo.valor_final || 0,
+  fatura_emitida: processo.fatura_emitida || false,
+  fatura_numero: processo.fatura_numero || '',
+  fatura_data_emissao: processo.fatura_data_emissao || '',
+  entidade_multibanco: processo.entidade_multibanco || '',
+  referencia_multibanco: processo.referencia_multibanco || '',
+  nao_gera_comissao: processo.nao_gera_comissao || false,
+  fatura_envio_email: processo.fatura_envio_email || '',
+  fatura_envio_sms: processo.fatura_envio_sms || '',
+  pago: processo.pago || false,
+  pagamento_data: processo.pagamento_data || '',
+  recibo_numero: processo.recibo_numero || '',
+});
+
+export const buildFaturacaoPayload = (data: ProcessFaturacaoData): Partial<Processo> => ({
+  ...data,
+  valor_final: computeValorFinal(data.valor_base ?? 0, data.desconto_percentual ?? 0),
+  fatura_emitida: !!(data.fatura_numero?.trim() || data.fatura_data_emissao),
+});
+
+export const validateFaturacaoData = (data: ProcessFaturacaoData): string | null => {
+  const faturaEmitida = !!(data.fatura_numero?.trim() || data.fatura_data_emissao);
+  if (faturaEmitida && !data.fatura_data_emissao) {
+    return 'Preencha a data de emissão da fatura.';
+  }
+  if (data.pagamento_data && !data.recibo_numero?.trim()) {
+    return 'Preencha o número de recibo ao marcar a fatura como paga.';
+  }
+  return null;
+};
 
 export const computeValorFinal = (valorBase: number, descontoPercentual: number) =>
   Number((Number(valorBase || 0) * (1 - Number(descontoPercentual || 0) / 100)).toFixed(2));
@@ -110,4 +179,5 @@ export const validateProcessForm = (
 export const buildProcessSubmitPayload = (formData: ProcessFormData): ProcessFormData => ({
   ...formData,
   valor_final: computeValorFinal(formData.valor_base ?? 0, formData.desconto_percentual ?? 0),
+  fatura_emitida: !!(formData.fatura_numero?.trim() || formData.fatura_data_emissao),
 });

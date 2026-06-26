@@ -89,7 +89,7 @@ exports.create = async (data) => {
                  data_colheita_prevista, notas_internas, estado_agendamento)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                id, data.nome, data.data_nascimento, data.genero || null, data.nif || null,
+                id, data.nome, data.data_nascimento || null, data.genero || null, data.nif || null,
                 data.telemovel || null, data.email || null, data.morada || null,
                 data.codigo_postal || null, data.pais || null, data.distrito || null,
                 data.cidade || null, data.altura ?? null, data.peso ?? null,
@@ -212,6 +212,74 @@ exports.update = async (id, data) => {
         if (data.estado_agendamento !== undefined) {
             updates.push('estado_agendamento = ?');
             values.push(data.estado_agendamento);
+        }
+        if (data.fatura_emitida !== undefined) {
+            updates.push('fatura_emitida = ?');
+            values.push(!!data.fatura_emitida);
+        }
+        if (data.fatura_numero !== undefined) {
+            updates.push('fatura_numero = ?');
+            values.push(data.fatura_numero);
+        }
+        if (data.fatura_data_emissao !== undefined) {
+            updates.push('fatura_data_emissao = ?');
+            values.push(data.fatura_data_emissao);
+        }
+        if (data.valor_base !== undefined) {
+            updates.push('valor_base = ?');
+            values.push(data.valor_base);
+        }
+        if (data.desconto_percentual !== undefined) {
+            updates.push('desconto_percentual = ?');
+            values.push(data.desconto_percentual);
+        }
+        if (data.valor_final !== undefined) {
+            updates.push('valor_final = ?');
+            values.push(data.valor_final);
+        }
+        if (data.pagamento_data !== undefined) {
+            updates.push('pagamento_data = ?');
+            values.push(data.pagamento_data);
+        }
+        if (data.recibo_numero !== undefined) {
+            updates.push('recibo_numero = ?');
+            values.push(data.recibo_numero);
+        }
+        if (data.pago !== undefined) {
+            updates.push('pago = ?');
+            values.push(!!data.pago);
+        }
+        if (data.entidade_multibanco !== undefined) {
+            updates.push('entidade_multibanco = ?');
+            values.push(data.entidade_multibanco);
+        }
+        if (data.referencia_multibanco !== undefined) {
+            updates.push('referencia_multibanco = ?');
+            values.push(data.referencia_multibanco);
+        }
+        if (data.nao_gera_comissao !== undefined) {
+            updates.push('nao_gera_comissao = ?');
+            values.push(!!data.nao_gera_comissao);
+        }
+        if (data.fatura_envio_email !== undefined) {
+            updates.push('fatura_envio_email = ?');
+            values.push(data.fatura_envio_email);
+        }
+        if (data.fatura_envio_sms !== undefined) {
+            updates.push('fatura_envio_sms = ?');
+            values.push(data.fatura_envio_sms);
+        }
+        if (data.estado_contacto !== undefined) {
+            updates.push('estado_contacto = ?');
+            values.push(data.estado_contacto);
+        }
+        if (data.motivo_anulacao_id !== undefined) {
+            updates.push('motivo_anulacao_id = ?');
+            values.push(data.motivo_anulacao_id);
+        }
+        if (data.data_anulacao !== undefined) {
+            updates.push('data_anulacao = ?');
+            values.push(data.data_anulacao);
         }
         
         if (updates.length === 0) return false;

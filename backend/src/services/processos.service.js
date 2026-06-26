@@ -21,6 +21,8 @@ const PROCESSO_DATE_FIELDS = [
   'data_envio_relatorio',
   'fatura_data_emissao',
   'pagamento_data',
+  'fatura_envio_email',
+  'fatura_envio_sms',
 ];
 
 const mapProcessoResponse = (row) => {
@@ -65,8 +67,8 @@ const RELATORIO_DESTINOS_VALIDOS = ['Nenhum', 'Medico', 'Utente', 'Ambos'];
 const TRANSICOES_VALIDAS = {
   'Agendado': ['Kit Reservado', 'Cancelado'],
   'Kit Reservado': ['Colheita Realizada', 'Agendado', 'Cancelado'],
-  'Colheita Realizada': ['Enviado Laboratorio', 'Cancelado'],
-  'Enviado Laboratorio': ['Em Analise', 'Cancelado'],
+  'Colheita Realizada': ['Em Analise', 'Cancelado'],
+  'Enviado Laboratorio': ['Resultado Disponivel', 'Cancelado'],
   'Em Analise': ['Resultado Disponivel', 'Cancelado'],
   'Resultado Disponivel': ['Validado', 'Cancelado'],
   'Validado': ['Faturado', 'Cancelado'],
@@ -159,6 +161,11 @@ const normalizeWorkflowPayload = (data) => {
   if (data.pagamento_data !== undefined) normalized.pagamento_data = normalizeStringOrNull(data.pagamento_data);
   if (data.recibo_numero !== undefined) normalized.recibo_numero = normalizeStringOrNull(data.recibo_numero);
   if (data.pago !== undefined) normalized.pago = !!data.pago;
+  if (data.entidade_multibanco !== undefined) normalized.entidade_multibanco = normalizeStringOrNull(data.entidade_multibanco);
+  if (data.referencia_multibanco !== undefined) normalized.referencia_multibanco = normalizeStringOrNull(data.referencia_multibanco);
+  if (data.nao_gera_comissao !== undefined) normalized.nao_gera_comissao = !!data.nao_gera_comissao;
+  if (data.fatura_envio_email !== undefined) normalized.fatura_envio_email = normalizeStringOrNull(data.fatura_envio_email);
+  if (data.fatura_envio_sms !== undefined) normalized.fatura_envio_sms = normalizeStringOrNull(data.fatura_envio_sms);
 
   return normalized;
 };
@@ -212,6 +219,67 @@ const buildClinicoSnapshotFromPaciente = (data, paciente) => ({
   gestacao_registada_em: data.gestacao_registada_em ?? paciente.gestacao_registada_em ?? null,
   data_colheita_prevista: data.data_colheita_prevista ?? paciente.data_colheita_prevista ?? null,
 });
+
+const buildFaturacaoFromPaciente = (paciente) => {
+  const valorBase = Number(paciente.valor_base) || 0;
+  const desconto = Number(paciente.desconto_percentual) || 0;
+  const valorFinal = Number(paciente.valor_final) || Number((valorBase * (1 - desconto / 100)).toFixed(2));
+  const faturaNumero = paciente.fatura_numero || null;
+  const faturaData = paciente.fatura_data_emissao || null;
+  return {
+    valor_base: valorBase,
+    desconto_percentual: desconto,
+    valor_final: valorFinal,
+    fatura_emitida: !!(faturaNumero && faturaData) || !!paciente.fatura_emitida,
+    fatura_numero: faturaNumero,
+    fatura_data_emissao: faturaData,
+    pagamento_data: paciente.pagamento_data || null,
+    recibo_numero: paciente.recibo_numero || null,
+    pago: !!paciente.pago,
+    entidade_multibanco: paciente.entidade_multibanco || null,
+    referencia_multibanco: paciente.referencia_multibanco || null,
+    nao_gera_comissao: !!paciente.nao_gera_comissao,
+    fatura_envio_email: paciente.fatura_envio_email || null,
+    fatura_envio_sms: paciente.fatura_envio_sms || null,
+  };
+};
+
+const mergeFaturacaoFromPaciente = (workflowData, paciente) => {
+  const fromPaciente = buildFaturacaoFromPaciente(paciente);
+  const merged = { ...workflowData };
+  for (const [key, value] of Object.entries(fromPaciente)) {
+    if (merged[key] === undefined && value !== null && value !== undefined && value !== '' && value !== 0) {
+      merged[key] = value;
+    }
+  }
+  if (merged.valor_base === undefined && fromPaciente.valor_base) merged.valor_base = fromPaciente.valor_base;
+  if (merged.desconto_percentual === undefined) merged.desconto_percentual = fromPaciente.desconto_percentual;
+  if (merged.valor_final === undefined && fromPaciente.valor_final) merged.valor_final = fromPaciente.valor_final;
+  if (merged.fatura_numero === undefined && fromPaciente.fatura_numero) merged.fatura_numero = fromPaciente.fatura_numero;
+  if (merged.fatura_data_emissao === undefined && fromPaciente.fatura_data_emissao) {
+    merged.fatura_data_emissao = fromPaciente.fatura_data_emissao;
+  }
+  if (merged.fatura_emitida === undefined && fromPaciente.fatura_emitida) merged.fatura_emitida = fromPaciente.fatura_emitida;
+  if (merged.recibo_numero === undefined && fromPaciente.recibo_numero) merged.recibo_numero = fromPaciente.recibo_numero;
+  if (merged.pagamento_data === undefined && fromPaciente.pagamento_data) merged.pagamento_data = fromPaciente.pagamento_data;
+  if (merged.pago === undefined && fromPaciente.pago) merged.pago = fromPaciente.pago;
+  if (merged.entidade_multibanco === undefined && fromPaciente.entidade_multibanco) {
+    merged.entidade_multibanco = fromPaciente.entidade_multibanco;
+  }
+  if (merged.referencia_multibanco === undefined && fromPaciente.referencia_multibanco) {
+    merged.referencia_multibanco = fromPaciente.referencia_multibanco;
+  }
+  if (merged.nao_gera_comissao === undefined && fromPaciente.nao_gera_comissao) {
+    merged.nao_gera_comissao = fromPaciente.nao_gera_comissao;
+  }
+  if (merged.fatura_envio_email === undefined && fromPaciente.fatura_envio_email) {
+    merged.fatura_envio_email = fromPaciente.fatura_envio_email;
+  }
+  if (merged.fatura_envio_sms === undefined && fromPaciente.fatura_envio_sms) {
+    merged.fatura_envio_sms = fromPaciente.fatura_envio_sms;
+  }
+  return merged;
+};
 
 const resolveEmpresaId = async (data, medicoId) => {
   if (data.empresa_id) {
@@ -301,7 +369,7 @@ exports.create = async (data, user) => {
     throw new Error(`Status invalido. Valores validos: ${STATUS_CANONICOS.join(', ')}`);
   }
 
-  const workflowData = normalizeWorkflowPayload(data);
+  const workflowData = mergeFaturacaoFromPaciente(normalizeWorkflowPayload(data), paciente);
   const statusProcesso = normalizeStatus(data.status) || 'Agendado';
   const kitCodigo = workflowData.kit_codigo || null;
 
@@ -317,13 +385,12 @@ exports.create = async (data, user) => {
     throw new Error('Codigo do kit e obrigatorio apos colheita.');
   }
 
-  let numeroProcesso = workflowData.numero_processo || null;
-  if (numeroProcesso) {
-    const existente = await processosRepository.findByNumero(numeroProcesso);
-    if (existente) throw new Error('Ja existe um processo com este numero.');
-  } else {
-    numeroProcesso = await processosRepository.generateNumeroProcesso();
+  let numeroProcesso = workflowData.numero_processo || kitCodigo || null;
+  if (!numeroProcesso) {
+    throw new Error('Numero do processo (codigo do kit) e obrigatorio.');
   }
+  const existenteNumero = await processosRepository.findByNumero(numeroProcesso);
+  if (existenteNumero) throw new Error('Ja existe um processo com este numero.');
 
   if (kitCodigo) {
     const processoComKit = await processosRepository.findByKitCodigo(kitCodigo);
@@ -452,7 +519,7 @@ exports.update = async (id, data, user) => {
   if (data.teste_id !== undefined) updateData.teste_id = data.teste_id;
   if (data.data_entrada !== undefined) updateData.data_entrada = data.data_entrada || null;
   if (workflowData.posto !== undefined) updateData.posto = workflowData.posto;
-  if (workflowData.numero_processo !== undefined) updateData.numero_processo = workflowData.numero_processo;
+  if (workflowData.numero_processo) updateData.numero_processo = workflowData.numero_processo;
   if (workflowData.observacoes !== undefined) updateData.observacoes = workflowData.observacoes;
 
   if (workflowData.kit_codigo !== undefined) {
@@ -463,7 +530,51 @@ exports.update = async (id, data, user) => {
     updateData.kit_id = kitId;
   }
 
-  Object.assign(updateData, workflowData);
+  const workflowDbFields = [
+    'data_colheita', 'data_colheita_prevista', 'data_chegada_laboratorio', 'data_resultado',
+    'data_validacao', 'data_envio_relatorio', 'responsavel_fluxo', 'relatorio_validado',
+    'relatorio_enviado_para', 'resultado_tudo_ok', 'resultado_anomalias', 'fracao_fetal',
+    'fatura_emitida', 'fatura_numero', 'fatura_data_emissao', 'valor_base', 'desconto_percentual',
+    'valor_final', 'pagamento_data', 'recibo_numero', 'pago',
+    'entidade_multibanco', 'referencia_multibanco', 'nao_gera_comissao',
+    'fatura_envio_email', 'fatura_envio_sms', 'posto_id',
+  ];
+  for (const key of workflowDbFields) {
+    if (workflowData[key] !== undefined) updateData[key] = workflowData[key];
+  }
+
+  if (data.status !== undefined) {
+    if ((statusResultante === 'Enviado Laboratorio' || statusResultante === 'Em Analise')
+      && !processo.data_chegada_laboratorio
+      && updateData.data_chegada_laboratorio === undefined) {
+      updateData.data_chegada_laboratorio = formatCalendarDate(new Date());
+    }
+    if (statusResultante === 'Colheita Realizada'
+      && !processo.data_colheita
+      && updateData.data_colheita === undefined) {
+      updateData.data_colheita = formatCalendarDate(new Date());
+    }
+    if (statusResultante === 'Resultado Disponivel'
+      && !processo.data_resultado
+      && updateData.data_resultado === undefined) {
+      updateData.data_resultado = formatCalendarDate(new Date());
+    }
+    if (statusResultante === 'Validado'
+      && !processo.data_validacao
+      && updateData.data_validacao === undefined) {
+      updateData.data_validacao = formatCalendarDate(new Date());
+    }
+  }
+
+  const numeroAtual = processo.numero_processo && String(processo.numero_processo).trim();
+  if (!numeroAtual && !updateData.numero_processo) {
+    const kitNumero = processo.kit_codigo && String(processo.kit_codigo).trim();
+    if (kitNumero) {
+      updateData.numero_processo = kitNumero;
+    } else if (statusExigeKit(statusResultante)) {
+      throw new Error('Processo sem codigo de kit associado.');
+    }
+  }
 
   await processosRepository.update(id, updateData);
   await syncInformacaoClinica(id, data);

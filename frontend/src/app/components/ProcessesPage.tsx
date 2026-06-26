@@ -17,7 +17,8 @@ import { ProcessTable } from './processos/ProcessTable';
 import { ProcessDrawer } from './processos/ProcessDrawer';
 import { TraceView } from './shared/TraceView';
 import {
-  EstadoProcesso, PROCESSOS_PAGE_ESTADOS, ESTADO_LABEL, isAtivo, isAtrasado, isResultadoPorValidar,
+  EstadoProcesso, PROCESSOS_PAGE_ESTADOS, PROCESS_PIPELINE_COLUMNS, ESTADO_LABEL,
+  processoMatchesEstadoFilter, isAtivo, isAtrasado, isResultadoPorValidar,
   isRelatorioPorEnviar, isFaturaPorEmitir, proximosEstados,
 } from '../../lib/processos';
 import { isProcessoLaboratorio } from '../../lib/contactos';
@@ -54,7 +55,7 @@ export function ProcessesPage() {
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [kpiFilter, setKpiFilter] = useState<ProcessKpiId | null>(null);
-  const [view, setView] = useState<'table' | 'pipeline'>('table');
+  const [view, setView] = useState<'table' | 'pipeline'>('pipeline');
   const [page, setPage] = useState(1);
   const itemsPerPage = 12;
 
@@ -73,7 +74,7 @@ export function ProcessesPage() {
     const q = search.toLowerCase();
     return processosLaboratorio.filter((p) => {
       const matchSearch = !q || [p.numero, p.paciente_nome, p.medico, p.kit_codigo, p.teste].some((f) => (f || '').toLowerCase().includes(q));
-      const matchEstado = !estadoFilter || p.estado === estadoFilter;
+      const matchEstado = !estadoFilter || processoMatchesEstadoFilter(p.estado, estadoFilter);
       const matchPosto = !postoFilter || p.posto === postoFilter;
       const matchMedico = !medicoFilter || p.medico === medicoFilter;
       const matchInicio = !dataInicio || p.data_entrada >= dataInicio;
@@ -91,6 +92,11 @@ export function ProcessesPage() {
   const advancedCount = [postoFilter, medicoFilter, dataInicio, dataFim].filter(Boolean).length;
 
   const resetPage = () => setPage(1);
+
+  const openView = (p: Processo) => {
+    setDrawerProcesso(null);
+    navigate(`/processos/${p.id}`);
+  };
 
   const openEdit = (p: Processo) => {
     setDrawerProcesso(null);
@@ -158,12 +164,16 @@ export function ProcessesPage() {
     clearSelection();
   };
 
-  const estadoChips = PROCESSOS_PAGE_ESTADOS.map((e) => ({
-    id: e,
-    label: ESTADO_LABEL[e],
-    count: processosLaboratorio.filter((p) => p.estado === e).length,
-    tone: e === 'Cancelado' ? ('danger' as const) : ('brand' as const),
-  }));
+  const estadoChips = PROCESSOS_PAGE_ESTADOS.map((e) => {
+    const column = PROCESS_PIPELINE_COLUMNS.find((c) => c.key === e.key);
+    const label = column?.label ?? ESTADO_LABEL[e.estados[0] as EstadoProcesso] ?? e.key;
+    return {
+      id: e.key,
+      label,
+      count: processosLaboratorio.filter((p) => e.estados.includes(p.estado)).length,
+      tone: e.key === 'Cancelado' ? ('danger' as const) : ('brand' as const),
+    };
+  });
 
   const currentDrawer = drawerProcesso ? processosLaboratorio.find((p) => p.id === drawerProcesso.id) || drawerProcesso : null;
 
@@ -262,6 +272,7 @@ export function ProcessesPage() {
         processo={currentDrawer}
         open={!!currentDrawer}
         onClose={() => setDrawerProcesso(null)}
+        onView={openView}
         onEdit={openEdit}
         onDelete={handleDelete}
         onUpdateEstado={handleTransition}

@@ -3,34 +3,47 @@ module.exports.up = async (db) => {
     try {
       await db.execute(sql);
       console.log(`  ✓ ${label}`);
+      return true;
     } catch (error) {
       if (ignoreCodes.includes(error.code)) {
         console.log(`  ℹ ${label} (ignorado)`);
-        return;
+        return false;
       }
       console.log(`  ⚠ ${label}:`, error.message);
+      return false;
     }
   };
 
-  await tryExec('Locais de trabalho de médicos limpos', 'DELETE FROM medico_locais_trabalho;', []);
-
-  await tryExec(
-    'FK medico_locais_trabalho -> postos removida',
-    'ALTER TABLE medico_locais_trabalho DROP FOREIGN KEY fk_medico_locais_posto;',
-    ['ER_CANT_DROP_FIELD_OR_KEY', 'ER_DROP_FK_FAIL']
+  const [cols] = await db.execute(
+    `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'medico_locais_trabalho'`,
   );
+  const columnNames = new Set(cols.map((c) => c.COLUMN_NAME));
 
-  await tryExec(
-    'Coluna posto_id renomeada para entidade_id',
-    `ALTER TABLE medico_locais_trabalho
-      CHANGE COLUMN posto_id entidade_id CHAR(36) NOT NULL;`,
-    ['ER_BAD_FIELD_ERROR', 'ER_DUP_FIELDNAME']
-  );
+  if (!columnNames.has('entidade_id') && columnNames.has('posto_id')) {
+    // Migração inicial posto → entidade: limpar referências antigas inválidas.
+    await tryExec('Locais de trabalho de médicos limpos', 'DELETE FROM medico_locais_trabalho;', []);
+
+    await tryExec(
+      'FK medico_locais_trabalho -> postos removida',
+      'ALTER TABLE medico_locais_trabalho DROP FOREIGN KEY fk_medico_locais_posto;',
+      ['ER_CANT_DROP_FIELD_OR_KEY', 'ER_DROP_FK_FAIL'],
+    );
+
+    await tryExec(
+      'Coluna posto_id renomeada para entidade_id',
+      `ALTER TABLE medico_locais_trabalho
+        CHANGE COLUMN posto_id entidade_id CHAR(36) NOT NULL;`,
+      ['ER_BAD_FIELD_ERROR', 'ER_DUP_FIELDNAME'],
+    );
+  } else if (columnNames.has('entidade_id')) {
+    console.log('  ℹ medico_locais_trabalho já usa entidade_id — dados preservados');
+  }
 
   await tryExec(
     'Índice medico_locais entidade',
     'ALTER TABLE medico_locais_trabalho ADD KEY idx_medico_locais_entidade (entidade_id);',
-    ['ER_DUP_KEYNAME']
+    ['ER_DUP_KEYNAME'],
   );
 
   await tryExec(
@@ -38,6 +51,6 @@ module.exports.up = async (db) => {
     `ALTER TABLE medico_locais_trabalho
       ADD CONSTRAINT fk_medico_locais_entidade
       FOREIGN KEY (entidade_id) REFERENCES entidades(id) ON DELETE CASCADE;`,
-    ['ER_DUP_KEYNAME', 'ER_CANT_CREATE_TABLE', 'ER_FK_DUP_NAME']
+    ['ER_DUP_KEYNAME', 'ER_CANT_CREATE_TABLE', 'ER_FK_DUP_NAME'],
   );
 };

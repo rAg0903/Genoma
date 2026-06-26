@@ -22,11 +22,20 @@ exports.findKits = async () => {
         l.tipo_kit_id,
         l.teste_id,
         tk.nome AS tipo_kit_nome,
-        te.nome AS teste_nome
+        te.nome AS sub_teste_nome,
+        tp.nome AS teste_pai_nome,
+        CASE
+          WHEN tp.id IS NOT NULL THEN CONCAT(tp.nome, ' — ', te.nome)
+          ELSE te.nome
+        END AS teste_nome
       FROM kits k
       LEFT JOIN lotes l ON k.lote_id = l.id
       LEFT JOIN tipos_kit tk ON tk.id = COALESCE(k.tipo_kit_id, l.tipo_kit_id)
-      LEFT JOIN testes te ON te.id = COALESCE(l.teste_id, k.tipo_kit_id)
+      LEFT JOIN testes te ON te.id = COALESCE(
+        (SELECT pr.teste_id FROM processos pr WHERE pr.kit_id = k.id ORDER BY pr.data_entrada DESC LIMIT 1),
+        l.teste_id
+      )
+      LEFT JOIN testes tp ON te.teste_pai_id = tp.id
       ORDER BY k.codigo_barras ASC
     `);
     return rows;
@@ -51,7 +60,12 @@ exports.findLotes = async () => {
         l.estado,
         l.fornecedor_id,
         tk.nome AS tipo_kit_nome,
-        te.nome AS teste_nome,
+        te.nome AS sub_teste_nome,
+        tp.nome AS teste_pai_nome,
+        CASE
+          WHEN tp.id IS NOT NULL THEN CONCAT(tp.nome, ' — ', te.nome)
+          ELSE te.nome
+        END AS teste_nome,
         f.nome AS fornecedor_nome,
         COUNT(k.id) AS kits_total,
         CASE
@@ -65,6 +79,7 @@ exports.findLotes = async () => {
       FROM lotes l
       LEFT JOIN tipos_kit tk ON tk.id = l.tipo_kit_id
       LEFT JOIN testes te ON te.id = l.teste_id
+      LEFT JOIN testes tp ON te.teste_pai_id = tp.id
       LEFT JOIN empresas f ON f.id = l.fornecedor_id
       LEFT JOIN kits k ON k.lote_id = l.id
       GROUP BY l.id

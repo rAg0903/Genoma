@@ -2,16 +2,18 @@ import { Contact, EstadoContactoAgendamento, Processo } from '../app/data/types'
 import { parseGestacaoRegistoInput, resolveGestacaoRegistadaEm } from './gestacao';
 
 /** Estados visiveis na pagina Contactos (pipeline + filtros). */
-export type ContactoPipelineEstado = 'Agendado' | 'Cancelado';
+export type ContactoPipelineEstado = 'Criado' | 'Agendado' | 'Cancelado';
 
-export const CONTACTO_PAGE_ESTADOS: ContactoPipelineEstado[] = ['Agendado', 'Cancelado'];
+export const CONTACTO_PAGE_ESTADOS: ContactoPipelineEstado[] = ['Criado', 'Agendado', 'Cancelado'];
 
 export const CONTACTO_PIPELINE_LABEL: Record<ContactoPipelineEstado, string> = {
+  Criado: 'Criado',
   Agendado: 'Agendado',
   Cancelado: 'Cancelado',
 };
 
 export const CONTACTO_PIPELINE_COLORS: Record<ContactoPipelineEstado, string> = {
+  Criado: '#64748b',
   Agendado: '#f59e0b',
   Cancelado: '#f43f5e',
 };
@@ -22,14 +24,18 @@ export const CONTACTO_ESTADO_LABEL: Record<EstadoContactoAgendamento, string> = 
   'Kit Reservado': 'Agendado',
 };
 
-/** Estado visual do contacto no pipeline (Cancelado reservado — sem regras por agora). */
-export const getContactoPipelineEstado = (contact: Contact): ContactoPipelineEstado | null => {
+/** Contacto marcado como anulado/cancelado. */
+export const isContactoCancelado = (contact: Contact): boolean =>
+  contact.estado_contacto === 'Cancelado';
+
+/** Estado visual do contacto no pipeline. */
+export const getContactoPipelineEstado = (contact: Contact): ContactoPipelineEstado => {
   if (contact.estado_contacto === 'Cancelado') return 'Cancelado';
   if (contact.data_colheita_prevista?.trim()) return 'Agendado';
   if (contact.estado_agendamento === 'Agendado' || contact.estado_agendamento === 'Kit Reservado') {
     return 'Agendado';
   }
-  return null;
+  return 'Criado';
 };
 
 export const isContactoAgendado = (contact: Contact): boolean =>

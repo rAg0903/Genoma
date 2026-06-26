@@ -22,6 +22,7 @@ import { KpiCard } from './dashboard/KpiCard';
 import { formatNumber } from '../../lib/design-tokens';
 
 const CONTACTO_STATUS_STYLES: Record<string, string> = {
+  Criado: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
   Agendado: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   Cancelado: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
 };
@@ -48,7 +49,7 @@ export function ContactsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [generoFilter, setGeneroFilter] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<ContactoFiltroEstado | ''>('');
-  const [view, setView] = useState<'table' | 'pipeline'>('table');
+  const [view, setView] = useState<'table' | 'pipeline'>('pipeline');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
@@ -63,7 +64,7 @@ export function ContactsPage() {
     id: e,
     label: CONTACTO_PIPELINE_LABEL[e],
     count: contactosPreProcesso.filter((c) => getContactoPipelineEstado(c) === e).length,
-    tone: e === 'Cancelado' ? ('danger' as const) : ('brand' as const),
+    tone: e === 'Cancelado' ? ('danger' as const) : e === 'Criado' ? ('neutral' as const) : ('brand' as const),
   })), [contactosPreProcesso]);
 
   const filtered = useMemo(() => contactosPreProcesso.filter((c) => {
@@ -147,11 +148,9 @@ export function ContactsPage() {
     {
       key: 'estado',
       header: 'Estado',
-      render: (contact: Contact) => {
-        const estado = getContactoPipelineEstado(contact);
-        if (!estado) return <span className="text-slate-400 text-xs">—</span>;
-        return <StatusBadge status={estado} map={CONTACTO_STATUS_STYLES} className="px-2 py-0.5" />;
-      },
+      render: (contact: Contact) => (
+        <StatusBadge status={getContactoPipelineEstado(contact)} map={CONTACTO_STATUS_STYLES} className="px-2 py-0.5" />
+      ),
     },
     {
       key: 'colheita',
@@ -213,6 +212,7 @@ export function ContactsPage() {
         {!canCreate && !canUpdate && !canDelete && <ReadOnlyNotice />}
 
         <FilterBar
+          layout="inline"
           searchValue={searchTerm}
           onSearchChange={(v) => { setSearchTerm(v); resetPage(); }}
           searchPlaceholder={t('pages.contacts.searchPlaceholder')}
@@ -235,16 +235,16 @@ export function ContactsPage() {
           )}
           right={(
             <div className="flex items-center gap-2">
+              <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 p-0.5">
+                <button type="button" onClick={() => setView('pipeline')} className={`p-1.5 rounded-md transition ${view === 'pipeline' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`} title="Pipeline"><LayoutGrid className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setView('table')} className={`p-1.5 rounded-md transition ${view === 'table' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`} title="Tabela"><Table2 className="w-4 h-4" /></button>
+              </div>
               {canCreate && (
                 <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}>
                   <Plus className="w-4 h-4" />
                   <span className="hidden sm:inline">Novo Contacto</span>
                 </button>
               )}
-              <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-0.5">
-                <button type="button" onClick={() => setView('table')} className={`p-1.5 rounded-md transition ${view === 'table' ? 'bg-teal-600 text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`} title="Tabela"><Table2 className="w-4 h-4" /></button>
-                <button type="button" onClick={() => setView('pipeline')} className={`p-1.5 rounded-md transition ${view === 'pipeline' ? 'bg-teal-600 text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`} title="Pipeline"><LayoutGrid className="w-4 h-4" /></button>
-              </div>
             </div>
           )}
         />

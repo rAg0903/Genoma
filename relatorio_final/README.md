@@ -12,6 +12,14 @@
 
 Esta pasta contém a estrutura modular do Relatório de Projeto Final de Curso (PFC), organizada por capítulos obrigatórios da ISLA. O conteúdo técnico foi derivado do código-fonte real do projecto **Genoma CRM** (`genoma_app-main`).
 
+## Documento de Referência (Exemplo ISLA)
+
+| Ficheiro | Conteúdo |
+|---|---|
+| [LEI_Relatorio_Exemplo.md](./LEI_Relatorio_Exemplo.md) | Exemplo completo de relatório PFC (Clube Desportivo) — estrutura e formatação de referência |
+| [LEI_Relatorio_Exemplo_Vazio.md](./LEI_Relatorio_Exemplo_Vazio.md) | Modelo vazio oficial ISLA (capa, resumo, índice, capítulos 1–6, anexos) |
+| [LEI_Relatorio_a22212343.md](./LEI_Relatorio_a22212343.md) | **Relatório final completo — CRM Genoma (Rafael Males, a22212343)** |
+
 ## Índice de Capítulos
 
 | Ficheiro | Conteúdo |

@@ -13,9 +13,7 @@ interface ContactPipelineProps {
 }
 
 export function ContactPipeline({ contacts, onOpen, onEdit }: ContactPipelineProps) {
-  const comEstado = contacts.filter((c) => getContactoPipelineEstado(c) !== null);
-
-  if (comEstado.length === 0 && contacts.length === 0) {
+  if (contacts.length === 0) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
         <EmptyState icon={Users} title="Sem contactos" description="Nao ha contactos que correspondam aos filtros atuais." />
@@ -49,6 +47,11 @@ export function ContactPipeline({ contacts, onOpen, onEdit }: ContactPipelinePro
                   className="w-full text-left rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-sm transition"
                 >
                   <div className="text-[13px] font-semibold text-slate-900 dark:text-slate-100 truncate">{c.nome}</div>
+                  {getContactoPipelineEstado(c) === 'Criado' && c.created_at && (
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      Criado: {formatCalendarDatePt(c.created_at)}
+                    </div>
+                  )}
                   {c.data_colheita_prevista && (
                     <div className="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 mt-1">
                       <Calendar className="w-3 h-3" />

@@ -2,14 +2,21 @@ const testesRepository = require('../repositories/testes.repository');
 const laboratorioFinalService = require('./laboratorio-final.service');
 const logService = require('./log.service');
 
-// Normaliza os metadados ricos do teste para gravação na BD.
-const normalizeMeta = (data) => {
+const isSubTeste = (row) => Boolean(row?.teste_pai_id);
+
+const normalizeMeta = (data, { subTeste = false } = {}) => {
     const meta = {};
     const num = (v) => (v === undefined || v === null || v === '' ? null : Number(v));
     const bool = (v) => (v === undefined ? undefined : (v ? 1 : 0));
 
-    if (data.preco_compra !== undefined) meta.preco_compra = num(data.preco_compra) ?? 0;
-    if (data.preco_venda !== undefined) meta.preco_venda = num(data.preco_venda) ?? 0;
+    if (!subTeste) {
+        if (data.preco_compra !== undefined) meta.preco_compra = 0;
+        if (data.preco_venda !== undefined) meta.preco_venda = 0;
+    } else {
+        if (data.preco_compra !== undefined) meta.preco_compra = num(data.preco_compra) ?? 0;
+        if (data.preco_venda !== undefined) meta.preco_venda = num(data.preco_venda) ?? 0;
+    }
+
     if (data.tempo_resposta_dias !== undefined) meta.tempo_resposta_dias = num(data.tempo_resposta_dias);
     if (data.gestacao_minima_semanas !== undefined) meta.gestacao_minima_semanas = num(data.gestacao_minima_semanas);
     if (data.codigo !== undefined) meta.codigo = data.codigo ? String(data.codigo).trim() : null;
@@ -17,7 +24,6 @@ const normalizeMeta = (data) => {
     if (data.empresa !== undefined) meta.empresa = data.empresa ? String(data.empresa).trim() : null;
     if (data.tipo_kit !== undefined) meta.tipo_kit = data.tipo_kit ? String(data.tipo_kit).trim() : null;
     if (data.cromossomas !== undefined) {
-        // Aceita array (1..23) ou string CSV; grava como CSV ordenado.
         let lista = data.cromossomas;
         if (Array.isArray(lista)) {
             lista = lista.map((n) => Number(n)).filter((n) => n >= 1 && n <= 23);
@@ -44,68 +50,109 @@ const normalizeMeta = (data) => {
         meta.laboratorio_processamento_id = labFinalId ? String(labFinalId).trim() : null;
     }
 
+    if (data.teste_pai_id !== undefined) {
+        meta.teste_pai_id = data.teste_pai_id ? String(data.teste_pai_id).trim() : null;
+    }
+
     return meta;
 };
 
 const mapTesteResponse = (row) => {
     if (!row) return row;
-    return {
-        ...row,
-        laboratorio_final_id: row.laboratorio_processamento_id || null,
+    const { sub_testes, ...rest } = row;
+    const mapped = {
+        ...rest,
+        laboratorio_final_id: rest.laboratorio_processamento_id || null,
     };
+    if (Array.isArray(sub_testes)) {
+        mapped.sub_testes = sub_testes.map((st) => mapTesteResponse(st));
+    }
+    return mapped;
+};
+
+const validatePreco = (preco) => {
+    if (preco !== undefined && (isNaN(preco) || parseFloat(preco) < 0)) {
+        throw new Error('Preço deve ser um número positivo');
+    }
 };
 
 exports.listAll = async (user) => {
-    const rows = await testesRepository.findAll();
+    const rows = await testesRepository.findAllPrincipais();
     return rows.map(mapTesteResponse);
 };
 
 exports.getById = async (id, user) => {
     const row = await testesRepository.findById(id);
+    if (!row) return null;
+    if (!isSubTeste(row)) {
+        const subTestes = await testesRepository.findSubTestesByPaiId(id);
+        return mapTesteResponse({ ...row, sub_testes: subTestes });
+    }
     return mapTesteResponse(row);
 };
 
 exports.create = async (data, user) => {
-    // Validações
     if (!data.nome || data.nome.trim() === '') {
         throw new Error('Nome do teste é obrigatório');
     }
 
-    // Verificar se já existe teste com o mesmo nome
-    const existente = await testesRepository.findByNome(data.nome);
-    if (existente) {
-        throw new Error('Já existe um teste com este nome');
-    }
+    const paiId = data.teste_pai_id ? String(data.teste_pai_id).trim() : null;
+    const subTeste = Boolean(paiId);
 
-    // Validar preço
-    if (data.preco !== undefined) {
-        if (isNaN(data.preco) || parseFloat(data.preco) < 0) {
-            throw new Error('Preço deve ser um número positivo');
+    if (subTeste) {
+        const pai = await testesRepository.findById(paiId);
+        if (!pai || isSubTeste(pai)) {
+            throw new Error('Teste pai inválido');
         }
     }
 
-    const meta = normalizeMeta(data);
-    if (!meta.laboratorio_processamento_id) {
-        throw new Error('Selecione o laboratório final (destino de descarte) do teste');
+    const existente = await testesRepository.findByNome(data.nome.trim(), {
+        testePaiId: subTeste ? paiId : null,
+    });
+    if (existente) {
+        throw new Error(subTeste ? 'Já existe um sub-teste com este nome' : 'Já existe um teste com este nome');
     }
-    meta.laboratorio_processamento_id = await laboratorioFinalService.validateFinalLaboratorioId(
-        meta.laboratorio_processamento_id,
-    );
+
+    const meta = normalizeMeta(data, { subTeste });
+
+    if (subTeste) {
+        validatePreco(data.preco);
+        validatePreco(data.preco_venda);
+        validatePreco(data.preco_compra);
+        meta.teste_pai_id = paiId;
+        const pai = await testesRepository.findById(paiId);
+        if (!meta.tipo_kit && pai.tipo_kit) meta.tipo_kit = pai.tipo_kit;
+        if (!meta.empresa && pai.empresa) meta.empresa = pai.empresa;
+        if (!meta.laboratorio_processamento_id && pai.laboratorio_processamento_id) {
+            meta.laboratorio_processamento_id = pai.laboratorio_processamento_id;
+        }
+    } else {
+        if (!meta.laboratorio_processamento_id) {
+            throw new Error('Selecione o laboratório final (destino de descarte) do teste');
+        }
+        meta.laboratorio_processamento_id = await laboratorioFinalService.validateFinalLaboratorioId(
+            meta.laboratorio_processamento_id,
+        );
+        meta.preco_compra = 0;
+        meta.preco_venda = 0;
+    }
+
+    const precoVenda = subTeste ? (data.preco_venda ? parseFloat(data.preco_venda) : 0) : 0;
 
     const teste = await testesRepository.create({
         nome: data.nome.trim(),
-        preco: data.preco ? parseFloat(data.preco) : 0.00,
+        preco: subTeste ? precoVenda : 0,
         descricao: data.descricao ? data.descricao.trim() : null,
-        ...meta
+        ...meta,
     });
 
     if (user) {
         await logService.log({
             empresa_id: user.empresa_id,
             utilizador_id: user.id,
-            acao: "Criou teste",
-            tabela: "testes",
-            registro_id: teste.id
+            acao: subTeste ? 'Criou sub-teste' : 'Criou teste',
+            tabela: 'testes',
+            registro_id: teste.id,
         });
     }
 
@@ -113,39 +160,52 @@ exports.create = async (data, user) => {
 };
 
 exports.update = async (id, data, user) => {
-    // Verificar se existe
     const teste = await testesRepository.findById(id);
     if (!teste) {
         throw new Error('Teste não encontrado');
     }
 
-    // Validações
+    const subTeste = isSubTeste(teste);
+
     if (data.nome !== undefined) {
         if (!data.nome || data.nome.trim() === '') {
             throw new Error('Nome do teste não pode estar vazio');
         }
-        
-        if (teste.nome !== data.nome) {
-            const existente = await testesRepository.findByNome(data.nome);
+
+        if (teste.nome !== data.nome.trim()) {
+            const existente = await testesRepository.findByNome(data.nome.trim(), {
+                testePaiId: subTeste ? teste.teste_pai_id : null,
+                excludeId: id,
+            });
             if (existente) {
-                throw new Error('Já existe outro teste com este nome');
+                throw new Error(subTeste ? 'Já existe outro sub-teste com este nome' : 'Já existe outro teste com este nome');
             }
         }
     }
 
-    if (data.preco !== undefined) {
-        if (isNaN(data.preco) || parseFloat(data.preco) < 0) {
-            throw new Error('Preço deve ser um número positivo');
-        }
+    if (subTeste) {
+        validatePreco(data.preco);
+        validatePreco(data.preco_venda);
+        validatePreco(data.preco_compra);
     }
 
     const updateData = {};
     if (data.nome !== undefined) updateData.nome = data.nome.trim();
-    if (data.preco !== undefined) updateData.preco = parseFloat(data.preco);
+    if (subTeste) {
+        if (data.preco !== undefined) updateData.preco = parseFloat(data.preco);
+        if (data.preco_venda !== undefined) {
+            updateData.preco_venda = parseFloat(data.preco_venda);
+            updateData.preco = parseFloat(data.preco_venda);
+        }
+    } else {
+        updateData.preco = 0;
+        updateData.preco_compra = 0;
+        updateData.preco_venda = 0;
+    }
     if (data.descricao !== undefined) updateData.descricao = data.descricao ? data.descricao.trim() : null;
-    Object.assign(updateData, normalizeMeta(data));
+    Object.assign(updateData, normalizeMeta(data, { subTeste }));
 
-    if (updateData.laboratorio_processamento_id) {
+    if (!subTeste && updateData.laboratorio_processamento_id) {
         updateData.laboratorio_processamento_id = await laboratorioFinalService.validateFinalLaboratorioId(
             updateData.laboratorio_processamento_id,
         );
@@ -157,9 +217,9 @@ exports.update = async (id, data, user) => {
         await logService.log({
             empresa_id: user.empresa_id,
             utilizador_id: user.id,
-            acao: "Atualizou teste",
-            tabela: "testes",
-            registro_id: id
+            acao: subTeste ? 'Atualizou sub-teste' : 'Atualizou teste',
+            tabela: 'testes',
+            registro_id: id,
         });
     }
 
@@ -167,19 +227,23 @@ exports.update = async (id, data, user) => {
 };
 
 exports.delete = async (id, user) => {
-    // Verificar se existe
     const teste = await testesRepository.findById(id);
     if (!teste) {
         throw new Error('Teste não encontrado');
     }
 
-    // Verificar se tem itens de composição
+    if (!isSubTeste(teste)) {
+        const countSubs = await testesRepository.countSubTestes(id);
+        if (countSubs > 0) {
+            throw new Error(`Não é possível eliminar um teste que tem ${countSubs} sub-teste(s). Elimine os sub-testes primeiro.`);
+        }
+    }
+
     const countItens = await testesRepository.countItensComposicao(id);
     if (countItens > 0) {
         throw new Error(`Não é possível deletar um teste que tem ${countItens} item(ns) de composição associado(s)`);
     }
 
-    // Verificar se tem pedidos associados
     const countPedidos = await testesRepository.countPedidosAssociados(id);
     if (countPedidos > 0) {
         throw new Error(`Não é possível deletar um teste que tem ${countPedidos} pedido(s) de exame(s) associado(s)`);
@@ -191,9 +255,9 @@ exports.delete = async (id, user) => {
         await logService.log({
             empresa_id: user.empresa_id,
             utilizador_id: user.id,
-            acao: "Deletou teste",
-            tabela: "testes",
-            registro_id: id
+            acao: isSubTeste(teste) ? 'Deletou sub-teste' : 'Deletou teste',
+            tabela: 'testes',
+            registro_id: id,
         });
     }
 
