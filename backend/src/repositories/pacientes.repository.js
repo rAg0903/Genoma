@@ -75,6 +75,45 @@ exports.searchByNome = async (nome, page, limit) => {
     }
 };
 
+exports.findForMedico = async (medicoUtilizadorId) => {
+    const connection = await pool.getConnection();
+    try {
+        const [rows] = await connection.execute(
+            `SELECT DISTINCT p.*,
+                    (SELECT COUNT(*) FROM processos pr2 WHERE pr2.paciente_id = p.id) AS processos_total
+             FROM pacientes p
+             LEFT JOIN processos pr ON pr.paciente_id = p.id
+             WHERE p.ativo = TRUE
+               AND (p.medico_id = ? OR pr.medico_id = ?)
+             ORDER BY p.created_at DESC`,
+            [medicoUtilizadorId, medicoUtilizadorId],
+        );
+        return rows;
+    } finally {
+        connection.release();
+    }
+};
+
+exports.searchByNomeForMedico = async (nome, medicoUtilizadorId, page, limit) => {
+    const connection = await pool.getConnection();
+    try {
+        const { offset, limit: l } = getPaginationParams(page, limit);
+        const [rows] = await connection.execute(
+            `SELECT DISTINCT p.*
+             FROM pacientes p
+             LEFT JOIN processos pr ON pr.paciente_id = p.id
+             WHERE p.nome LIKE ? AND p.ativo = TRUE
+               AND (p.medico_id = ? OR pr.medico_id = ?)
+             ORDER BY p.nome
+             LIMIT ? OFFSET ?`,
+            [`%${nome}%`, medicoUtilizadorId, medicoUtilizadorId, l, offset],
+        );
+        return rows;
+    } finally {
+        connection.release();
+    }
+};
+
 exports.create = async (data) => {
     const connection = await pool.getConnection();
     try {

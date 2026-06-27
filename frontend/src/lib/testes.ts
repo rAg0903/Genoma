@@ -4,6 +4,25 @@ export function isSubTeste(t: Pick<Teste, 'teste_pai_id'>): boolean {
   return Boolean(t.teste_pai_id);
 }
 
+/** Ordenação natural por código (MT-001, MT-002, MT-003…). */
+export function compareTesteCodigo(
+  a: { codigo?: string | null; nome?: string },
+  b: { codigo?: string | null; nome?: string },
+): number {
+  const codeA = String(a.codigo || '').trim();
+  const codeB = String(b.codigo || '').trim();
+  if (codeA && codeB) {
+    const byCode = codeA.localeCompare(codeB, 'pt', { numeric: true, sensitivity: 'base' });
+    if (byCode !== 0) return byCode;
+  } else if (codeA) return -1;
+  else if (codeB) return 1;
+  return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
+}
+
+export function sortTestesByCodigo<T extends { codigo?: string | null; nome?: string }>(items: T[]): T[] {
+  return [...items].sort(compareTesteCodigo);
+}
+
 /** Testes principais (sem pai). */
 export function getTestesPrincipais(testes: Teste[]): Teste[] {
   return testes.filter((t) => !isSubTeste(t));
@@ -14,12 +33,12 @@ export function getTestesSelecionaveis(testes: Teste[]): Array<SubTeste | Teste>
   const result: Array<SubTeste | Teste> = [];
   for (const t of getTestesPrincipais(testes)) {
     if (t.sub_testes?.length) {
-      result.push(...t.sub_testes.filter((st) => st.ativo !== false));
+      result.push(...sortTestesByCodigo(t.sub_testes.filter((st) => st.ativo !== false)));
     } else if (t.ativo !== false) {
       result.push(t);
     }
   }
-  return result.sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
+  return result.sort(compareTesteCodigo);
 }
 
 export function getSubTesteLabel(teste: Pick<Teste, 'nome'>, parent?: Pick<Teste, 'nome'>): string {
@@ -74,14 +93,14 @@ export function getTestesSelecionaveisComLabel(testes: Teste[]): TesteSelecionav
   const result: TesteSelecionavel[] = [];
   for (const parent of getTestesPrincipais(testes)) {
     if (parent.sub_testes?.length) {
-      for (const st of parent.sub_testes.filter((s) => s.ativo !== false)) {
+      for (const st of sortTestesByCodigo(parent.sub_testes.filter((s) => s.ativo !== false))) {
         result.push({ id: st.id, nome: st.nome, label: getSubTesteLabel(st, parent) });
       }
     } else if (parent.ativo !== false) {
       result.push({ id: parent.id, nome: parent.nome, label: parent.nome });
     }
   }
-  return result.sort((a, b) => a.label.localeCompare(b.label, 'pt'));
+  return result.sort((a, b) => a.label.localeCompare(b.label, 'pt', { numeric: true }));
 }
 
 export function resolveTesteSelecionavelLabel(testes: Teste[], testeId?: string): string {

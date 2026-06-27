@@ -1,5 +1,5 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, CheckCircle, Edit, Loader2, Plus, RefreshCw, Trash2, XCircle } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { CheckCircle, Edit, Loader2, Plus, RefreshCw, Save, Shield, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
 import { perfisApi, Perfil } from '../../../lib/api-perfis';
@@ -7,17 +7,16 @@ import { isAdminPerfilNome } from '../../../lib/perfil-utils';
 import { createAdminPermissionBundle, PerfilPermissionBundle } from '../../../lib/perfil-permissions';
 import {
   DefinicoesSubmodule,
-  DEFINICOES_SUBMODULES,
   ListingsSubmodule,
-  LISTINGS_SUBMODULES,
   PermissionAction,
   PermissionModule,
   StockSubmodule,
-  STOCK_SUBMODULES,
 } from '../../../lib/permissions';
 import { ADD_ACTION_BUTTON_CLASS } from '../../../lib/design-system';
-import { FORM } from '../../../lib/design-tokens';
-import { AppModal, ModalActions, ModalField, MODAL_INPUT_CLASS } from '../shared/AppModal';
+import { CONTROL, FORM, SURFACE } from '../../../lib/design-tokens';
+import { AppModal, ModalActions, ModalAlert, ModalField, MODAL_INPUT_CLASS } from '../shared/AppModal';
+import { FormPageHeader, FormPrimaryButton } from '../shared/FormPageChrome';
+import { PermissionsMatrix } from './PermissionsMatrix';
 import {
   ADMIN_ACTION_BTN_CLASS,
   ADMIN_DELETE_BTN_CLASS,
@@ -310,176 +309,76 @@ function PerfilEditor({
 }) {
   const isAdmin = isAdminPerfilNome(perfil.nome);
 
-  const moduleLabels: Record<PermissionModule, string> = {
-    dashboard: 'Dashboard',
-    contactos: 'Contactos',
-    processos: 'Processos',
-    stocks: 'Stocks',
-    listagens: 'Listagens',
-    definicoes: 'Administração',
-  };
-
-  const actionLabels: Record<PermissionAction, string> = {
-    read: 'Ler',
-    create: 'Inserir',
-    update: 'Editar',
-    delete: 'Apagar',
-  };
-
-  const stockSubmoduleLabels: Record<StockSubmodule, string> = {
-    lotes: 'Lotes',
-    requisicoes: 'Envios',
-    descartes: 'Descarte / Lab final',
-  };
-
-  const listingsSubmoduleLabels: Record<ListingsSubmodule, string> = {
-    exames: 'Exames / Resultados',
-    processos: 'Todos os Processos',
-  };
-
-  const definicoesSubmoduleLabels: Record<DefinicoesSubmodule, string> = {
-    utilizadores: 'Utilizadores',
-    permissoes: 'Perfis e Permissões',
-    empresas: 'Empresas',
-    testes: 'Testes',
-    tipos_kit: 'Tipos de Kit',
-    entidades: 'Entidades',
-    laboratorios: 'Laboratórios',
-    medicos: 'Médicos',
-    motivos_anulacao: 'Motivos de anulação',
-  };
-
-  const orderedModules: PermissionModule[] = ['dashboard', 'contactos', 'processos', 'stocks', 'listagens', 'definicoes'];
-  const orderedActions: PermissionAction[] = ['read', 'create', 'update', 'delete'];
-
-  const moduleSubmodules: Partial<Record<PermissionModule, string[]>> = {
-    stocks: STOCK_SUBMODULES,
-    listagens: LISTINGS_SUBMODULES,
-    definicoes: DEFINICOES_SUBMODULES,
-  };
-
-  const getSubmoduleLabel = (module: PermissionModule, submodule: string) => {
-    if (module === 'stocks') return stockSubmoduleLabels[submodule as StockSubmodule];
-    if (module === 'listagens') return listingsSubmoduleLabels[submodule as ListingsSubmodule];
-    if (module === 'definicoes') return definicoesSubmoduleLabels[submodule as DefinicoesSubmodule];
-    return submodule;
-  };
-
-  const getSubmoduleChecked = (module: PermissionModule, submodule: string) => {
-    if (module === 'stocks') return bundle.stock[submodule as StockSubmodule];
-    if (module === 'listagens') return bundle.listings[submodule as ListingsSubmodule];
-    if (module === 'definicoes') return bundle.definicoes[submodule as DefinicoesSubmodule];
-    return false;
-  };
-
-  const handleToggleSubmodule = (module: PermissionModule, submodule: string, checked: boolean) => {
-    if (isAdmin) return;
-    if (module === 'stocks') onToggleStock(submodule as StockSubmodule, checked);
-    if (module === 'listagens') onToggleListings(submodule as ListingsSubmodule, checked);
-    if (module === 'definicoes') onToggleDefinicoes(submodule as DefinicoesSubmodule, checked);
-  };
-
-  const handleToggle = (module: PermissionModule, action: PermissionAction, checked: boolean) => {
-    if (isAdmin) return;
-    onToggleModule(module, action, checked);
-  };
-
   return (
-    <div className="space-y-4">
-      <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" style={{ fontSize: '13px', fontWeight: 500 }}>
-        <ArrowLeft className="w-4 h-4" /> Voltar à lista
-      </button>
+    <div className="space-y-5">
+      <FormPageHeader
+        onBack={onBack}
+        title={nome.trim() || perfil.nome}
+        subtitle="Permissões de módulos e sub-módulos do CRM"
+        actions={(
+          <>
+            <button
+              type="button"
+              onClick={onRefresh}
+              className={CONTROL.buttonSecondary}
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span className="hidden sm:inline">Sincronizar stocks</span>
+            </button>
+            <FormPrimaryButton onClick={onSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  A guardar…
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Guardar
+                </>
+              )}
+            </FormPrimaryButton>
+          </>
+        )}
+      />
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
-        <h3 className="text-gray-900 dark:text-gray-100" style={{ fontSize: '15px', fontWeight: 600 }}>Editar perfil</h3>
-        <div>
-          <label className="block mb-1.5 text-gray-600 dark:text-gray-400" style={{ fontSize: '13px' }}>Nome</label>
+      <div className={`${SURFACE.cardElevated} p-5 md:p-6 space-y-5`}>
+        <div className="max-w-md">
+          <label className={FORM.label}>Nome do perfil</label>
           <input
             value={nome}
             onChange={(e) => onNomeChange(e.target.value)}
             disabled={isAdmin}
-            className={`${FORM_INPUT_CLASS} disabled:opacity-60 disabled:cursor-not-allowed`}
-            style={{ fontSize: '14px' }}
+            className={`${MODAL_INPUT_CLASS} disabled:opacity-60 disabled:cursor-not-allowed`}
+            placeholder="Ex.: Assistente"
           />
         </div>
 
         {isAdmin && (
-          <div className="rounded-lg border border-amber-100 dark:border-amber-900/40 bg-amber-50/80 dark:bg-amber-900/10 px-3 py-2">
-            <p className="text-amber-800 dark:text-amber-300" style={{ fontSize: '12px', fontWeight: 500 }}>
-              O perfil Administrador está protegido e não permite alterações de permissões.
-            </p>
-          </div>
+          <ModalAlert tone="warning">
+            O perfil Administrador está protegido e não permite alterações de permissões.
+          </ModalAlert>
         )}
 
-        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-          <table className="w-full min-w-[700px]">
-            <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
-              <tr>
-                <th className="px-5 py-3 text-left"><span className="text-gray-500 dark:text-gray-400" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Módulo</span></th>
-                {orderedActions.map((action) => (
-                  <th key={action} className="px-5 py-3 text-center">
-                    <span className="text-gray-500 dark:text-gray-400" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>{actionLabels[action]}</span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {orderedModules.map((module) => {
-                const modulePermissions = bundle.modules[module];
-                const canReadModule = modulePermissions.read;
-                const submodules = moduleSubmodules[module] ?? [];
+        <div>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Matriz de permissões</h3>
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:block">
+              Clique nas células para ativar ou desativar
+            </p>
+          </div>
 
-                return (
-                  <Fragment key={module}>
-                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
-                      <td className="px-5 py-3.5 text-gray-900 dark:text-gray-100" style={{ fontSize: '13px', fontWeight: 500 }}>{moduleLabels[module]}</td>
-                      {orderedActions.map((action) => {
-                        const checked = modulePermissions[action];
-                        const disabled = isAdmin || (!canReadModule && action !== 'read');
-                        return (
-                          <td key={action} className="px-5 py-3.5 text-center">
-                            <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => handleToggle(module, action, e.target.checked)} className="w-4 h-4 accent-blue-600 cursor-pointer disabled:cursor-not-allowed" />
-                          </td>
-                        );
-                      })}
-                    </tr>
-                    {submodules.map((submodule) => {
-                      const checked = getSubmoduleChecked(module, submodule);
-                      const disabled = isAdmin || !canReadModule;
-                      return (
-                        <tr key={`${module}-${submodule}`} className="bg-gray-50/60 dark:bg-gray-800/40">
-                          <td className="px-5 py-2.5 text-gray-600 dark:text-gray-300">
-                            <div className="flex items-center gap-2 pl-3">
-                              <span className="h-1.5 w-1.5 rounded-full bg-gray-400/80" />
-                              <span style={{ fontSize: '12px', fontWeight: 500 }}>{getSubmoduleLabel(module, submodule)}</span>
-                            </div>
-                          </td>
-                          {orderedActions.map((action) => (
-                            <td key={action} className="px-5 py-2.5 text-center">
-                              {action === 'read' ? (
-                                <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => handleToggleSubmodule(module, submodule, e.target.checked)} className="w-4 h-4 accent-blue-600 cursor-pointer disabled:cursor-not-allowed" />
-                              ) : (
-                                <span className="text-gray-300 dark:text-gray-600" style={{ fontSize: '12px' }}>—</span>
-                              )}
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onRefresh} className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300" style={{ fontSize: '13px' }}>
-            Sincronizar stocks
-          </button>
-          <button type="button" onClick={onSave} disabled={saving} className="px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-60" style={{ fontSize: '13px', fontWeight: 600 }}>
-            {saving ? 'A guardar…' : 'Gravar'}
-          </button>
+          <PermissionsMatrix
+            bundle={bundle}
+            readOnly={isAdmin}
+            onToggleModule={onToggleModule}
+            onToggleStock={onToggleStock}
+            onToggleListings={onToggleListings}
+            onToggleDefinicoes={onToggleDefinicoes}
+          />
         </div>
       </div>
     </div>

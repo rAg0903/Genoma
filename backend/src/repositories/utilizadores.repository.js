@@ -1,14 +1,18 @@
 const pool = require('../config/database');
 
+const USER_SELECT = `
+            SELECT u.id, u.perfil_id, u.empresa_id, u.nome, u.email, u.telefone, u.ativo, u.avatar_url, u.created_at,
+                   p.nome as perfil_nome, e.nome as empresa_nome, m.titulo as medico_titulo`;
+
 exports.findAll = async () => {
     const connection = await pool.getConnection();
     try {
         const [rows] = await connection.execute(`
-            SELECT u.id, u.perfil_id, u.empresa_id, u.nome, u.email, u.telefone, u.ativo, u.avatar_url, u.created_at,
-                   p.nome as perfil_nome, e.nome as empresa_nome
+            ${USER_SELECT}
             FROM utilizadores u
             LEFT JOIN perfis p ON u.perfil_id = p.id
             LEFT JOIN empresas e ON u.empresa_id = e.id
+            LEFT JOIN medicos m ON m.utilizador_id = u.id
             ORDER BY u.created_at DESC
         `);
         return rows;
@@ -21,11 +25,11 @@ exports.findById = async (id) => {
     const connection = await pool.getConnection();
     try {
         const [rows] = await connection.execute(`
-            SELECT u.id, u.perfil_id, u.empresa_id, u.nome, u.email, u.telefone, u.ativo, u.avatar_url, u.created_at,
-                   p.nome as perfil_nome, e.nome as empresa_nome
+            ${USER_SELECT}
             FROM utilizadores u
             LEFT JOIN perfis p ON u.perfil_id = p.id
             LEFT JOIN empresas e ON u.empresa_id = e.id
+            LEFT JOIN medicos m ON m.utilizador_id = u.id
             WHERE u.id = ?
         `, [id]);
         return rows[0] || null;
@@ -71,6 +75,26 @@ exports.findByEmpresa = async (empresaId) => {
             FROM utilizadores u
             LEFT JOIN perfis p ON u.perfil_id = p.id
             WHERE u.empresa_id = ?
+            ORDER BY u.created_at DESC
+        `, [empresaId]);
+        return rows;
+    } finally {
+        connection.release();
+    }
+};
+
+/** Utilizadores da empresa + médicos (sem empresa_id, mas com registo em medicos). */
+exports.findByEmpresaIncludingMedicos = async (empresaId) => {
+    const connection = await pool.getConnection();
+    try {
+        const [rows] = await connection.execute(`
+            SELECT DISTINCT u.id, u.perfil_id, u.empresa_id, u.nome, u.email, u.telefone, u.ativo, u.avatar_url, u.created_at,
+                   p.nome as perfil_nome, e.nome as empresa_nome, m.titulo as medico_titulo
+            FROM utilizadores u
+            LEFT JOIN perfis p ON u.perfil_id = p.id
+            LEFT JOIN empresas e ON u.empresa_id = e.id
+            LEFT JOIN medicos m ON m.utilizador_id = u.id
+            WHERE u.empresa_id = ? OR m.utilizador_id IS NOT NULL
             ORDER BY u.created_at DESC
         `, [empresaId]);
         return rows;

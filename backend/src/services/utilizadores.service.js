@@ -68,10 +68,14 @@ const assertSingleAdministrator = async (perfilId, excludeUserId = null) => {
 };
 
 exports.listAll = async (user) => {
-    if (user.empresa_id) {
-        return await utilizadoresRepository.findByEmpresa(user.empresa_id);
+    const perfil = user?.perfil_id ? await perfisRepository.findById(user.perfil_id) : null;
+    if (isAdminPerfil(perfil?.nome)) {
+        return utilizadoresRepository.findAll();
     }
-    return await utilizadoresRepository.findAll();
+    if (user.empresa_id) {
+        return utilizadoresRepository.findByEmpresaIncludingMedicos(user.empresa_id);
+    }
+    return utilizadoresRepository.findAll();
 };
 
 exports.getById = async (id, user) => {

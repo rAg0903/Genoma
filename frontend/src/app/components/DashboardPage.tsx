@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   FolderOpen, CalendarClock, FlaskConical, Package, Wallet, AlertTriangle,
@@ -12,8 +12,9 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../../i18n/LanguageContext';
-import { apiRequest } from '../../lib/api';
 import { formatCalendarDatePt, normalizeCalendarDate } from '../../lib/dates';
+import { MedicoDashboard } from './dashboard/MedicoDashboard';
+import { useDashboardData } from './dashboard/useDashboardData';
 import {
   PROCESS_STATE_COLORS, SURFACE, LAYOUT, PAGE, formatEUR, formatNumber,
 } from '../../lib/design-tokens';
@@ -24,16 +25,6 @@ import {
   DashboardToolbar, DashboardScope, DashboardPeriod,
 } from './dashboard/DashboardToolbar';
 import { PROCESS_STATUS_STYLES } from '../../lib/design-system';
-
-const AUTH_TOKEN_KEYS = ['token', 'authToken', 'jwtToken', 'access_token'];
-const getAuthToken = () => {
-  if (typeof window === 'undefined') return undefined;
-  for (const key of AUTH_TOKEN_KEYS) {
-    const v = window.localStorage.getItem(key);
-    if (v) return v;
-  }
-  return undefined;
-};
 
 // --- Tipos das respostas de dashboard ------------------------------------
 interface ApiAlerta { nivel: 'critico' | 'aviso' | 'info'; mensagem: string }
@@ -53,31 +44,6 @@ const SCOPES_BY_ROLE: Record<string, DashboardScope[]> = {
   Medico: ['operacional', 'laboratorial'],
   Assistente: ['operacional'],
 };
-
-function useDashboardData<T>(scope: DashboardScope, loadErrorLabel: string) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiRequest<{ data: T }>(`/dashboards/${scope}`, { token: getAuthToken() });
-      setData(res.data);
-      setUpdatedAt(new Date());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : loadErrorLabel);
-    } finally {
-      setLoading(false);
-    }
-  }, [scope, loadErrorLabel]);
-
-  useEffect(() => { void refetch(); }, [refetch]);
-
-  return { data, loading, error, updatedAt, refetch };
-}
 
 const chartTheme = (isDark: boolean) => ({
   grid: isDark ? '#1e293b' : '#f1f5f9',
@@ -104,6 +70,16 @@ const yAxisProps = (tickColor: string) => ({
 });
 
 export function DashboardPage() {
+  const { role } = useAuth();
+
+  if (role === 'Medico') {
+    return <MedicoDashboard />;
+  }
+
+  return <AdminDashboardPage />;
+}
+
+function AdminDashboardPage() {
   const { role } = useAuth();
   const navigate = useNavigate();
   const { isDark } = useTheme();

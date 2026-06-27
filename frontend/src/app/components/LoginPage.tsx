@@ -2,6 +2,7 @@ import { Eye, EyeOff, LoaderCircle, Lock, Mail, Moon, ShieldCheck, Sun } from 'l
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { apiRequest } from '../../lib/api';
+import { notifyAuthChanged } from '../../lib/auth-session';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -50,7 +51,7 @@ export function LoginPage() {
 
       const storage = rememberSession ? window.localStorage : window.sessionStorage;
       storage.setItem('token', response.token);
-      window.dispatchEvent(new Event('genoma:auth-changed'));
+      notifyAuthChanged();
       navigate('/', { replace: true });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message || t('login.error') : t('login.error'));

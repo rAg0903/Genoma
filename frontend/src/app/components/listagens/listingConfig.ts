@@ -3,6 +3,7 @@ import {
   Package, Boxes, CalendarDays, ShieldCheck, LayoutDashboard, LucideIcon,
 } from 'lucide-react';
 import { ListingKey } from '../../../lib/api-listagens';
+import { LISTINGS_NAV_ORDER } from '../../../lib/listings-nav';
 import { PROCESS_STATUS_STYLES, KIT_STATUS_STYLES } from '../../../lib/design-system';
 
 export type CellFormat = 'text' | 'date' | 'datetime' | 'eur' | 'status' | 'mono' | 'number';
@@ -153,9 +154,7 @@ export const LISTINGS: Record<ListingKey, ListingDef> = {
   },
 };
 
-export const LISTING_ORDER: ListingKey[] = [
-  'painel_bordo', 'resultados', 'faturacao', 'colheitas', 'kits', 'lotes', 'auditoria',
-];
+export const LISTING_ORDER: ListingKey[] = [...LISTINGS_NAV_ORDER];
 
 export const ESTADO_OPTIONS: Record<string, string[]> = {
   painel_bordo: PROCESS_ESTADOS,

@@ -2,26 +2,36 @@ const pacientesRepository = require('../repositories/pacientes.repository');
 const processosRepository = require('../repositories/processos.repository');
 const motivosAnulacaoService = require('./motivos_anulacao.service');
 const logService = require('./log.service');
+const { isMedicoUser, assertPacienteAccess } = require('../utils/medico-access');
 
 exports.listAll = async (user) => {
-    return await pacientesRepository.findAll();
+    if (await isMedicoUser(user)) {
+        return pacientesRepository.findForMedico(user.id);
+    }
+    return pacientesRepository.findAll();
 };
 
 exports.getById = async (id, user) => {
-    return await pacientesRepository.findById(id);
+    const paciente = await pacientesRepository.findById(id);
+    await assertPacienteAccess(paciente, user);
+    return paciente;
 };
 
 exports.search = async (nome, user) => {
     if (!nome || nome.trim() === '') {
         throw new Error('Nome é obrigatório para busca');
     }
-    return await pacientesRepository.searchByNome(nome);
+    if (await isMedicoUser(user)) {
+        return pacientesRepository.searchByNomeForMedico(nome, user.id);
+    }
+    return pacientesRepository.searchByNome(nome);
 };
 
 /** Repõe contacto para nova colheita (ex.: repetição por fração fetal insuficiente). */
 exports.resetParaNovaColheita = async (id, user) => {
     const paciente = await pacientesRepository.findById(id);
     if (!paciente) throw new Error('Paciente não encontrado');
+    await assertPacienteAccess(paciente, user);
 
     await pacientesRepository.update(id, {
         medico_id: null,
@@ -159,6 +169,7 @@ exports.update = async (id, data, user) => {
     if (!paciente) {
         throw new Error('Paciente não encontrado');
     }
+    await assertPacienteAccess(paciente, user);
 
     // Validações
     if (data.nome !== undefined) {
@@ -291,6 +302,7 @@ exports.delete = async (id, user) => {
     if (!paciente) {
         throw new Error('Paciente não encontrado');
     }
+    await assertPacienteAccess(paciente, user);
 
     // Verificar se há pedidos associados
     const pool = require('../config/database');

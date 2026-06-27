@@ -1,6 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+import { clearAuthSession, notifyAuthChanged } from './auth-session';
 
-const AUTH_TOKEN_KEYS = ['token', 'authToken', 'jwtToken', 'access_token'];
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -11,13 +11,10 @@ interface RequestOptions {
   headers?: Record<string, string>;
 }
 
-// Limpa qualquer token guardado (sessão expirada/ inválida) e força novo login.
 const handleSessionExpired = () => {
   if (typeof window === 'undefined') return;
-  for (const key of AUTH_TOKEN_KEYS) {
-    window.localStorage.removeItem(key);
-    window.sessionStorage.removeItem(key);
-  }
+  clearAuthSession();
+  notifyAuthChanged();
   if (!window.location.pathname.startsWith('/login')) {
     window.location.assign('/login');
   }

@@ -6,8 +6,9 @@ import { UserAvatar } from './shared/UserAvatar';
 import { GenomaLogo } from './shared/GenomaLogo';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
-import { DefinicoesSubmodule, PermissionModule, StockSubmodule } from '../../lib/permissions';
+import { DefinicoesSubmodule, ListingsSubmodule, PermissionModule, StockSubmodule } from '../../lib/permissions';
 import { LISTING_ORDER } from './listagens/listingConfig';
+import { formatUtilizadorNome } from '../../lib/utilizadores';
 
 type MenuSubItemId =
   | 'kits'
@@ -99,7 +100,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const { role, hasPermission, hasStockSubmodulePermission, hasDefinicoesSubmodulePermission, currentUser } = useAuth();
+  const { role, hasPermission, hasStockSubmodulePermission, hasListingsSubmodulePermission, hasDefinicoesSubmodulePermission, currentUser } = useAuth();
   const { t } = useLanguage();
   const location = useLocation();
 
@@ -126,7 +127,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
 
     if (item.module === 'listagens') {
-      return hasPermission('listagens', 'read') ? item.subItems : [];
+      return item.subItems.filter((subItem) => hasListingsSubmodulePermission(subItem.id as ListingsSubmodule));
     }
 
     if (item.module === 'definicoes') {
@@ -136,7 +137,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     return item.subItems;
   };
 
-  const displayName = currentUser?.nome || t('common.currentUser');
+  const displayName = currentUser
+    ? formatUtilizadorNome({ nome: currentUser.nome, medico_titulo: currentUser.medico_titulo })
+    : t('common.currentUser');
   const displayRole = currentUser?.perfil_nome || t(`roles.${role}`);
 
   return (

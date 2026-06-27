@@ -5,6 +5,7 @@ import { EmptyState } from '../shared/EmptyState';
 import { DetailDrawer } from '../shared/DetailDrawer';
 import { StatusBadge } from '../shared/StatusBadge';
 import { PANEL } from '../../../lib/design-tokens';
+import { KIT_STATUS_STYLES } from '../../../lib/design-system';
 import { SearchField } from '../shared/PageToolbar';
 import { validadeEstado, VALIDADE_STYLE, formatValidadeAte, isKitDisponivel } from '../../../lib/stocks';
 import { useLanguage } from '../../../i18n/LanguageContext';

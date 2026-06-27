@@ -2,15 +2,15 @@ const dashboardsRepository = require('../repositories/dashboards.repository');
 
 const num = (value) => Number(value || 0);
 
-exports.getOperacional = async () => {
+exports.getOperacional = async (medicoUtilizadorId = null) => {
   const [contadores, porEstado, parados, requisicoes, atraso, faturas, contactos] = await Promise.all([
-    dashboardsRepository.contadoresOperacionais(),
-    dashboardsRepository.processosPorEstado(),
-    dashboardsRepository.processosParados(7),
+    dashboardsRepository.contadoresOperacionais(medicoUtilizadorId),
+    dashboardsRepository.processosPorEstado(medicoUtilizadorId),
+    dashboardsRepository.processosParados(7, medicoUtilizadorId),
     dashboardsRepository.requisicoesPendentes(),
-    dashboardsRepository.resultadosEmAtraso(15),
-    dashboardsRepository.faturasEmFalta(),
-    dashboardsRepository.totalContactos(),
+    dashboardsRepository.resultadosEmAtraso(15, medicoUtilizadorId),
+    dashboardsRepository.faturasEmFalta(medicoUtilizadorId),
+    dashboardsRepository.totalContactos(medicoUtilizadorId),
   ]);
 
   const alertas = [];
@@ -74,11 +74,11 @@ exports.getOperacional = async () => {
   };
 };
 
-exports.getFinanceiro = async () => {
+exports.getFinanceiro = async (medicoUtilizadorId = null) => {
   const [contadores, receitaMes, topMedicos] = await Promise.all([
-    dashboardsRepository.contadoresFinanceiros(),
-    dashboardsRepository.receitaPorMes(6),
-    dashboardsRepository.receitaPorMedico(5),
+    dashboardsRepository.contadoresFinanceiros(medicoUtilizadorId),
+    dashboardsRepository.receitaPorMes(6, medicoUtilizadorId),
+    dashboardsRepository.receitaPorMedico(5, medicoUtilizadorId),
   ]);
 
   const alertas = [];
@@ -104,11 +104,11 @@ exports.getFinanceiro = async () => {
   };
 };
 
-exports.getLaboratorial = async () => {
+exports.getLaboratorial = async (medicoUtilizadorId = null) => {
   const [contadores, expiracao, anomalias] = await Promise.all([
-    dashboardsRepository.contadoresLaboratoriais(),
+    dashboardsRepository.contadoresLaboratoriais(medicoUtilizadorId),
     dashboardsRepository.kitsAExpirar(30),
-    dashboardsRepository.anomaliasPorCromossoma(),
+    dashboardsRepository.anomaliasPorCromossoma(medicoUtilizadorId),
   ]);
 
   const totalComResultado = num(contadores.total_com_resultado);
@@ -141,11 +141,11 @@ exports.getLaboratorial = async () => {
   };
 };
 
-exports.getExecutivo = async () => {
+exports.getExecutivo = async (medicoUtilizadorId = null) => {
   const [contadores, mix, porMes] = await Promise.all([
-    dashboardsRepository.contadoresExecutivos(),
-    dashboardsRepository.mixDeServicos(),
-    dashboardsRepository.processosPorMes(12),
+    dashboardsRepository.contadoresExecutivos(medicoUtilizadorId),
+    dashboardsRepository.mixDeServicos(medicoUtilizadorId),
+    dashboardsRepository.processosPorMes(12, medicoUtilizadorId),
   ]);
 
   return {

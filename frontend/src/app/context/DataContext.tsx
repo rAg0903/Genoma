@@ -7,7 +7,7 @@ import {
   contactToApiBody,
   mapApiPacienteToContact,
 } from '../../lib/pacientes';
-import { resolveTesteIdFromSelection } from '../../lib/testes';
+import { resolveTesteIdFromSelection, sortTestesByCodigo } from '../../lib/testes';
 
 type ApiListResponse<T> = {
   data?: T[];
@@ -145,7 +145,7 @@ const mapTesteFromApi = (t: ApiTeste): Teste => ({
   laboratorio_final_id: t.laboratorio_final_id || t.laboratorio_processamento_id || null,
   teste_pai_id: t.teste_pai_id || null,
   ativo: t.ativo !== false,
-  sub_testes: (t.sub_testes || []).map(mapSubTesteFromApi),
+  sub_testes: sortTestesByCodigo((t.sub_testes || []).map(mapSubTesteFromApi)),
 });
 
 interface ApiEmpresa {
@@ -182,6 +182,7 @@ interface ApiUtilizador {
   ativo?: boolean | null;
   perfil_nome?: string | null;
   avatar_url?: string | null;
+  medico_titulo?: string | null;
 }
 
 const mapUtilizadorFromApi = (u: ApiUtilizador): Utilizador => ({
@@ -191,6 +192,7 @@ const mapUtilizadorFromApi = (u: ApiUtilizador): Utilizador => ({
   perfil: u.perfil_nome || '',
   ativo: u.ativo === undefined || u.ativo === null ? true : !!u.ativo,
   avatar_url: u.avatar_url ?? null,
+  medico_titulo: u.medico_titulo ?? null,
 });
 
 const utilizadorToApiBody = (data: Partial<Utilizador>) => ({
@@ -833,10 +835,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const clearAllData = () => {
+      setContacts([]);
+      setProcessos([]);
+      setKits([]);
+      setLotes([]);
+      setRequisicoesKits([]);
+      setUtilizadores([]);
+      setEmpresas([]);
+      setTestes([]);
+      setTiposKit([]);
+      setMotivosAnulacao([]);
+      setItensPesquisa([]);
+      setSistemasSaude([]);
+      setPostos([]);
+      setLaboratorios([]);
+      setEntidades([]);
+    };
+
     const loadInitialData = async () => {
-      // Sem token (ecrã de login) não há nada a carregar; o carregamento é
-      // re-disparado pelo evento 'genoma:auth-changed' após o login.
-      if (!getAuthToken()) return;
+      if (!getAuthToken()) {
+        clearAllData();
+        return;
+      }
       try {
         await Promise.all([
           refreshContacts(),

@@ -6,7 +6,7 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Teste } from '../data/types';
 import { filterLaboratoriosFinais } from '../../lib/stock-locations';
-import { findTestePrincipal, getTestesPrincipais } from '../../lib/testes';
+import { findTestePrincipal, getTestesPrincipais, sortTestesByCodigo } from '../../lib/testes';
 import { FORM_INPUT_CLASS, ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
 import { CONTROL } from '../../lib/design-tokens';
 import { FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
@@ -112,7 +112,10 @@ export function TesteFormPage() {
     () => (id ? findTestePrincipal(testes, id) : undefined),
     [testes, id],
   );
-  const subTestes = parentTeste?.sub_testes ?? [];
+  const subTestes = useMemo(
+    () => sortTestesByCodigo(parentTeste?.sub_testes ?? []),
+    [parentTeste],
+  );
 
   const voltar = () => navigate('/definicoes?tab=testes');
   const podeGuardar = editing ? canUpdate : canCreate;

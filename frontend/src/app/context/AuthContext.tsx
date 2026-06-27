@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../../lib/api';
+import { AUTH_CHANGED_EVENT, clearAuthSession, getAuthToken, notifyAuthChanged } from '../../lib/auth-session';
 import { perfisApi } from '../../lib/api-perfis';
 import {
   applyModulePermissionChange,
@@ -10,9 +11,11 @@ import {
   getLegacyRoleFromPerfilNome,
   isValidPermissionBundle,
   PerfilPermissionBundle,
+  normalizePermissionBundle,
   persistPerfilPermissions,
   readStoredPerfilPermissions,
 } from '../../lib/perfil-permissions';
+import { migrateListingsSubmodulePermissions } from '../../lib/listings-nav';
 import { isAdminPerfilNome } from '../../lib/perfil-utils';
 import {
   cloneDefinicoesSubmodulePermissions,
@@ -41,11 +44,15 @@ import {
   USER_ROLES,
 } from '../../lib/permissions';
 
+type AuthSessionStatus = 'checking' | 'authenticated' | 'unauthenticated';
+
 type AuthContextType = {
   role: UserRole;
   currentUser: CurrentUser | null;
   currentPerfilId: string | null;
   isAdministrator: boolean;
+  isSessionReady: boolean;
+  sessionStatus: AuthSessionStatus;
   rolePermissions: Record<UserRole, RolePermissions>;
   stockSubmodulePermissions: Record<UserRole, StockSubmodulePermissions>;
   listingsSubmodulePermissions: Record<UserRole, ListingsSubmodulePermissions>;
@@ -70,6 +77,7 @@ type AuthContextType = {
   updatePerfilListingsSubmodulePermission: (perfilId: string, submodule: ListingsSubmodule, value: boolean) => void;
   updatePerfilDefinicoesSubmodulePermission: (perfilId: string, submodule: DefinicoesSubmodule, value: boolean) => void;
   updateProfile: (data: { nome: string; email: string; avatar_url?: string | null }) => Promise<void>;
+  logout: () => void;
 };
 
 const STORAGE_KEY = 'genoma_user_role';
@@ -77,7 +85,13 @@ const PERMISSIONS_STORAGE_KEY = 'genoma_role_permissions';
 const STOCK_SUBMODULE_PERMISSIONS_STORAGE_KEY = 'genoma_stock_submodule_permissions';
 const LISTINGS_SUBMODULE_PERMISSIONS_STORAGE_KEY = 'genoma_listings_submodule_permissions';
 const DEFINICOES_SUBMODULE_PERMISSIONS_STORAGE_KEY = 'genoma_definicoes_submodule_permissions';
-const AUTH_TOKEN_KEYS = ['token', 'authToken', 'jwtToken', 'access_token'];
+
+const readStoredRole = (): UserRole => {
+  if (typeof window === 'undefined') return 'Assistente';
+  const value = window.localStorage.getItem(STORAGE_KEY) as UserRole | null;
+  if (!value) return 'Assistente';
+  return value in ROLE_PERMISSIONS ? value : 'Assistente';
+};
 
 type ApiPerfil = {
   id: string;
@@ -100,6 +114,7 @@ type CurrentUser = {
   ativo?: boolean;
   perfil_nome?: string | null;
   avatar_url?: string | null;
+  medico_titulo?: string | null;
 };
 
 type ApiCurrentUserResponse = {
@@ -109,6 +124,7 @@ type ApiCurrentUserResponse = {
   ativo?: boolean;
   perfil_nome?: string | null;
   avatar_url?: string | null;
+  medico_titulo?: string | null;
 };
 
 type ApiStockSubmoduleResponse = {
@@ -118,26 +134,10 @@ type ApiStockSubmoduleResponse = {
   };
 };
 
-const readStoredRole = (): UserRole => {
-  if (typeof window === 'undefined') return 'Administrador';
-  const value = window.localStorage.getItem(STORAGE_KEY) as UserRole | null;
-  if (!value) return 'Administrador';
-  return value in ROLE_PERMISSIONS ? value : 'Administrador';
-};
-
 const createDefaultPermissions = () => cloneRolePermissions(ROLE_PERMISSIONS);
 const createDefaultStockSubmodulePermissions = () => cloneStockSubmodulePermissions(ROLE_STOCK_SUBMODULE_PERMISSIONS);
 const createDefaultListingsSubmodulePermissions = () => cloneListingsSubmodulePermissions(ROLE_LISTINGS_SUBMODULE_PERMISSIONS);
 const createDefaultDefinicoesSubmodulePermissions = () => cloneDefinicoesSubmodulePermissions(ROLE_DEFINICOES_SUBMODULE_PERMISSIONS);
-
-const getAuthToken = () => {
-  if (typeof window === 'undefined') return undefined;
-  for (const key of AUTH_TOKEN_KEYS) {
-    const value = window.localStorage.getItem(key) || window.sessionStorage.getItem(key);
-    if (value) return value;
-  }
-  return undefined;
-};
 
 const parseJwtPayload = (token: string): Record<string, unknown> | null => {
   const parts = token.split('.');
@@ -271,12 +271,7 @@ const normalizeStoredListingsSubmodulePermissions = (parsed: unknown): Record<Us
     const roleData = parsedRecord[role];
     if (!roleData || typeof roleData !== 'object') continue;
 
-    const roleRecord = roleData as Record<string, unknown>;
-    for (const submodule of LISTINGS_SUBMODULES) {
-      if (typeof roleRecord[submodule] === 'boolean') {
-        normalized[role][submodule] = roleRecord[submodule] as boolean;
-      }
-    }
+    normalized[role] = migrateListingsSubmodulePermissions(roleData as Record<string, boolean>);
   }
 
   return normalized;
@@ -335,19 +330,24 @@ const readStoredDefinicoesSubmodulePermissions = (): Record<UserRole, Definicoes
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [role, setRoleState] = useState<UserRole>(() => readStoredRole());
+  const [role, setRoleState] = useState<UserRole>('Assistente');
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [rolePermissions, setRolePermissions] = useState<Record<UserRole, RolePermissions>>(() => readStoredPermissions());
-  const [stockSubmodulePermissions, setStockSubmodulePermissions] = useState<Record<UserRole, StockSubmodulePermissions>>(() => readStoredStockSubmodulePermissions());
-  const [listingsSubmodulePermissions, setListingsSubmodulePermissions] = useState<Record<UserRole, ListingsSubmodulePermissions>>(() => readStoredListingsSubmodulePermissions());
-  const [definicoesSubmodulePermissions, setDefinicoesSubmodulePermissions] = useState<Record<UserRole, DefinicoesSubmodulePermissions>>(() => readStoredDefinicoesSubmodulePermissions());
+  const [rolePermissions, setRolePermissions] = useState<Record<UserRole, RolePermissions>>(() => createDefaultPermissions());
+  const [stockSubmodulePermissions, setStockSubmodulePermissions] = useState<Record<UserRole, StockSubmodulePermissions>>(() => createDefaultStockSubmodulePermissions());
+  const [listingsSubmodulePermissions, setListingsSubmodulePermissions] = useState<Record<UserRole, ListingsSubmodulePermissions>>(() => createDefaultListingsSubmodulePermissions());
+  const [definicoesSubmodulePermissions, setDefinicoesSubmodulePermissions] = useState<Record<UserRole, DefinicoesSubmodulePermissions>>(() => createDefaultDefinicoesSubmodulePermissions());
   const [perfilIdsByRole, setPerfilIdsByRole] = useState<Partial<Record<UserRole, string>>>({});
   const [currentPerfilId, setCurrentPerfilId] = useState<string | null>(null);
-  const [permissionsByPerfilId, setPermissionsByPerfilId] = useState<Record<string, PerfilPermissionBundle>>(() => readStoredPerfilPermissions());
+  const [permissionsByPerfilId, setPermissionsByPerfilId] = useState<Record<string, PerfilPermissionBundle>>({});
   const [stockPermissionsSyncStatus, setStockPermissionsSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'fallback'>('idle');
+  const [sessionStatus, setSessionStatus] = useState<AuthSessionStatus>(() => (
+    getAuthToken() ? 'checking' : 'unauthenticated'
+  ));
   const lastKnownTokenRef = useRef<string | undefined>(getAuthToken());
 
-  const isAdministrator = isAdminPerfilNome(currentUser?.perfil_nome) || role === 'Administrador';
+  const isSessionReady = sessionStatus !== 'checking';
+  const isAdministrator = sessionStatus === 'authenticated'
+    && (isAdminPerfilNome(currentUser?.perfil_nome) || role === 'Administrador');
 
   const persistPermissionsByPerfilId = (next: Record<string, PerfilPermissionBundle>) => {
     setPermissionsByPerfilId(next);
@@ -359,7 +359,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return createAdminPermissionBundle();
     }
     if (stored[perfilId] && isValidPermissionBundle(stored[perfilId])) {
-      return clonePermissionBundle(stored[perfilId]);
+      return normalizePermissionBundle(stored[perfilId]);
     }
     const legacyRole = getLegacyRoleFromPerfilNome(perfilNome);
     if (legacyRole) {
@@ -371,7 +371,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getPerfilPermissionBundle = useCallback((perfilId: string): PerfilPermissionBundle => {
     const stored = permissionsByPerfilId[perfilId];
     if (stored && isValidPermissionBundle(stored)) {
-      return clonePermissionBundle(stored);
+      return normalizePermissionBundle(stored);
     }
     return createNewProfilePermissionBundle();
   }, [permissionsByPerfilId]);
@@ -437,13 +437,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const refreshStockPermissionsFromBackend = useCallback(async () => {
+  const resetSessionState = useCallback(() => {
+    setRoleState('Assistente');
+    setCurrentUser(null);
+    setCurrentPerfilId(null);
+    setPerfilIdsByRole({});
+    setPermissionsByPerfilId({});
+    setRolePermissions(createDefaultPermissions());
+    setStockSubmodulePermissions(createDefaultStockSubmodulePermissions());
+    setListingsSubmodulePermissions(createDefaultListingsSubmodulePermissions());
+    setDefinicoesSubmodulePermissions(createDefaultDefinicoesSubmodulePermissions());
+    setStockPermissionsSyncStatus('idle');
+  }, []);
+
+  const bootstrapSession = useCallback(async () => {
     const token = getAuthToken();
     if (!token) {
-      setStockPermissionsSyncStatus('fallback');
+      resetSessionState();
+      setSessionStatus('unauthenticated');
+      lastKnownTokenRef.current = undefined;
       return;
     }
 
+    const tokenChanged = token !== lastKnownTokenRef.current;
+    if (tokenChanged) {
+      resetSessionState();
+      lastKnownTokenRef.current = token;
+    }
+
+    setSessionStatus('checking');
     setStockPermissionsSyncStatus('syncing');
 
     try {
@@ -458,6 +480,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             ativo: userResponse.ativo,
             perfil_nome: userResponse.perfil_nome ?? null,
             avatar_url: userResponse.avatar_url ?? null,
+            medico_titulo: userResponse.medico_titulo ?? null,
           });
         } catch {
           setCurrentUser(null);
@@ -465,18 +488,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const tokenPerfilId = getPerfilIdFromToken(token);
-      let isCurrentUserAdmin = role === 'Administrador';
+      let isCurrentUserAdmin = false;
       if (tokenPerfilId) {
         setCurrentPerfilId(tokenPerfilId);
         try {
           const perfilResponse = await apiRequest<ApiPerfilResponse>(`/perfis/${tokenPerfilId}`, { token });
           isCurrentUserAdmin = isAdminPerfilNome(perfilResponse.nome);
           const mappedRole = getRoleByPerfilNome(perfilResponse.nome);
-          if (mappedRole && mappedRole !== role) {
-            setRole(mappedRole);
+          if (mappedRole) {
+            setRoleState(mappedRole);
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem(STORAGE_KEY, mappedRole);
+            }
           }
         } catch {
-          // mantém role atual
+          // perfil desconhecido — mantém defaults restritivos
         }
       }
 
@@ -484,8 +510,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const perfis = perfisResponse.data || [];
 
       const nextPerfilIdsByRole: Partial<Record<UserRole, string>> = {};
-      const storedBundles = readStoredPerfilPermissions();
-      const nextPermissionsByPerfilId: Record<string, PerfilPermissionBundle> = { ...storedBundles };
+      const nextPermissionsByPerfilId: Record<string, PerfilPermissionBundle> = {};
 
       for (const perfil of perfis) {
         const mappedRole = getRoleByPerfilNome(perfil.nome);
@@ -508,7 +533,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
             }
           } catch {
-            // mantém stock local
+            // mantém stock do bundle base
           }
         }
         nextPermissionsByPerfilId[perfil.id] = bundle;
@@ -517,50 +542,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPerfilIdsByRole(nextPerfilIdsByRole);
       persistPermissionsByPerfilId(nextPermissionsByPerfilId);
 
-      const nextStockPermissions = cloneStockSubmodulePermissions(createDefaultStockSubmodulePermissions());
+      const nextRolePermissions = createDefaultPermissions();
+      const nextListingsPermissions = createDefaultListingsSubmodulePermissions();
+      const nextDefinicoesPermissions = createDefaultDefinicoesSubmodulePermissions();
+      const nextStockPermissions = createDefaultStockSubmodulePermissions();
+
       for (const targetRole of USER_ROLES) {
         const perfilId = nextPerfilIdsByRole[targetRole];
         if (!perfilId) continue;
         const bundle = nextPermissionsByPerfilId[perfilId];
         if (!bundle) continue;
+        nextRolePermissions[targetRole] = { ...bundle.modules };
         nextStockPermissions[targetRole] = { ...bundle.stock };
+        nextListingsPermissions[targetRole] = { ...bundle.listings };
+        nextDefinicoesPermissions[targetRole] = { ...bundle.definicoes };
       }
+
+      setRolePermissions(nextRolePermissions);
+      persistRolePermissions(nextRolePermissions);
       setStockSubmodulePermissions(nextStockPermissions);
       persistStockSubmodulePermissions(nextStockPermissions);
+      setListingsSubmodulePermissions(nextListingsPermissions);
+      persistListingsSubmodulePermissions(nextListingsPermissions);
+      setDefinicoesSubmodulePermissions(nextDefinicoesPermissions);
+      persistDefinicoesSubmodulePermissions(nextDefinicoesPermissions);
       setStockPermissionsSyncStatus('synced');
+      setSessionStatus('authenticated');
     } catch {
-      // Keep local permissions when backend sync is unavailable or user is not admin.
       setStockPermissionsSyncStatus('fallback');
+      setSessionStatus('authenticated');
     }
-  }, [role, buildBundleForPerfil]);
+  }, [buildBundleForPerfil, resetSessionState]);
+
+  const refreshStockPermissionsFromBackend = useCallback(async () => {
+    await bootstrapSession();
+  }, [bootstrapSession]);
 
   useEffect(() => {
-    void refreshStockPermissionsFromBackend();
-  }, [refreshStockPermissionsFromBackend]);
+    const handleAuthChanged = () => { void bootstrapSession(); };
+    window.addEventListener(AUTH_CHANGED_EVENT, handleAuthChanged);
+    void bootstrapSession();
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, handleAuthChanged);
+  }, [bootstrapSession]);
 
-  useEffect(() => {
-    const handleWindowFocus = () => {
-      const currentToken = getAuthToken();
-      if (currentToken && currentToken !== lastKnownTokenRef.current) {
-        lastKnownTokenRef.current = currentToken;
-        void refreshStockPermissionsFromBackend();
-      }
-    };
-
-    const intervalId = window.setInterval(() => {
-      const currentToken = getAuthToken();
-      if (currentToken && currentToken !== lastKnownTokenRef.current) {
-        lastKnownTokenRef.current = currentToken;
-        void refreshStockPermissionsFromBackend();
-      }
-    }, 1500);
-
-    window.addEventListener('focus', handleWindowFocus);
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', handleWindowFocus);
-    };
-  }, [refreshStockPermissionsFromBackend]);
+  const logout = useCallback(() => {
+    clearAuthSession();
+    resetSessionState();
+    lastKnownTokenRef.current = undefined;
+    setSessionStatus('unauthenticated');
+    notifyAuthChanged();
+  }, [resetSessionState]);
 
   const updateRolePermission = (targetRole: UserRole, module: PermissionModule, action: PermissionAction, value: boolean) => {
     if (targetRole === 'Administrador') {
@@ -713,6 +744,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [currentPerfilId, definicoesSubmodulePermissions, isAdministrator, listingsSubmodulePermissions, permissionsByPerfilId, role, rolePermissions, stockSubmodulePermissions]);
 
   const hasPermission = (module: PermissionModule, action: PermissionAction) => {
+    if (sessionStatus !== 'authenticated') return false;
     if (isAdministrator) return true;
     return activePermissionBundle?.modules[module][action] ?? false;
   };
@@ -790,6 +822,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: data.email.trim(),
       ativo: response.data?.ativo ?? prev?.ativo,
       perfil_nome: response.data?.perfil_nome ?? prev?.perfil_nome ?? null,
+      medico_titulo: response.data?.medico_titulo ?? prev?.medico_titulo ?? null,
       avatar_url: response.data?.avatar_url !== undefined
         ? (response.data.avatar_url ?? null)
         : (data.avatar_url !== undefined ? (data.avatar_url ?? null) : (prev?.avatar_url ?? null)),
@@ -806,6 +839,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentUser,
       currentPerfilId,
       isAdministrator,
+      isSessionReady,
+      sessionStatus,
       rolePermissions,
       stockSubmodulePermissions,
       listingsSubmodulePermissions,
@@ -830,12 +865,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updatePerfilListingsSubmodulePermission,
       updatePerfilDefinicoesSubmodulePermission,
       updateProfile,
+      logout,
     }),
     [
       role,
       currentUser,
       currentPerfilId,
       isAdministrator,
+      isSessionReady,
+      sessionStatus,
       rolePermissions,
       stockSubmodulePermissions,
       listingsSubmodulePermissions,

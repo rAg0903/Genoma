@@ -193,6 +193,7 @@ export interface Utilizador {
   perfil: string;
   ativo: boolean;
   avatar_url?: string | null;
+  medico_titulo?: string | null;
 }
 
 export interface Empresa {

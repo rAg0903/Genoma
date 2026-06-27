@@ -20,6 +20,7 @@ import { ReadOnlyNotice } from './shared/ReadOnlyNotice';
 import { DefinicoesSubmodule } from '../../lib/permissions';
 import { perfisApi, Perfil } from '../../lib/api-perfis';
 import { isAdminPerfilNome, isMedicoPerfilNome } from '../../lib/perfil-utils';
+import { formatUtilizadorNome } from '../../lib/utilizadores';
 import { useSearchParams } from 'react-router';
 import { createPostalCodeAutofillHandlers } from '../../lib/postal-code-pt';
 import {
@@ -174,6 +175,7 @@ export function SettingsPage() {
 
 /* =========== UTILIZADORES =========== */
 function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
+  const navigate = useNavigate();
   const { utilizadores, addUtilizador, updateUtilizador, deleteUtilizador } = useData();
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -207,13 +209,25 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
     isAdminPerfilNome(editItem.perfil) || isMedicoPerfilNome(editItem.perfil)
   );
 
-  const filtered = utilizadores.filter(u => u.nome.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
+  const filtered = utilizadores.filter((u) => {
+    const q = search.toLowerCase();
+    const label = formatUtilizadorNome(u);
+    return !q || label.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+  });
   const openNew = () => {
     setEditItem(null);
     setForm({ nome: '', email: '', perfil: defaultPerfil, ativo: true });
     setIsOpen(true);
   };
-  const openEdit = (u: Utilizador) => { setEditItem(u); setForm({ nome: u.nome, email: u.email, perfil: u.perfil, ativo: u.ativo }); setIsOpen(true); };
+  const openEdit = (u: Utilizador) => {
+    if (isMedicoPerfilNome(u.perfil)) {
+      navigate(`/definicoes/utilizadores/${u.id}/editar`);
+      return;
+    }
+    setEditItem(u);
+    setForm({ nome: u.nome, email: u.email, perfil: u.perfil, ativo: u.ativo });
+    setIsOpen(true);
+  };
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -271,12 +285,12 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <UserAvatar
-                        name={u.nome}
+                        name={formatUtilizadorNome(u)}
                         avatarUrl={u.avatar_url}
                         fallback={u.perfil.slice(0, 2).toUpperCase()}
                         size="xs"
                       />
-                      <span className="text-[13px] font-medium text-slate-800 dark:text-slate-100">{u.nome}</span>
+                      <span className="text-[13px] font-medium text-slate-800 dark:text-slate-100">{formatUtilizadorNome(u)}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-[13px] text-slate-600 dark:text-slate-300">{u.email}</td>

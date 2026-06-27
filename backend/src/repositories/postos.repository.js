@@ -1,6 +1,18 @@
 const pool = require('../config/database');
 const kitLifecycleService = require('../services/kit-lifecycle.service');
 
+/** Kits físicos são iguais por tipo_kit; sub-teste só afecta preço/resultados. */
+const SQL_KIT_MATCHES_TESTE = `
+  EXISTS (
+    SELECT 1
+    FROM testes t_sel
+    LEFT JOIN testes t_pai ON t_pai.id = t_sel.teste_pai_id
+    INNER JOIN tipos_kit tkt ON TRIM(tkt.nome) = TRIM(COALESCE(t_pai.tipo_kit, t_sel.tipo_kit))
+    WHERE t_sel.id = ?
+      AND (k.tipo_kit_id = tkt.id OR l.tipo_kit_id = tkt.id)
+  )
+`;
+
 const COLUMNS = [
   'nome', 'codigo_posto', 'entidade_id', 'laboratorio_id', 'morada', 'codigo_postal',
   'cidade', 'distrito', 'pais', 'contacto', 'email', 'notas', 'ativo',
@@ -123,19 +135,8 @@ exports.countKitsDisponiveis = async (id, testeId = null) => {
        WHERE k.posto_id = ? AND k.status = 'Disponivel' AND k.localizacao = 'Posto'`;
     const params = [id];
     if (testeId) {
-      sql += ` AND (
-        l.teste_id = ?
-        OR (
-          l.teste_id IS NULL
-          AND EXISTS (
-            SELECT 1 FROM testes t
-            INNER JOIN tipos_kit tkt ON TRIM(t.tipo_kit) = TRIM(tkt.nome)
-            WHERE t.id = ?
-              AND (k.tipo_kit_id = tkt.id OR l.tipo_kit_id = tkt.id)
-          )
-        )
-      )`;
-      params.push(testeId, testeId);
+      sql += ` AND ${SQL_KIT_MATCHES_TESTE}`;
+      params.push(testeId);
     }
     const [rows] = await connection.execute(sql, params);
     return Number(rows[0]?.count || 0);
@@ -187,19 +188,8 @@ exports.findKitsDisponiveis = async (id, testeId = null) => {
        WHERE k.posto_id = ? AND k.status = 'Disponivel' AND k.localizacao = 'Posto'`;
     const params = [id];
     if (testeId) {
-      sql += ` AND (
-        l.teste_id = ?
-        OR (
-          l.teste_id IS NULL
-          AND EXISTS (
-            SELECT 1 FROM testes t
-            INNER JOIN tipos_kit tkt ON TRIM(t.tipo_kit) = TRIM(tkt.nome)
-            WHERE t.id = ?
-              AND (k.tipo_kit_id = tkt.id OR l.tipo_kit_id = tkt.id)
-          )
-        )
-      )`;
-      params.push(testeId, testeId);
+      sql += ` AND ${SQL_KIT_MATCHES_TESTE}`;
+      params.push(testeId);
     }
     sql += ' ORDER BY k.data_validade ASC, k.codigo_barras ASC';
     const [rows] = await connection.execute(sql, params);

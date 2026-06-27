@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { FlaskConical, Receipt, Package, Boxes, BadgeCheck } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { PageHeader } from '../shared/PageHeader';
 import { PageTabsRow } from '../shared/PageToolbar';
@@ -13,6 +14,7 @@ import {
   listagensApi, ListingKey, ListingColumn, ListingRow, ListingPagination, ListingQuery,
 } from '../../../lib/api-listagens';
 import { LISTINGS, LISTING_ORDER, ListingDef } from './listingConfig';
+import { ListingsSubmodule } from '../../../lib/permissions';
 import { ListingTable } from './ListingTable';
 import { ListingDetailDrawer } from './ListingDetailDrawer';
 import { GlobalSearchPalette } from './GlobalSearchPalette';
@@ -21,15 +23,34 @@ import { AdvancedFilters, AdvancedFilterState, countActiveFilters } from './Adva
 
 const PAGE_SIZE = 25;
 
-const getValidListing = (tab: string | null): ListingKey =>
-  tab && (LISTING_ORDER as string[]).includes(tab) ? (tab as ListingKey) : 'painel_bordo';
-
 export function ListingsPage() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { hasListingsSubmodulePermission } = useAuth();
   const { processos, kits, lotes } = useData();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = getValidListing(searchParams.get('tab'));
+
+  const visibleTabs = useMemo(
+    () => LISTING_ORDER.filter((key) => hasListingsSubmodulePermission(key as ListingsSubmodule)),
+    [hasListingsSubmodulePermission],
+  );
+
+  const tabParam = searchParams.get('tab');
+  const activeTab = useMemo(() => {
+    if (tabParam && visibleTabs.includes(tabParam as ListingKey)) return tabParam as ListingKey;
+    return (visibleTabs[0] ?? 'painel_bordo') as ListingKey;
+  }, [tabParam, visibleTabs]);
+
+  useEffect(() => {
+    if (visibleTabs.length === 0) return;
+    if (tabParam && !visibleTabs.includes(tabParam as ListingKey)) {
+      const params = new URLSearchParams(searchParams);
+      if (activeTab === 'painel_bordo') params.delete('tab');
+      else params.set('tab', activeTab);
+      setSearchParams(params, { replace: true });
+    }
+  }, [activeTab, searchParams, setSearchParams, tabParam, visibleTabs]);
+
   const def: ListingDef = LISTINGS[activeTab];
 
   const [search, setSearch] = useState('');
@@ -147,7 +168,7 @@ export function ListingsPage() {
             <TabsBar
               active={activeTab}
               onChange={changeTab}
-              items={LISTING_ORDER.map((k) => ({ id: k, label: t(`listings.${k}`), icon: LISTINGS[k].icon }))}
+              items={visibleTabs.map((k) => ({ id: k, label: t(`listings.${k}`), icon: LISTINGS[k].icon }))}
             />
           </PageTabsRow>
         </PageHeader>

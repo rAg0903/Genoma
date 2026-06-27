@@ -5,6 +5,7 @@ import { LoginPage } from './components/LoginPage';
 import { useAuth } from './context/AuthContext';
 import { PermissionModule } from '../lib/permissions';
 import { AccessDeniedState } from './components/shared/AccessDeniedState';
+import { getAuthToken } from '../lib/auth-session';
 
 const DashboardPage = lazy(() => import('./components/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const ContactsPage = lazy(() => import('./components/ContactsPage').then((m) => ({ default: m.ContactsPage })));
@@ -27,7 +28,6 @@ const NotificationsPage = lazy(() => import('./components/NotificationsPage').th
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
 const NotFoundPage = lazy(() => import('./components/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
-const AUTH_TOKEN_KEYS = ['token', 'authToken', 'jwtToken', 'access_token'];
 const SHOW_404_PREVIEW = false;
 
 const MODULE_LABELS: Record<PermissionModule, string> = {
@@ -61,17 +61,30 @@ function withSuspense(node: ReactNode) {
   return <Suspense fallback={<RouteLoading />}>{node}</Suspense>;
 }
 
+function SessionBootstrapping() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-6 py-4 shadow-sm">
+        <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: '14px' }}>A validar sessão...</p>
+      </div>
+    </div>
+  );
+}
+
 function hasAuthToken() {
-  if (typeof window === 'undefined') return false;
-  return AUTH_TOKEN_KEYS.some((key) => Boolean(window.localStorage.getItem(key) || window.sessionStorage.getItem(key)));
+  return Boolean(getAuthToken());
 }
 
 function RequireAuth({ children }: { children: ReactNode }) {
+  const { isSessionReady } = useAuth();
   if (SHOW_404_PREVIEW) {
     return <NotFoundPage />;
   }
   if (!hasAuthToken()) {
     return <Navigate to="/login" replace />;
+  }
+  if (!isSessionReady) {
+    return <SessionBootstrapping />;
   }
   return <>{children}</>;
 }
@@ -202,6 +215,14 @@ export const router = createBrowserRouter([
       },
       {
         path: 'definicoes/medicos/:id/editar',
+        Component: () => withSuspense(
+          <ProtectedRoute module="definicoes">
+            <MedicoFormPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'definicoes/utilizadores/:id/editar',
         Component: () => withSuspense(
           <ProtectedRoute module="definicoes">
             <MedicoFormPage />

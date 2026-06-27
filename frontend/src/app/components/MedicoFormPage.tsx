@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useLocation } from 'react-router';
 import { Save, User, Phone, MapPin, StickyNote, FileText, Receipt, Loader2, Plus, Trash2, ChevronRight, FlaskConical } from 'lucide-react';
 import { toast } from 'sonner';
 import { useData } from '../context/DataContext';
@@ -14,7 +14,7 @@ import {
   medicosApi,
 } from '../../lib/api-medicos';
 import { Teste } from '../data/types';
-import { getTestesSelecionaveis } from '../../lib/testes';
+import { getTestesSelecionaveis, getTestesSelecionaveisComLabel } from '../../lib/testes';
 
 type TabId = 'identificacao' | 'condicoes' | 'relatorios' | 'notas';
 
@@ -59,7 +59,10 @@ const mergeCondicoesComCatalogo = (testes: Teste[], atuais: MedicoCondicaoTesteI
 
 export function MedicoFormPage() {
   const { id } = useParams();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
+  const fromUtilizadores = pathname.includes('/definicoes/utilizadores/');
+  const listPath = fromUtilizadores ? '/definicoes?tab=utilizadores' : '/definicoes?tab=medicos';
   const { entidades, testes, refreshEntidades } = useData();
   const { hasPermission } = useAuth();
   const canCreate = hasPermission('definicoes', 'create');
@@ -77,6 +80,10 @@ export function MedicoFormPage() {
     [testes],
   );
   const testesPorId = useMemo(() => new Map(testesAtivos.map((t) => [t.id, t])), [testesAtivos]);
+  const testesLabelPorId = useMemo(
+    () => new Map(getTestesSelecionaveisComLabel(testes).map((t) => [t.id, t.label])),
+    [testes],
+  );
 
   useEffect(() => {
     void refreshEntidades();
@@ -98,6 +105,11 @@ export function MedicoFormPage() {
         if (!m) return;
         const contactos = [...(m.contactos_secundarios || [])];
         while (contactos.length < 3) contactos.push(emptyContacto());
+        const savedCondicoes = (m.condicoes_testes || []).map((c) => ({
+          teste_id: c.teste_id,
+          comissao: c.comissao != null ? String(c.comissao) : '',
+          prazo_pagamento_dias: c.prazo_pagamento_dias != null ? String(c.prazo_pagamento_dias) : '',
+        }));
         setForm({
           nome: m.nome,
           titulo: m.titulo || '',
@@ -113,19 +125,17 @@ export function MedicoFormPage() {
           especialidade: m.especialidade,
           contactos_secundarios: contactos.slice(0, 3),
           locais_trabalho: (m.locais_trabalho || []).map((l) => ({ entidade_id: l.entidade_id })),
-          condicoes_testes: (m.condicoes_testes || []).map((c) => ({
-            teste_id: c.teste_id,
-            comissao: c.comissao != null ? String(c.comissao) : '',
-            prazo_pagamento_dias: c.prazo_pagamento_dias != null ? String(c.prazo_pagamento_dias) : '',
-          })),
+          condicoes_testes: testesAtivos.length > 0
+            ? mergeCondicoesComCatalogo(testesAtivos, savedCondicoes)
+            : savedCondicoes,
         });
       })
       .catch((err) => {
         toast.error(err instanceof Error ? err.message : 'Não foi possível carregar o médico.');
-        navigate('/definicoes?tab=medicos');
+        navigate(listPath);
       })
       .finally(() => setLoading(false));
-  }, [id, navigate]);
+  }, [id, listPath, navigate, testesAtivos]);
 
   const displayName = [form.titulo, form.nome].filter(Boolean).join(' ').trim();
   const initials = (displayName || 'Novo Médico').split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
@@ -189,7 +199,7 @@ export function MedicoFormPage() {
         await medicosApi.create(form);
         toast.success('Médico criado.');
       }
-      navigate('/definicoes?tab=medicos');
+      navigate(listPath);
     } catch (err) {
       const feedback = getMedicoSaveFeedback(err);
       if (feedback.kind === 'warning') toast.warning(feedback.message);
@@ -211,7 +221,7 @@ export function MedicoFormPage() {
     <FormPageShell>
       <FormPageBody>
         <FormPageHeader
-          onBack={() => navigate('/definicoes?tab=medicos')}
+          onBack={() => navigate(listPath)}
           title={displayName || (editing ? 'Editar médico' : 'Novo médico')}
           subtitle={editing ? 'Edição de médico' : 'Criação de médico'}
           avatar={<FormAvatarInitials initials={initials} />}
@@ -378,7 +388,9 @@ export function MedicoFormPage() {
                       if (!teste) return null;
                       return (
                         <div key={c.teste_id} className="grid grid-cols-[1fr_9rem_9rem] gap-2 items-center px-3 py-2.5">
-                          <span className="text-sm text-slate-800 dark:text-slate-100 pr-2">{teste.nome}</span>
+                          <span className="text-sm text-slate-800 dark:text-slate-100 pr-2">
+                            {testesLabelPorId.get(c.teste_id) ?? teste.nome}
+                          </span>
                           <div className="relative">
                             <input
                               type="number"

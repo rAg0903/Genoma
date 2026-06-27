@@ -1,8 +1,15 @@
+import {
+  createEmptyListingsNavPermissions,
+  createFullListingsNavPermissions,
+  LISTINGS_NAV_ORDER,
+  ListingsNavKey,
+} from './listings-nav';
+
 export type UserRole = 'Administrador' | 'Medico' | 'Assistente';
 export type PermissionAction = 'read' | 'create' | 'update' | 'delete';
 export type PermissionModule = 'dashboard' | 'contactos' | 'processos' | 'stocks' | 'listagens' | 'definicoes';
 export type StockSubmodule = 'lotes' | 'requisicoes' | 'descartes';
-export type ListingsSubmodule = 'exames' | 'processos';
+export type ListingsSubmodule = ListingsNavKey;
 export type DefinicoesSubmodule = 'utilizadores' | 'permissoes' | 'empresas' | 'testes' | 'tipos_kit' | 'entidades' | 'laboratorios' | 'medicos' | 'motivos_anulacao';
 
 export type RolePermissions = Record<PermissionModule, Record<PermissionAction, boolean>>;
@@ -14,7 +21,7 @@ export const USER_ROLES: UserRole[] = ['Administrador', 'Medico', 'Assistente'];
 export const PERMISSION_MODULES: PermissionModule[] = ['dashboard', 'contactos', 'processos', 'stocks', 'listagens', 'definicoes'];
 export const PERMISSION_ACTIONS: PermissionAction[] = ['read', 'create', 'update', 'delete'];
 export const STOCK_SUBMODULES: StockSubmodule[] = ['lotes', 'requisicoes', 'descartes'];
-export const LISTINGS_SUBMODULES: ListingsSubmodule[] = ['exames', 'processos'];
+export const LISTINGS_SUBMODULES: ListingsSubmodule[] = [...LISTINGS_NAV_ORDER];
 export const DEFINICOES_SUBMODULES: DefinicoesSubmodule[] = ['utilizadores', 'permissoes', 'empresas', 'testes', 'tipos_kit', 'entidades', 'laboratorios', 'medicos', 'motivos_anulacao'];
 
 const allActions = {
@@ -63,15 +70,9 @@ const noStockSubmodules = {
   descartes: false,
 };
 
-const allListingsSubmodules = {
-  exames: true,
-  processos: true,
-};
+const allListingsSubmodules = createFullListingsNavPermissions();
 
-const noListingsSubmodules = {
-  exames: false,
-  processos: false,
-};
+const noListingsSubmodules = createEmptyListingsNavPermissions();
 
 const allDefinicoesSubmodules = {
   utilizadores: true,

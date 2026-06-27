@@ -53,6 +53,12 @@ export type MedicoPayload = Omit<Medico, 'utilizador_id' | 'locais_trabalho' | '
 
 const t = () => getAuthToken();
 
+const notifyUtilizadoresChanged = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('genoma:utilizadores-changed'));
+  }
+};
+
 export type MedicoSaveFeedback = { kind: 'warning' | 'error'; message: string };
 
 /** Converte erros da API de médicos em mensagens amigáveis para o utilizador. */
@@ -88,13 +94,16 @@ export const medicosApi = {
     apiRequest<{ data: Medico }>(`/medicos/${id}`, { token: t() }).then((r) => r.data),
 
   create: (body: MedicoPayload) =>
-    apiRequest<{ data: Medico }>('/medicos', { method: 'POST', token: t(), body }).then((r) => r.data),
+    apiRequest<{ data: Medico }>('/medicos', { method: 'POST', token: t(), body })
+      .then((r) => { notifyUtilizadoresChanged(); return r.data; }),
 
   update: (id: string, body: Partial<MedicoPayload>) =>
-    apiRequest<{ data: Medico }>(`/medicos/${id}`, { method: 'PUT', token: t(), body }).then((r) => r.data),
+    apiRequest<{ data: Medico }>(`/medicos/${id}`, { method: 'PUT', token: t(), body })
+      .then((r) => { notifyUtilizadoresChanged(); return r.data; }),
 
   remove: (id: string) =>
-    apiRequest<{ message: string }>(`/medicos/${id}`, { method: 'DELETE', token: t() }),
+    apiRequest<{ message: string }>(`/medicos/${id}`, { method: 'DELETE', token: t() })
+      .then((r) => { notifyUtilizadoresChanged(); return r; }),
 };
 
 export const CRITERIO_BUSCA_POSTOS = [

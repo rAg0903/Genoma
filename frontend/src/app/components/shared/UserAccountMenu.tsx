@@ -6,6 +6,7 @@ import { useLanguage } from '../../../i18n/LanguageContext';
 import { AccountSettingsModal } from './AccountSettingsModal';
 import { EditProfileModal } from './EditProfileModal';
 import { UserAvatar } from './UserAvatar';
+import { formatUtilizadorNome } from '../../../lib/utilizadores';
 
 type MenuPlacement = 'bottom-end' | 'top-start';
 
@@ -16,7 +17,7 @@ interface UserAccountMenuProps {
 }
 
 export function UserAccountMenu({ placement = 'bottom-end', onMenuAction, trigger }: UserAccountMenuProps) {
-  const { role, currentUser } = useAuth();
+  const { role, currentUser, logout } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,7 +25,9 @@ export function UserAccountMenu({ placement = 'bottom-end', onMenuAction, trigge
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
 
-  const displayName = currentUser?.nome || t('common.currentUser');
+  const displayName = currentUser
+    ? formatUtilizadorNome({ nome: currentUser.nome, medico_titulo: currentUser.medico_titulo })
+    : t('common.currentUser');
   const displayRole = currentUser?.perfil_nome || t(`roles.${role}`);
 
   useEffect(() => {
@@ -40,13 +43,9 @@ export function UserAccountMenu({ placement = 'bottom-end', onMenuAction, trigge
   const closeMenu = () => setOpen(false);
 
   const handleLogout = () => {
-    const tokenKeys = ['token', 'authToken', 'jwtToken', 'access_token'];
-    tokenKeys.forEach((key) => {
-      window.localStorage.removeItem(key);
-      window.sessionStorage.removeItem(key);
-    });
     closeMenu();
     onMenuAction?.();
+    logout();
     navigate('/login', { replace: true });
   };
 

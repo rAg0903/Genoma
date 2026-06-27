@@ -7,7 +7,7 @@ exports.findAllPrincipais = async () => {
             'SELECT * FROM testes WHERE teste_pai_id IS NULL ORDER BY nome ASC',
         );
         const [children] = await connection.execute(
-            'SELECT * FROM testes WHERE teste_pai_id IS NOT NULL ORDER BY nome ASC',
+            'SELECT * FROM testes WHERE teste_pai_id IS NOT NULL ORDER BY codigo ASC, nome ASC',
         );
         const byParent = new Map();
         for (const row of children) {
@@ -48,7 +48,7 @@ exports.findSubTestesByPaiId = async (paiId) => {
     const connection = await pool.getConnection();
     try {
         const [rows] = await connection.execute(
-            'SELECT * FROM testes WHERE teste_pai_id = ? ORDER BY nome ASC',
+            'SELECT * FROM testes WHERE teste_pai_id = ? ORDER BY codigo ASC, nome ASC',
             [paiId],
         );
         return rows;

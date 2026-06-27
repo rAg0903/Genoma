@@ -278,8 +278,14 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
       return;
     }
     if (!existing) return;
-    setForm(toFormState(existing));
-  }, [editing, existing]);
+    const state = toFormState(existing);
+    setForm({
+      ...state,
+      condicoes_testes: testesAtivos.length > 0
+        ? mergeCondicoesComCatalogo(testesAtivos, state.condicoes_testes)
+        : state.condicoes_testes,
+    });
+  }, [editing, existing, testesAtivos]);
 
   useEffect(() => {
     if (!editing || loading || existing) return;

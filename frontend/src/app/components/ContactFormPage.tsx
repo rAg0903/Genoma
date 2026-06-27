@@ -31,7 +31,7 @@ import { Section, AnexosTab } from './ContactDetail';
 import { GestacaoFields } from './GestacaoFields';
 import { ProcessFaturacaoFields } from './shared/ProcessFaturacaoFields';
 import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
-import { FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
+import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
 import { AppModal, ModalAlert } from './shared/AppModal';
 import { Medico, medicosApi } from '../../lib/api-medicos';
 import { parseGestacaoRegistoInput } from '../../lib/gestacao';
@@ -74,7 +74,7 @@ export function ContactFormPage() {
     postos, testes, motivosAnulacao, getPostoStock, getPostoKitsDisponiveis, marcarKitUtilizado,
     getAnexosByPaciente, addAnexo, deleteAnexo,
   } = useData();
-  const { hasPermission } = useAuth();
+  const { hasPermission, role, currentUser } = useAuth();
   const canUpdate = hasPermission('contactos', 'update');
   const canCreate = hasPermission('contactos', 'create');
   const canUpdateProcesso = hasPermission('processos', 'update');
@@ -120,15 +120,22 @@ export function ContactFormPage() {
     const pai = testesComSubTestes.find((t) => t.id === gravidez.teste_pai_id);
     return (pai?.sub_testes || []).filter((st) => st.ativo !== false);
   }, [testesComSubTestes, gravidez.teste_pai_id]);
-  const testeSelecionadoNome = useMemo(
-    () => resolveTesteSelecionavelLabel(testes, gravidez.teste_id),
-    [testes, gravidez.teste_id],
-  );
+  const kitStockLabel = useMemo(() => {
+    const parent = resolveParentFromTesteId(testes, gravidez.teste_id);
+    return parent?.tipo_kit || parent?.nome || 'Maternity';
+  }, [testes, gravidez.teste_id]);
   const entidadesDoMedico = useMemo(() => {
     if (!gravidez.medico_id) return [];
     const medico = medicos.find((m) => m.utilizador_id === gravidez.medico_id);
     return medico?.locais_trabalho || [];
   }, [gravidez.medico_id, medicos]);
+
+  const medicoLogado = useMemo(() => {
+    if (role !== 'Medico' || !currentUser?.id) return null;
+    return medicos.find((m) => m.utilizador_id === currentUser.id) ?? null;
+  }, [role, currentUser?.id, medicos]);
+
+  const medicoFieldLocked = Boolean(medicoLogado?.utilizador_id);
 
   const ondeSeguidaNome = useMemo(
     () => entidadesDoMedico.find((l) => l.entidade_id === gravidez.entidade_id)?.entidade_nome || '',
@@ -261,6 +268,17 @@ export function ContactFormPage() {
       .then((data) => setMedicos(data || []))
       .catch(() => setMedicos([]));
   }, []);
+
+  // Perfil Médico: campo fixo com o utilizador autenticado
+  useEffect(() => {
+    if (!medicoLogado?.utilizador_id) return;
+    if (gravidez.medico_id === medicoLogado.utilizador_id) return;
+    setGravidez((prev) => ({
+      ...prev,
+      medico_id: medicoLogado.utilizador_id,
+      entidade_id: prev.medico_id === medicoLogado.utilizador_id ? prev.entidade_id : '',
+    }));
+  }, [medicoLogado, gravidez.medico_id]);
 
   useEffect(() => {
     const preco = resolvePrecoTesteSelecionavel(testes, gravidez.teste_id);
@@ -668,17 +686,28 @@ export function ContactFormPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelClass} style={{ fontSize: '13px' }}>Médico</label>
-                  <select
-                    className={inputClass}
-                    value={gravidez.medico_id}
-                    onChange={(e) => setGravidez({ ...gravidez, medico_id: e.target.value, entidade_id: '' })}
-                    style={{ fontSize: '14px' }}
-                  >
-                    <option value="">Selecione...</option>
-                    {medicos.filter((m) => m.ativo !== false).map((m) => (
-                      <option key={m.utilizador_id} value={m.utilizador_id}>{m.nome}</option>
-                    ))}
-                  </select>
+                  {medicoFieldLocked ? (
+                    <input
+                      type="text"
+                      readOnly
+                      disabled
+                      className={`${inputClass} opacity-80 cursor-not-allowed bg-gray-50 dark:bg-gray-800`}
+                      value={medicoLogado?.nome || currentUser?.nome || ''}
+                      style={{ fontSize: '14px' }}
+                    />
+                  ) : (
+                    <select
+                      className={inputClass}
+                      value={gravidez.medico_id}
+                      onChange={(e) => setGravidez({ ...gravidez, medico_id: e.target.value, entidade_id: '' })}
+                      style={{ fontSize: '14px' }}
+                    >
+                      <option value="">Selecione...</option>
+                      {medicos.filter((m) => m.ativo !== false).map((m) => (
+                        <option key={m.utilizador_id} value={m.utilizador_id}>{m.nome}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className={labelClass} style={{ fontSize: '13px' }}>Onde é seguida</label>
@@ -826,11 +855,11 @@ export function ContactFormPage() {
                     </div>
                   ) : stockInfo && stockInfo.disponiveis > 0 ? (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400" style={{ fontSize: '12px' }}>
-                      <CheckCircle2 className="w-4 h-4" /> {stockInfo.disponiveis} kit(s) de {testeSelecionadoNome || 'teste seleccionado'} disponível(eis) neste posto.
+                      <CheckCircle2 className="w-4 h-4" /> {stockInfo.disponiveis} kit(s) {kitStockLabel} disponível(eis) neste posto.
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400" style={{ fontSize: '12px' }}>
-                      <AlertTriangle className="w-4 h-4" /> Atenção: o posto {postos.find((p) => p.id === colheita.posto_id)?.nome || ''} não possui kits de {testeSelecionadoNome || 'teste seleccionado'} para a data selecionada. O registo não é bloqueado.
+                      <AlertTriangle className="w-4 h-4" /> Atenção: o posto {postos.find((p) => p.id === colheita.posto_id)?.nome || ''} não possui kits {kitStockLabel} para a data selecionada. O registo não é bloqueado.
                     </div>
                   )}
                 </div>
@@ -914,7 +943,7 @@ export function ContactFormPage() {
             <div className="py-8 text-center">
               <Package className="w-8 h-8 text-slate-200 dark:text-slate-700 mx-auto mb-2" />
               <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Sem kits de {testeSelecionadoNome || 'teste seleccionado'} disponíveis neste posto.
+                Sem kits {kitStockLabel} disponíveis neste posto.
               </p>
             </div>
           ) : (

@@ -1,4 +1,8 @@
 import {
+  createEmptyListingsNavPermissions,
+  migrateListingsSubmodulePermissions,
+} from './listings-nav';
+import {
   cloneDefinicoesSubmodulePermissions,
   cloneListingsSubmodulePermissions,
   cloneStockSubmodulePermissions,
@@ -31,7 +35,7 @@ const readOnly = { read: true, create: false, update: false, delete: false };
 const allActions = { read: true, create: true, update: true, delete: true };
 
 const noStock = { lotes: false, requisicoes: false, descartes: false };
-const noListings = { exames: false, processos: false };
+const noListings = createEmptyListingsNavPermissions();
 const noDefinicoes = {
   utilizadores: false,
   permissoes: false,
@@ -75,13 +79,26 @@ export const createBundleFromLegacyRole = (role: UserRole): PerfilPermissionBund
 export const clonePermissionBundle = (bundle: PerfilPermissionBundle): PerfilPermissionBundle =>
   JSON.parse(JSON.stringify(bundle)) as PerfilPermissionBundle;
 
+export const normalizePermissionBundle = (bundle: PerfilPermissionBundle): PerfilPermissionBundle => {
+  const next = clonePermissionBundle(bundle);
+  next.listings = migrateListingsSubmodulePermissions(bundle.listings as Record<string, boolean>);
+  return next;
+};
+
 export const readStoredPerfilPermissions = (): Record<string, PerfilPermissionBundle> => {
   if (typeof window === 'undefined') return {};
   const raw = window.localStorage.getItem(PERFIL_PERMISSIONS_BY_ID_KEY);
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw) as Record<string, PerfilPermissionBundle>;
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    if (!parsed || typeof parsed !== 'object') return {};
+    const result: Record<string, PerfilPermissionBundle> = {};
+    for (const [id, bundle] of Object.entries(parsed)) {
+      if (isValidPermissionBundle(bundle)) {
+        result[id] = normalizePermissionBundle(bundle);
+      }
+    }
+    return result;
   } catch {
     return {};
   }

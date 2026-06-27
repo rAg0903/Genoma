@@ -29,6 +29,7 @@ const ROUTE_LABEL_KEYS: Record<string, string> = {
   '/definicoes/testes': 'nav.tests',
   '/definicoes/medicos/novo': 'nav.newDoctor',
   '/definicoes/medicos': 'nav.doctors',
+  '/definicoes/utilizadores': 'navSub.utilizadores',
   '/definicoes/laboratorios/novo': 'navSub.laboratorios',
   '/definicoes/entidades/novo': 'navSub.entidades',
   '/perfil': 'nav.profile',

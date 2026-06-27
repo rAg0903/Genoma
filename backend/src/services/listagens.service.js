@@ -1,4 +1,6 @@
 const processosService = require('./processos.service');
+const pacientesService = require('./pacientes.service');
+const { isMedicoUser } = require('../utils/medico-access');
 const colheitasService = require('./colheitas.service');
 const colheitasRepository = require('../repositories/colheitas.repository');
 const stocksRepository = require('../repositories/stocks.repository');
@@ -104,7 +106,7 @@ const mapKit = (k) => ({
   id: k.id,
   codigo: k.codigo_barras || '',
   tipo: k.tipo_kit_nome || '',
-  teste: k.teste_nome || '',
+  teste: k.teste_pai_nome || k.teste_nome || '',
   lote: k.codigo_lote || '',
   estado: k.status || '',
   localizacao: k.localizacao || '',
@@ -281,7 +283,12 @@ const LISTINGS = {
     columns: [
       ['nome', 'Nome'], ['nif', 'NIF'], ['telemovel', 'Telemovel'], ['email', 'Email'], ['processos_total', 'Nº Processos'],
     ],
-    load: async (user) => (await listagensRepository.pacientesComVolume(user.empresa_id || null)).map(mapPaciente),
+    load: async (user) => {
+      if (await isMedicoUser(user)) {
+        return (await pacientesService.listAll(user)).map(mapPaciente);
+      }
+      return (await listagensRepository.pacientesComVolume(user.empresa_id || null)).map(mapPaciente);
+    },
   },
   medicos: {
     label: 'Medicos',

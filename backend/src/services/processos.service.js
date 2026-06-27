@@ -4,13 +4,12 @@ const medicosRepository = require('../repositories/medicos.repository');
 const testesRepository = require('../repositories/testes.repository');
 const empresasRepository = require('../repositories/empresas.repository');
 const stocksRepository = require('../repositories/stocks.repository');
-const perfisRepository = require('../repositories/perfis.repository');
 const informacaoClinicaRepository = require('../repositories/informacao_clinica.repository');
 const utilizadoresRepository = require('../repositories/utilizadores.repository');
 const logService = require('./log.service');
 const motivosAnulacaoService = require('./motivos_anulacao.service');
 const pacientesService = require('./pacientes.service');
-const { normalizeRoleName } = require('../config/stock-permissions');
+const { isMedicoUser, assertPacienteAccess } = require('../utils/medico-access');
 const { formatCalendarDate } = require('../utils/calendar-dates');
 
 const PROCESSO_DATE_FIELDS = [
@@ -36,18 +35,6 @@ const mapProcessoResponse = (row) => {
     }
   }
   return mapped;
-};
-
-// Indica se o utilizador autenticado é um Médico (perfil), para limitar a
-// visibilidade aos seus próprios processos.
-const isMedicoUser = async (user) => {
-  if (!user || !user.role) return false;
-  try {
-    const perfil = await perfisRepository.findById(user.role);
-    return perfil ? normalizeRoleName(perfil.nome) === 'medico' : false;
-  } catch {
-    return false;
-  }
 };
 
 const STATUS_CANONICOS = [
@@ -333,8 +320,13 @@ exports.getById = async (id, user) => {
 exports.listByPaciente = async (pacienteId, user) => {
   const paciente = await pacientesRepository.findById(pacienteId);
   if (!paciente) throw new Error('Paciente nao encontrado');
+  await assertPacienteAccess(paciente, user);
 
   const rows = await processosRepository.findByPaciente(pacienteId);
+  if (await isMedicoUser(user)) {
+    const ownRows = rows.filter((row) => row.medico_id === user.id);
+    return Promise.all(ownRows.map((row) => attachInformacaoClinica(row)));
+  }
   return Promise.all(rows.map((row) => attachInformacaoClinica(row)));
 };
 

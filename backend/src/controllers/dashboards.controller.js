@@ -1,8 +1,14 @@
 const dashboardsService = require('../services/dashboards.service');
+const { isMedicoUser } = require('../utils/medico-access');
+
+const medicoScope = async (user) => {
+  if (await isMedicoUser(user)) return user?.id || null;
+  return null;
+};
 
 exports.operacional = async (req, res) => {
   try {
-    const data = await dashboardsService.getOperacional();
+    const data = await dashboardsService.getOperacional(await medicoScope(req.user));
     res.json({ data });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -11,7 +17,7 @@ exports.operacional = async (req, res) => {
 
 exports.financeiro = async (req, res) => {
   try {
-    const data = await dashboardsService.getFinanceiro();
+    const data = await dashboardsService.getFinanceiro(await medicoScope(req.user));
     res.json({ data });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -20,7 +26,7 @@ exports.financeiro = async (req, res) => {
 
 exports.laboratorial = async (req, res) => {
   try {
-    const data = await dashboardsService.getLaboratorial();
+    const data = await dashboardsService.getLaboratorial(await medicoScope(req.user));
     res.json({ data });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -29,7 +35,7 @@ exports.laboratorial = async (req, res) => {
 
 exports.executivo = async (req, res) => {
   try {
-    const data = await dashboardsService.getExecutivo();
+    const data = await dashboardsService.getExecutivo(await medicoScope(req.user));
     res.json({ data });
   } catch (err) {
     res.status(500).json({ error: err.message });
