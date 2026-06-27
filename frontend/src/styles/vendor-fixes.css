@@ -5,6 +5,11 @@
   :host {
     text-size-adjust: 100%;
   }
+
+  /* Checkboxes nativos — teal-600 (igual a «Médico ativo») em todo o CRM */
+  input[type='checkbox'] {
+    accent-color: #0d9488;
+  }
 }
 
 [data-sonner-toast][data-swiped='true'] {

@@ -33,7 +33,8 @@ Lote → Kit → Agendamento → Colheita → Processo → Resultado → Relató
 | **Rastreabilidade** | Cadeia completa lote ↔ kit ↔ processo ↔ resultado, em ambos os sentidos |
 | **Listagens e exportação** | Consultas avançadas com exportação para Excel, CSV e PDF |
 | **Painel médico** | Dashboard dedicado ao perfil Médico, com KPIs e dados isolados por prescritor |
-| **Administração** | Utilizadores, perfis, permissões, catálogo de testes e configuração do sistema |
+| **Administração** | Utilizadores, perfis, permissões, catálogo de testes, empresas e configuração do sistema |
+| **Notificações in-app** | Centro de alertas operacionais (processos, contactos, faturação, inventário, lembretes) com preferências por utilizador |
 
 ---
 
@@ -187,7 +188,7 @@ A aplicação fica disponível em `http://localhost:5173`. A API REST responde e
 | Processos | `/processos` | Pipeline clínico-laboratorial (Kanban) |
 | Stocks | `/stocks` | Lotes, kits, requisições e movimentos |
 | Listagens | `/listagens` | Consultas, filtros e exportações |
-| Administração | `/definicoes` | Utilizadores (incl. médicos), testes, postos, laboratórios |
+| Administração | `/definicoes` | Utilizadores (incl. médicos), perfis, empresas, testes, postos, laboratórios |
 
 ---
 
@@ -208,6 +209,7 @@ Este projecto integra o **Projeto Final de Curso (PFC)** da ISLA. A documentaç�
 
 ### Documentação técnica complementar
 
+- [Roadmap para produção](./ROADMAP_PRODUCAO.md)
 - [Exportação e importação da base de dados](./database/README.md)
 - [Schema da base de dados](./BASE_DE_DADOS.md)
 - [Arquitectura do backend](./backend/ARCHITECTURE.md)
@@ -218,12 +220,25 @@ Este projecto integra o **Projeto Final de Curso (PFC)** da ISLA. A documentaç�
 ## Segurança e Conformidade
 
 - Autenticação **JWT** com passwords encriptadas (**bcrypt**)
-- **RBAC** — controlo de acesso por perfis e permissões granulares
+- **RBAC** — controlo de acesso por perfis e permissões granulares (matriz visual em Administração → Perfis e Permissões)
 - **Isolamento por médico** — contactos, processos e dashboard filtrados ao prescritor autenticado
 - **Auditoria** — registo de acções em `logs_auditoria`
 - **Soft delete** — desactivação lógica em vez de eliminação física
 - **Rate limiting** — protecção contra abuso da API
 - Dados genéticos tratados como **dados sensíveis** ao abrigo do **RGPD**
+
+---
+
+## Evolução recente (Junho 2026)
+
+| Área | Melhoria |
+|------|----------|
+| **Design system** | Paleta slate/teal unificada; checkboxes e toggles (`accent-teal-600`); tokens em `design-tokens.ts` e `design-system.ts` |
+| **Notificações** | Filtros por categoria; alertas de faturação; mensagens com referência ao utilizador (Dr./Dra.); preferências em Definições e no sino |
+| **Navegação** | Breadcrumbs com número de processo; painel «Últimos processos» abre detalhe read-only |
+| **Administração** | Formulário dedicado de empresas (`/definicoes/empresas`); parâmetros Maternity alinhados com matriz de permissões |
+| **Integridade de dados** | Snapshot de colheita preservado ao guardar processo (migração 058); `data_envio_laboratorio` separada (057) |
+| **Base de dados** | 59 migrações versionadas (`backend/src/migrations/`) |
 
 ---
 

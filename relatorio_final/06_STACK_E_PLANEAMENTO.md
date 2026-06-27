@@ -169,7 +169,7 @@
 | **Fase 4** | Implementação do frontend (SPA) | Concluída |
 | **Fase 5** | Módulos operacionais (Processos, Stocks, Listagens) | Concluída |
 | **Fase 6** | Testes e validação com cliente | Em curso |
-| **Fase 7** | Integrações pendentes (notificações, faturação certificada) | Pendente |
+| **Fase 7** | Integrações pendentes (e-mail/SMS, faturação certificada) | Parcial (in-app OK) |
 | **Fase 8** | Documentação e entrega do PFC | Em curso |
 
 ### 6.3.2. Cronograma (Gantt)
@@ -222,12 +222,13 @@ Jun 2026 ███████████████████████�
 ## 6.5. Trabalho Futuro
 
 1. **Ligação de motivos de anulação** ao ecrã de cancelamento de processos.
-2. **Activação de notificações** e-mail/SMS com credenciais reais.
-3. **Integração com software de faturação** certificado (a definir com cliente).
-4. **Importação de dados históricos** (pacientes, processos, lotes).
-5. **Suite de testes automatizados** (Jest + E2E).
-6. **Modelo gráfico de relatório** personalizado Genoma (PDF).
-7. **Deploy em produção** com HTTPS, backups automáticos e monitorização.
+2. **Activação de notificações** e-mail/SMS com credenciais reais (in-app já operacional).
+3. **Consolidação do design system** — estender tokens slate/teal a formulários legacy.
+4. **Integração com software de faturação** certificado (a definir com cliente).
+5. **Importação de dados históricos** (pacientes, processos, lotes).
+6. **Suite de testes automatizados** (Jest + E2E).
+7. **Modelo gráfico de relatório** personalizado Genoma (PDF).
+8. **Deploy em produção** com HTTPS, backups automáticos e monitorização.
 
 ---
 
@@ -249,7 +250,7 @@ O projecto CRM Genoma demonstrou a viabilidade técnica, económica e operaciona
 
 [INSERIR — exemplos baseados no estado actual:]
 
-- Notificações automáticas: infraestrutura preparada, canais externos por configurar.
+- Notificações automáticas: **centro in-app implementado**; canais e-mail/SMS por configurar.
 - Motivos de anulação: tabela criada, ligação ao UI de processos pendente.
 - Integração com faturação certificada: aguarda decisão do cliente.
 
@@ -298,3 +299,5 @@ O projecto CRM Genoma demonstrou a viabilidade técnica, económica e operaciona
 - `backend/package.json` — Dependências da API
 - `frontend/package.json` — Dependências da SPA
 - `frontend/vite.config.ts` — Configuração de build e proxy
+- `ROADMAP_PRODUCAO.md` — Plano de melhorias para produção
+- `frontend/src/lib/design-tokens.ts` — Tokens visuais (slate/teal)

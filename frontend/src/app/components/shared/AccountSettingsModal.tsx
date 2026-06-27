@@ -14,6 +14,13 @@ import { Theme, useTheme } from '../../context/ThemeContext';
 import { UserRole } from '../../../lib/permissions';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog';
 import { LanguagePreference, useLanguage } from '../../../i18n/LanguageContext';
+import {
+  NOTIF_PREF_UI,
+  NotifPrefs,
+  defaultNotifPrefs,
+  readNotifPrefs,
+  writeNotifPrefs,
+} from '../../../lib/notificacoes';
 
 interface AccountSettingsModalProps {
   open: boolean;
@@ -22,33 +29,12 @@ interface AccountSettingsModalProps {
 
 type SettingsSection = 'geral' | 'notificacoes' | 'seguranca' | 'conta';
 
-const NOTIF_PREFS_KEY = 'genoma_notificacoes_prefs';
-
 const navItemDefs: { id: SettingsSection; icon: typeof Settings }[] = [
   { id: 'geral', icon: Settings },
   { id: 'notificacoes', icon: Bell },
   { id: 'seguranca', icon: KeyRound },
   { id: 'conta', icon: User },
 ];
-
-type NotifPrefs = {
-  processos: boolean;
-  stocks: boolean;
-  email: boolean;
-};
-
-const defaultNotifPrefs: NotifPrefs = { processos: true, stocks: true, email: true };
-
-function readNotifPrefs(): NotifPrefs {
-  try {
-    const raw = localStorage.getItem(NOTIF_PREFS_KEY);
-    if (!raw) return defaultNotifPrefs;
-    const parsed = JSON.parse(raw) as Partial<NotifPrefs>;
-    return { ...defaultNotifPrefs, ...parsed };
-  } catch {
-    return defaultNotifPrefs;
-  }
-}
 
 function SettingRow({
   label,
@@ -151,9 +137,7 @@ export function AccountSettingsModal({ open, onClose }: AccountSettingsModalProp
 
   const persistNotifPrefs = (next: NotifPrefs) => {
     setNotifPrefs(next);
-    try {
-      localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(next));
-    } catch {}
+    writeNotifPrefs(next);
   };
 
   const handleSaveAccount = async () => {
@@ -248,33 +232,21 @@ export function AccountSettingsModal({ open, onClose }: AccountSettingsModalProp
       case 'notificacoes':
         return (
           <div>
-            <SettingRow
-              label={t('settings.notificationsProcesses')}
-              description={t('settings.notificationsProcessesDesc')}
-            >
-              <SettingToggle
-                checked={notifPrefs.processos}
-                onChange={(v) => persistNotifPrefs({ ...notifPrefs, processos: v })}
-              />
-            </SettingRow>
-            <SettingRow
-              label={t('settings.notificationsStocks')}
-              description={t('settings.notificationsStocksDesc')}
-            >
-              <SettingToggle
-                checked={notifPrefs.stocks}
-                onChange={(v) => persistNotifPrefs({ ...notifPrefs, stocks: v })}
-              />
-            </SettingRow>
-            <SettingRow
-              label={t('settings.notificationsEmail')}
-              description={t('settings.notificationsEmailDesc')}
-            >
-              <SettingToggle
-                checked={notifPrefs.email}
-                onChange={(v) => persistNotifPrefs({ ...notifPrefs, email: v })}
-              />
-            </SettingRow>
+            <p className="text-slate-500 dark:text-slate-400 mb-4" style={{ fontSize: '13px', lineHeight: 1.5 }}>
+              {t('settings.notifications.intro')}
+            </p>
+            {NOTIF_PREF_UI.map(({ key, labelKey, descKey }) => (
+              <SettingRow
+                key={key}
+                label={t(labelKey)}
+                description={t(descKey)}
+              >
+                <SettingToggle
+                  checked={notifPrefs[key]}
+                  onChange={(v) => persistNotifPrefs({ ...notifPrefs, [key]: v })}
+                />
+              </SettingRow>
+            ))}
           </div>
         );
 

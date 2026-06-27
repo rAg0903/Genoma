@@ -44,13 +44,14 @@ Os seguintes elementos devem ser completados pelo autor antes da entrega final:
 
 ## Documentação de apoio no repositório
 
+- [`ROADMAP_PRODUCAO.md`](../ROADMAP_PRODUCAO.md) — Plano de melhorias para go-live
 - `PONTO_DE_SITUACAO_E_PERGUNTAS_CLIENTE.md` — Estado actual do projecto
 - `BASE_DE_DADOS.md` — Schema completo (29 tabelas)
 - `backend/ARCHITECTURE.md` — Arquitectura do backend
 
 ## Últimas actualizações (Junho 2026)
 
-Implementações documentadas nesta fase (commit `f7497dc` e actualizações de relatório):
+Implementações documentadas nesta fase:
 
 | Área | Descrição | Ficheiros principais |
 |---|---|---|
@@ -61,6 +62,13 @@ Implementações documentadas nesta fase (commit `f7497dc` e actualizações de 
 | **Seeds CRM** | Dados de referência (empresa Genoma, médicos, inventário via envios) e reset | `seed-admin.js`, `seed-inventory.js`, `reset-crm.js` |
 | **Formulário contacto** | Campo médico pré-preenchido e bloqueado para perfil Médico | `ContactFormPage.tsx` |
 | **Stocks posto** | Verificação de stock por tipo de kit (sub-teste não afecta stock físico) | `postos.repository.js` |
+| **Design system** | Paleta slate/teal; checkboxes `accent-teal-600`; tokens partilhados | `design-tokens.ts`, `design-system.ts`, `vendor-fixes.css`, `checkbox.tsx` |
+| **Matriz de permissões** | Toggles 9×9 com ícone Check; legenda; painéis `SURFACE.cardElevated` | `PermissionsMatrix.tsx` |
+| **Parâmetros Maternity** | Sub-teste com toggles e grelha cromossomas alinhados à matriz admin | `SubTesteFormPage.tsx` |
+| **Notificações in-app** | Categorias, filtros, preferências, alertas faturação, referência Dr./Dra. | `notificacoes.service.js`, `NotificationsPage.tsx`, `notificacoes.ts` |
+| **Navegação** | Breadcrumbs com nº processo; últimos processos → detalhe read-only | `entity-breadcrumbs.ts`, `DashboardPage.tsx`, `Topbar.tsx` |
+| **Empresas** | CRUD com formulário dedicado; campos morada/notas (mig. 059) | `EmpresaFormPage.tsx`, `059_empresa_notas_morada_extra.js` |
+| **Integridade colheita** | Snapshot preservado ao guardar processo (mig. 058); envio lab (057) | `058_backfill_processo_colheita_snapshot.js`, `processos.service.js` |
 
 ## Como compilar o relatório final
 

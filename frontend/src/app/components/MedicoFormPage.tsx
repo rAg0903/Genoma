@@ -15,6 +15,7 @@ import {
 } from '../../lib/api-medicos';
 import { Teste } from '../data/types';
 import { getTestesSelecionaveis, getTestesSelecionaveisComLabel } from '../../lib/testes';
+import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
 
 type TabId = 'identificacao' | 'condicoes' | 'relatorios' | 'notas';
 
@@ -350,7 +351,7 @@ export function MedicoFormPage() {
             </Section>
 
             <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={form.ativo !== false} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} className="w-4 h-4 accent-teal-600" />
+              <input type="checkbox" checked={form.ativo !== false} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} className={CHECKBOX_INPUT_CLASS} />
               <span className="text-gray-700 dark:text-gray-300" style={{ fontSize: '13px' }}>Médico ativo</span>
             </label>
           </div>

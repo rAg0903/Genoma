@@ -17,6 +17,7 @@ import { Section } from './ContactDetail';
 import { LaboratorioPostosPanel } from './LaboratorioPostosPanel';
 import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
 import { getTestesSelecionaveis } from '../../lib/testes';
+import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
 
 export type LocalKind = 'posto' | 'laboratorio' | 'entidade';
 
@@ -631,7 +632,7 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
                 type="checkbox"
                 checked={form.ativo}
                 onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
-                className="w-4 h-4 accent-teal-600"
+                className={CHECKBOX_INPUT_CLASS}
               />
               <span className="text-gray-700 dark:text-gray-300" style={{ fontSize: '13px' }}>
                 {config.title} ativo

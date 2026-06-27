@@ -178,24 +178,72 @@ const buildColheitaPrevistaMap = (colheitas) => {
   return map;
 };
 
-const mapPainelBordo = (p, colheitaPrevistaMap) => {
+const buildColheitaEfetivaMap = (colheitas) => {
+  const map = new Map();
+  for (const c of colheitas) {
+    if (!c.processo_id) continue;
+    const d = toDate(c.data_efetiva);
+    if (!d) continue;
+    const prev = map.get(c.processo_id);
+    if (!prev || d < prev) map.set(c.processo_id, d);
+  }
+  return map;
+};
+
+const buildColheitaRegistoMap = (colheitas) => {
+  const map = new Map();
+  for (const c of colheitas) {
+    if (!c.processo_id) continue;
+    const d = toDate(c.created_at);
+    if (!d) continue;
+    const prev = map.get(c.processo_id);
+    if (!prev || d < prev) map.set(c.processo_id, d);
+  }
+  return map;
+};
+
+const buildMovimentoDateMaps = (rows) => {
+  const consumo = new Map();
+  const envio = new Map();
+  for (const row of rows) {
+    if (!row.processo_id) continue;
+    const d = toDate(row.data);
+    if (!d) continue;
+    const pid = row.processo_id;
+    if (row.motivo === 'ConsumoColheita') {
+      const prev = consumo.get(pid);
+      if (!prev || d < prev) consumo.set(pid, d);
+    }
+    if (row.motivo === 'EnvioLabFinal' || row.motivo === 'Descarte') {
+      const prev = envio.get(pid);
+      if (!prev || d < prev) envio.set(pid, d);
+    }
+  }
+  return { consumo, envio };
+};
+
+const mapPainelBordo = (p, colheitaPrevistaMap, colheitaEfetivaMap, colheitaRegistoMap, movimentoMaps) => {
   const status = p.status || p.status_id || '';
   const sla = Number(p.tempo_resposta_dias) || 15;
   const chegada = toDate(p.data_chegada_laboratorio);
-  const colheita = toDate(p.data_colheita);
+  const colheita = toDate(p.data_colheita)
+    || colheitaEfetivaMap.get(p.id)
+    || movimentoMaps.consumo.get(p.id)
+    || '';
+  const envioLab = toDate(p.data_envio_laboratorio) || movimentoMaps.envio.get(p.id) || '';
 
   return {
     id: p.id,
     paciente_id: p.paciente_id || null,
     nome_mae: p.paciente_nome || '',
     teste: p.teste_nome || '',
-    data_registo: toDate(p.data_entrada),
+    data_registo: toDate(p.data_entrada) || colheitaRegistoMap.get(p.id) || colheita || '',
     data_factura: toDate(p.fatura_data_emissao),
     data_pagamento: toDate(p.pagamento_data),
     colheita_prevista: colheitaPrevistaMap.get(p.id) || toDate(p.data_colheita_prevista) || '',
     colheita_efetiva: colheita,
     processo: p.numero_processo || '',
-    envio_laboratorio: LAB_ENVIADO_STATUSES.has(status) && colheita ? colheita : '',
+    envio_laboratorio: envioLab,
     recepcao_laboratorio: chegada,
     data_prev_relatorio: chegada ? addCalendarDays(chegada, sla) : '',
     data_relatorio: toDate(p.data_resultado),
@@ -231,14 +279,24 @@ const LISTINGS = {
       ['envio_relatorio', 'Envio Relatório'],
     ],
     load: async (user) => {
-      const [processos, colheitas] = await Promise.all([
+      const [processos, colheitas, movimentos] = await Promise.all([
         processosService.listAll(user),
         colheitasRepository.findAll({}),
+        listagensRepository.movimentoDatesByProcesso(),
       ]);
       const colheitaPrevistaMap = buildColheitaPrevistaMap(colheitas);
+      const colheitaEfetivaMap = buildColheitaEfetivaMap(colheitas);
+      const colheitaRegistoMap = buildColheitaRegistoMap(colheitas);
+      const movimentoMaps = buildMovimentoDateMaps(movimentos);
       return processos
         .filter((p) => (p.status || p.status_id || '') !== 'Cancelado')
-        .map((p) => mapPainelBordo(p, colheitaPrevistaMap));
+        .map((p) => mapPainelBordo(
+          p,
+          colheitaPrevistaMap,
+          colheitaEfetivaMap,
+          colheitaRegistoMap,
+          movimentoMaps,
+        ));
     },
   },
   processos: {

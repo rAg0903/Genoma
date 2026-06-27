@@ -304,7 +304,7 @@ function AdminDashboardPage() {
               </div>
               <div className="divide-y divide-slate-50 dark:divide-slate-800">
                 {recentProcessos.map((p) => (
-                  <button key={p.id} onClick={() => navigate('/processos')} className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left">
+                  <button key={p.id} onClick={() => navigate(`/processos/${p.id}`)} className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left">
                     <div className="min-w-0 flex-1">
                       <div className="text-slate-900 dark:text-slate-100 text-[13px] font-medium">{p.numero}</div>
                       <div className="text-slate-400 dark:text-slate-500 text-xs mt-0.5 truncate">{p.paciente_nome}</div>

@@ -5,6 +5,7 @@ import { Processo } from '../../data/types';
 import {
   processosApi, ResultadoProcesso, AnomaliaGenetica,
 } from '../../../lib/api-processos';
+import { CHECKBOX_INPUT_CLASS } from '../../../lib/design-system';
 import { formatCalendarDatePt } from '../../../lib/dates';
 
 const fmt = (d?: string | null) => formatCalendarDatePt(d);
@@ -91,7 +92,7 @@ export function ProcessResultadoTab({
             <p className="text-xs text-gray-400 mt-0.5">Assinale apenas as anomalias detetadas.</p>
           </div>
           <label className="inline-flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={tudoOk} onChange={(e) => setTudoOk(e.target.checked)} disabled={!podeRegistar} className="accent-teal-600 w-4 h-4" />
+            <input type="checkbox" checked={tudoOk} onChange={(e) => setTudoOk(e.target.checked)} disabled={!podeRegistar} className={CHECKBOX_INPUT_CLASS} />
             <span className="text-sm text-gray-700 dark:text-gray-200">Tudo OK</span>
           </label>
         </div>

@@ -51,7 +51,7 @@ O domínio genómico impõe requisitos técnicos específicos que o sistema já 
 | Risco | Probabilidade | Impacto | Mitigação |
 |---|---|---|---|
 | Integração com software de faturação certificado | Média | Alto | API modular; campos de faturação já modelados em `processos` e `facturacao` |
-| Envio de notificações (e-mail/SMS) | Baixa | Médio | Módulo preparado; depende apenas de credenciais externas |
+| Envio de notificações (e-mail/SMS) | Baixa | Médio | In-app operacional; canal externo depende de credenciais |
 | Volume de dados genéticos sensíveis | Média | Alto | RBAC por perfis, soft-delete, exportações controladas por permissão |
 | Fuso horário em datas de colheita | Baixa (mitigado) | Médio | Correcção implementada com normalização de datas no backend |
 
@@ -135,7 +135,7 @@ O sistema prevê perfis configuráveis (`perfis`, `perfil_stock_submodulos`) com
 
 ### 1.4.4. Conclusão da Viabilidade Operacional
 
-**Viável, condicionada à validação do cliente.** Persistem decisões de negócio pendentes (motivos de anulação no ecrã de processos, regras de faturação, canais de notificação), mas a estrutura operacional do sistema está alinhada com o fluxo laboratorial real.
+**Viável, condicionada à validação do cliente.** Persistem decisões de negócio pendentes (motivos de anulação no ecrão de processos, regras de faturação, e-mail/SMS transaccional), mas a estrutura operacional — incluindo notificações in-app, design system unificado e integridade de dados de colheita — está alinhada com o fluxo laboratorial real.
 
 ---
 

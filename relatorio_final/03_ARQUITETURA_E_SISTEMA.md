@@ -81,11 +81,39 @@ frontend/src/
 │   ├── api-stocks.ts           # Endpoints de stocks
 │   ├── auth-session.ts         # Persistência e bootstrap de sessão
 │   ├── utilizadores.ts         # formatUtilizadorNome, formatUtilizadorGreeting
-│   └── permissions.ts          # RBAC frontend
+│   ├── permissions.ts          # RBAC frontend
+│   ├── design-tokens.ts        # SURFACE, CONTROL, FORM (paleta slate/teal)
+│   ├── design-system.ts        # Classes partilhadas (inputs, botões secundários)
+│   ├── entity-breadcrumbs.ts   # Breadcrumbs contextuais (nº processo, nome contacto)
+│   └── notificacoes.ts         # Filtros e preferências de notificação
 └── i18n/
 ```
 
-### 3.2.3. Padrões de Interface
+### 3.2.3. Design System e Consistência Visual
+
+O CRM adopta uma linguagem visual **SaaS** com paleta **slate + teal** (`#0d9488`), alinhada entre módulos administrativos e formulários clínicos:
+
+| Elemento | Implementação |
+|---|---|
+| Tokens | `frontend/src/lib/design-tokens.ts` — `SURFACE`, `CONTROL`, `FORM` |
+| Checkboxes | `accent-teal-600` via Radix e CSS global (`vendor-fixes.css`) |
+| Toggles tipo matriz | Botões 9×9 `rounded-lg` com ícone `Check` — `PermissionsMatrix.tsx`, `SubTesteFormPage.tsx` |
+| Painéis | `border-slate-200`, `shadow-sm`, fundos `slate-50/50` |
+| Tema claro/escuro | `ThemeContext.tsx` + classes `dark:` Tailwind |
+
+### 3.2.4. Notificações In-App
+
+```
+Topbar (sino) ──► GET /api/notificacoes
+                      │
+                      ├── categorias: processo_*, contacto_*, faturacao_*, stock, lembrete
+                      ├── mensagens com referência formatada (Dr./Dra.)
+                      └── preferências: localStorage + AccountSettingsModal
+```
+
+**Ficheiros:** `notificacoes.service.js`, `notificacoes.repository.js`, `NotificationsPage.tsx`, `format-utilizador-referencia.js`
+
+### 3.2.5. Padrões de Interface
 
 1. **Rotas protegidas** — `RequireAuth` verifica JWT em `localStorage`; redireccionamento para `/login` se ausente.
 2. **Permissões por módulo** — `ProtectedRoute` consulta `hasPermission(module, 'read')` antes de renderizar.

@@ -424,13 +424,13 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | RF-014 | Listagens com filtros e exportação Excel/CSV/PDF | Implementado |
 | RF-015 | Catálogo de testes genómicos com metadados ADN fetal e sub-testes | Implementado |
 | RF-016 | Motivos de anulação configuráveis | Parcial* |
-| RF-017 | Notificações e-mail/SMS | Preparado** |
+| RF-017 | Notificações in-app e e-mail/SMS | Parcial** |
 | RF-018 | Integração faturação certificada | Pendente |
 | RF-019 | Importação de dados históricos | Pendente |
 | RF-020 | Isolamento de dados e painel dedicado ao perfil Médico | Implementado |
 
 \* Tabela criada; ligação ao ecrã de cancelamento pendente.  
-\** Módulo interno implementado; credenciais externas por configurar.
+\** Centro in-app implementado; envio e-mail/SMS por configurar.
 
 #### RF-020 — Isolamento de Dados e Experiência do Médico Prescritor
 
@@ -835,7 +835,10 @@ Interfaces desenvolvidas com **React + Tailwind + MUI**, com componentes Radix U
 
 - Tipografia: Inter (frontend)
 - Tema claro/escuro via `ThemeContext.tsx`
-- Tokens de design em `frontend/src/lib/design-tokens.ts`
+- Tokens de design em `frontend/src/lib/design-tokens.ts` e `design-system.ts`
+- Paleta principal: **slate** (estrutura, texto) + **teal** (`#0d9488`, acções e estados activos)
+- Componentes de selecção: toggles 9×9 com ícone `Check` (matriz de permissões, parâmetros Maternity)
+- Checkboxes: `accent-teal-600` (Radix + CSS global)
 - Mensagens de erro em Português (`i18n/locales/pt.ts`)
 
 #### Acessibilidade
@@ -916,7 +919,8 @@ O projecto cumpre os objectivos definidos na fase de análise e concepção, con
 |---|---|
 | Alta | Ligar motivos de anulação ao ecrã de cancelamento de processos |
 | Alta | Validar fluxo completo em ambiente real com equipa Genoma |
-| Média | Activar notificações e-mail/SMS com credenciais reais |
+| Média | Activar notificações e-mail/SMS com credenciais reais (in-app concluído) |
+| Média | Consolidar design system slate/teal em todos os formulários |
 | Média | Implementar suite de testes automatizados (Jest + E2E) |
 | Média | Modelo gráfico de relatório/fatura personalizado Genoma |
 | Baixa | Integração com software de faturação certificado |

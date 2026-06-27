@@ -28,6 +28,23 @@ exports.pacientesComVolume = async (empresaId = null) => {
   }
 };
 
+/** Datas de movimentos de kit agregadas por processo (colheita, envio lab). */
+exports.movimentoDatesByProcesso = async () => {
+  const connection = await pool.getConnection();
+  try {
+    const [rows] = await connection.execute(`
+      SELECT pr.id AS processo_id, mk.motivo, MIN(mk.data) AS data
+      FROM processos pr
+      INNER JOIN movimentos_kits mk ON mk.processo_id = pr.id OR mk.kit_id = pr.kit_id
+      WHERE mk.motivo IN ('ConsumoColheita', 'EnvioLabFinal', 'Descarte')
+      GROUP BY pr.id, mk.motivo
+    `);
+    return rows;
+  } finally {
+    connection.release();
+  }
+};
+
 exports.medicosComVolume = async (empresaId = null) => {
   const connection = await pool.getConnection();
   try {

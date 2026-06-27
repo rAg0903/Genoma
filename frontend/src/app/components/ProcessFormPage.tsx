@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   ArrowLeft, Save, User, Phone, MapPin, Baby, Syringe, Receipt, StickyNote, Paperclip,
   FileText, Package, Activity, Loader2, Lock, Ban,
@@ -31,6 +31,7 @@ import { ProcessFaturacaoFields } from './shared/ProcessFaturacaoFields';
 import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
 import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
 import { extractFaturacaoFromProcesso } from '../../lib/process-form';
+import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
 
 type TabId = 'identificacao' | 'gravidez' | 'colheita' | 'faturacao' | 'resultados' | 'kits' | 'notas' | 'anexos';
 
@@ -57,7 +58,7 @@ function ReadOnlyBanner() {
   return (
     <div className="flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400" style={{ fontSize: '12px' }}>
       <Lock className="w-3.5 h-3.5 flex-shrink-0" />
-      Dados herdados do contacto — apenas leitura. Edite o contacto para alterar estes campos.
+      Dados definidos na colheita do contacto — apenas leitura. Não são alterados ao guardar o processo.
     </div>
   );
 }
@@ -76,9 +77,12 @@ function ReadOnlyField({ label, value, mono }: { label: string; value: string; m
   );
 }
 
+const PROCESS_TAB_IDS = new Set<TabId>(TABS.map((t) => t.id));
+
 export function ProcessFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     contacts, processos, updateProcesso, refreshProcessos, motivosAnulacao,
     getAnexosByPaciente, addAnexo, deleteAnexo,
@@ -88,6 +92,14 @@ export function ProcessFormPage() {
   const canUpdate = hasPermission('processos', 'update');
 
   const [tab, setTab] = useState<TabId>('identificacao');
+
+  useEffect(() => {
+    const requested = searchParams.get('tab');
+    if (requested && PROCESS_TAB_IDS.has(requested as TabId)) {
+      setTab(requested as TabId);
+    }
+  }, [searchParams]);
+
   const [form, setForm] = useState<ProcessFormData | null>(null);
   const [paciente, setPaciente] = useState<Contact | null>(null);
   const [saving, setSaving] = useState(false);
@@ -304,7 +316,7 @@ export function ProcessFormPage() {
                             motivo_anulacao_id: e.target.checked ? anulacao.motivo_anulacao_id : '',
                           })}
                           disabled={!canUpdate}
-                          className="w-4 h-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                          className={CHECKBOX_INPUT_CLASS}
                         />
                         <span style={{ fontWeight: 500 }}>{t('pages.processes.form.cancelProcess')}</span>
                       </label>
@@ -439,7 +451,7 @@ export function ProcessFormPage() {
                   </div>
                   <div className="flex items-end">
                     <label className="inline-flex items-center gap-2 text-gray-700 dark:text-gray-300" style={{ fontSize: '13px' }}>
-                      <input type="checkbox" checked={!!form.relatorio_validado} onChange={(e) => setForm({ ...form, relatorio_validado: e.target.checked, data_validacao: e.target.checked && !form.data_validacao ? todayLocal() : form.data_validacao })} disabled={!canUpdate} />
+                      <input type="checkbox" checked={!!form.relatorio_validado} onChange={(e) => setForm({ ...form, relatorio_validado: e.target.checked, data_validacao: e.target.checked && !form.data_validacao ? todayLocal() : form.data_validacao })} disabled={!canUpdate} className={CHECKBOX_INPUT_CLASS} />
                       Relatório validado
                     </label>
                   </div>

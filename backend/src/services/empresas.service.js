@@ -55,6 +55,9 @@ exports.create = async (data, user) => {
         nome: data.nome.trim(),
         morada: data.morada ? data.morada.trim() : null,
         codigo_postal: data.codigo_postal ? data.codigo_postal.trim() : null,
+        cidade: data.cidade ? data.cidade.trim() : null,
+        distrito: data.distrito ? data.distrito.trim() : null,
+        notas: data.notas ? data.notas.trim() : null,
         telefone: data.telefone ? data.telefone.trim() : null,
         email: data.email ? data.email.trim() : null,
         tipo_empresa: tipoEmpresa,
@@ -120,6 +123,9 @@ exports.update = async (id, data, user) => {
     if (data.nome !== undefined) updateData.nome = data.nome.trim();
     if (data.morada !== undefined) updateData.morada = data.morada ? data.morada.trim() : null;
     if (data.codigo_postal !== undefined) updateData.codigo_postal = data.codigo_postal ? data.codigo_postal.trim() : null;
+    if (data.cidade !== undefined) updateData.cidade = data.cidade ? data.cidade.trim() : null;
+    if (data.distrito !== undefined) updateData.distrito = data.distrito ? data.distrito.trim() : null;
+    if (data.notas !== undefined) updateData.notas = data.notas ? data.notas.trim() : null;
     if (data.telefone !== undefined) updateData.telefone = data.telefone ? data.telefone.trim() : null;
     if (data.email !== undefined) updateData.email = data.email ? data.email.trim() : null;
     if (data.tipo_empresa !== undefined) {

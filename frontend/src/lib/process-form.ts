@@ -1,5 +1,6 @@
 import { Processo } from '../app/data/types';
 import { todayLocal } from './dates';
+import { resolveProcessoKitCodigo } from './processos';
 
 export type ProcessFormData = Omit<Processo, 'id'>;
 
@@ -47,7 +48,7 @@ export const processToFormData = (processo: Processo): ProcessFormData => ({
   paciente_nome: processo.paciente_nome,
   medico: processo.medico,
   posto: processo.posto,
-  kit_codigo: processo.kit_codigo,
+  kit_codigo: resolveProcessoKitCodigo(processo),
   estado: processo.estado,
   data_entrada: processo.data_entrada,
   data_colheita: processo.data_colheita || '',
@@ -157,12 +158,13 @@ export const validateProcessForm = (
 ): string | null => {
   const estadoExigeKit = ['Colheita Realizada', 'Enviado Laboratorio', 'Em Analise', 'Resultado Disponivel', 'Validado', 'Faturado']
     .includes(formData.estado);
-  if (estadoExigeKit && !formData.kit_codigo.trim()) {
+  if (estadoExigeKit && !resolveProcessoKitCodigo(formData)) {
     return 'Após colheita, o código único do kit é obrigatório.';
   }
 
-  const duplicateKit = formData.kit_codigo.trim()
-    ? processos.some((p) => p.id !== processoId && p.kit_codigo.trim().toLowerCase() === formData.kit_codigo.trim().toLowerCase())
+  const kitCodigo = resolveProcessoKitCodigo(formData);
+  const duplicateKit = kitCodigo
+    ? processos.some((p) => p.id !== processoId && resolveProcessoKitCodigo(p).toLowerCase() === kitCodigo.toLowerCase())
     : false;
   if (duplicateKit) {
     return 'Já existe um processo com este código de kit.';
@@ -179,8 +181,17 @@ export const validateProcessForm = (
   return null;
 };
 
-export const buildProcessSubmitPayload = (formData: ProcessFormData): ProcessFormData => ({
-  ...formData,
-  valor_final: computeValorFinal(formData.valor_base ?? 0, formData.desconto_percentual ?? 0),
-  fatura_emitida: !!(formData.fatura_numero?.trim() || formData.fatura_data_emissao),
-});
+export const buildProcessSubmitPayload = (formData: ProcessFormData): Partial<Processo> => {
+  const {
+    posto: _posto,
+    data_colheita: _dataColheita,
+    data_colheita_prevista: _dataColheitaPrevista,
+    ...editable
+  } = formData;
+
+  return {
+    ...editable,
+    valor_final: computeValorFinal(formData.valor_base ?? 0, formData.desconto_percentual ?? 0),
+    fatura_emitida: !!(formData.fatura_numero?.trim() || formData.fatura_data_emissao),
+  };
+};

@@ -12,6 +12,7 @@ import {
   encodeLocationRef,
   encodeRequisicaoLocationRef,
   filterShipmentLocationOptions,
+  filterShipmentLocationsWithDescarteKits,
   flattenDistributionLocationOptions,
   formatRequisicaoLocationLabel,
   kitMatchesLocationRefForDistribuicao,
@@ -610,8 +611,11 @@ export function DescarteFormModal({
 }) {
   const { kits, empresas, postos } = useData();
   const shipmentLocations = useMemo(
-    () => buildDistributionLocationOptions(empresas, postos, laboratorios),
-    [empresas, postos, laboratorios],
+    () => filterShipmentLocationsWithDescarteKits(
+      buildDistributionLocationOptions(empresas, postos, laboratorios),
+      kits,
+    ),
+    [empresas, postos, laboratorios, kits],
   );
   const locationOptions = useMemo(
     () => flattenDistributionLocationOptions(shipmentLocations),
@@ -621,6 +625,13 @@ export function DescarteFormModal({
   const [data, setData] = useState(todayLocal());
   const [observacoes, setObservacoes] = useState('');
   const [selectedKits, setSelectedKits] = useState<Kit[]>([]);
+
+  useEffect(() => {
+    if (origemKey && !locationOptions.some((o) => encodeLocationRef(o) === origemKey)) {
+      setOrigemKey('');
+      setSelectedKits([]);
+    }
+  }, [locationOptions, origemKey]);
 
   const origemRef = useMemo(
     () => locationOptions.find((o) => encodeLocationRef(o) === origemKey),
@@ -693,7 +704,7 @@ export function DescarteFormModal({
       <div>
         <label className={label}>Origem</label>
         {!hasLocations ? (
-          <p className="text-xs text-slate-400 mt-1">Configure empresas e postos em Administração.</p>
+          <p className="text-xs text-slate-400 mt-1">Nenhuma empresa ou posto com kits utilizados ou expirados aguardando descarte.</p>
         ) : (
           <DistributionLocationSelect
             value={origemKey}

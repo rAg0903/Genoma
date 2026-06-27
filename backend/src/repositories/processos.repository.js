@@ -241,6 +241,7 @@ exports.update = async (id, data) => {
     setIfDefined('kit_id', data.kit_id || null);
     setIfDefined('data_colheita', data.data_colheita || null);
     setIfDefined('data_colheita_prevista', data.data_colheita_prevista || null);
+    setIfDefined('data_envio_laboratorio', data.data_envio_laboratorio || null);
     setIfDefined('data_chegada_laboratorio', data.data_chegada_laboratorio || null);
     setIfDefined('data_resultado', data.data_resultado || null);
     setIfDefined('data_validacao', data.data_validacao || null);

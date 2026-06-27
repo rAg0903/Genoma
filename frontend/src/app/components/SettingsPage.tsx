@@ -5,7 +5,7 @@ import { PerfisPermissoesTab } from './definicoes/PerfisPermissoesTab';
 import { MedicosTab } from './MedicosTab';
 import { MotivosAnulacaoTab } from './MotivosAnulacaoTab';
 import { useData } from '../context/DataContext';
-import { Utilizador, Empresa, Teste, TipoKit } from '../data/types';
+import { Utilizador, Teste, TipoKit } from '../data/types';
 import { toast } from 'sonner';
 import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
 import { formatSubTestesResumo, getTestesPrincipais } from '../../lib/testes';
@@ -22,7 +22,6 @@ import { perfisApi, Perfil } from '../../lib/api-perfis';
 import { isAdminPerfilNome, isMedicoPerfilNome } from '../../lib/perfil-utils';
 import { formatUtilizadorNome } from '../../lib/utilizadores';
 import { useSearchParams } from 'react-router';
-import { createPostalCodeAutofillHandlers } from '../../lib/postal-code-pt';
 import {
   ADMIN_ACTION_BTN_CLASS,
   ADMIN_ATIVO_STATUS_MAP,
@@ -368,33 +367,12 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
 
 /* =========== EMPRESAS =========== */
 function EmpresasTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
-  const { empresas, addEmpresa, updateEmpresa, deleteEmpresa } = useData();
+  const navigate = useNavigate();
+  const { empresas, deleteEmpresa } = useData();
   const [search, setSearch] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const [editItem, setEditItem] = useState<Empresa | null>(null);
-  const [form, setForm] = useState<Omit<Empresa, 'id'>>({ nome: '', morada: '', codigo_postal: '', contacto: '', email: '', nif: '', ativo: true });
-  const [saving, setSaving] = useState(false);
-  const { handleCodigoPostalChange, autofillFromCp } = useMemo(
-    () => createPostalCodeAutofillHandlers(setForm, { fillDistrito: false, fillCidade: false, fillPais: true }),
-    [],
-  );
 
   const filtered = empresas.filter(e => e.nome.toLowerCase().includes(search.toLowerCase()));
-  const openNew = () => { setEditItem(null); setForm({ nome: '', morada: '', codigo_postal: '', contacto: '', email: '', nif: '', ativo: true }); setIsOpen(true); };
-  const openEdit = (e: Empresa) => { setEditItem(e); setForm({ nome: e.nome, morada: e.morada, codigo_postal: e.codigo_postal || '', contacto: e.contacto, email: e.email, nif: e.nif, pais: e.pais || '', ativo: e.ativo !== false }); setIsOpen(true); };
-  const handleSave = async (ev: FormEvent) => {
-    ev.preventDefault();
-    setSaving(true);
-    try {
-      if (editItem) { await updateEmpresa(editItem.id, form); toast.success('Empresa atualizada!'); }
-      else { await addEmpresa(form); toast.success('Empresa criada!'); }
-      setIsOpen(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Não foi possível guardar a empresa.');
-    } finally {
-      setSaving(false);
-    }
-  };
+
   const handleDelete = async (id: string, nome: string) => {
     if (!confirm(`Eliminar ${nome}?`)) return;
     try {
@@ -413,7 +391,7 @@ function EmpresasTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
         placeholder="Pesquisar empresas..."
         searchName="search-empresas"
         action={canCreate ? (
-          <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> Nova Empresa</button>
+          <button type="button" onClick={() => navigate('/definicoes/empresas/novo')} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> Nova Empresa</button>
         ) : undefined}
       />
       <AdminTabPanel>
@@ -435,7 +413,7 @@ function EmpresasTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
                   <td className="px-4 py-3"><AtivoBadge ativo={e.ativo !== false} /></td>
                   <td className="px-4 py-3">
                     <AdminRowActions>
-                      {canUpdate && <button type="button" onClick={() => openEdit(e)} className={ADMIN_ACTION_BTN_CLASS}><Edit className="w-4 h-4" /></button>}
+                      {canUpdate && <button type="button" onClick={() => navigate(`/definicoes/empresas/${e.id}/editar`)} className={ADMIN_ACTION_BTN_CLASS}><Edit className="w-4 h-4" /></button>}
                       {canDelete && <button type="button" onClick={() => handleDelete(e.id, e.nome)} className={ADMIN_DELETE_BTN_CLASS}><Trash2 className="w-4 h-4" /></button>}
                     </AdminRowActions>
                   </td>
@@ -445,41 +423,6 @@ function EmpresasTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
           </table>
         </div>
       </AdminTabPanel>
-      {(canCreate || canUpdate) && isOpen && (
-        <AppModal
-          title={editItem ? 'Editar Empresa' : 'Nova Empresa'}
-          onClose={() => setIsOpen(false)}
-          footer={<ModalActions onCancel={() => setIsOpen(false)} isEdit={!!editItem} saving={saving} formId="empresa-form" />}
-        >
-          <form id="empresa-form" onSubmit={handleSave} className={FORM.stack}>
-            <ModalField label="Nome" required>
-              <input required type="text" name="empresa-nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="Ex.: Genoma" />
-            </ModalField>
-            <div className="grid grid-cols-2 gap-4">
-              <ModalField label="NIF">
-                <input type="text" name="empresa-nif" value={form.nif} onChange={e => setForm(f => ({ ...f, nif: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="123456789" style={{ fontFamily: 'monospace' }} />
-              </ModalField>
-              <ModalField label="Contacto">
-                <input type="text" name="empresa-contacto" value={form.contacto} onChange={e => setForm(f => ({ ...f, contacto: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="912 345 678" />
-              </ModalField>
-            </div>
-            <ModalField label="Email">
-              <input type="email" name="empresa-email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="contacto@empresa.pt" />
-            </ModalField>
-            <div className="grid grid-cols-3 gap-4">
-              <ModalField label="Código Postal">
-                <input type="text" name="empresa-cp" value={form.codigo_postal || ''} onChange={e => handleCodigoPostalChange(e.target.value)} onBlur={e => void autofillFromCp(e.target.value)} placeholder="0000-000" className={MODAL_INPUT_CLASS} />
-              </ModalField>
-              <div className="col-span-2">
-                <ModalField label="Morada">
-                  <input type="text" name="empresa-morada" value={form.morada} onChange={e => setForm(f => ({ ...f, morada: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="Endereço completo" />
-                </ModalField>
-              </div>
-            </div>
-            <ModalCheckbox label="Ativo" checked={form.ativo !== false} onChange={(ativo) => setForm(f => ({ ...f, ativo }))} />
-          </form>
-        </AppModal>
-      )}
     </div>
   );
 }

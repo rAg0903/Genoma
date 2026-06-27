@@ -140,6 +140,26 @@ export const filterShipmentLocationOptions = (
   };
 };
 
+/** Mantém apenas empresas/postos com kits utilizados, expirados ou aguardando descarte. */
+export const filterShipmentLocationsWithDescarteKits = (
+  options: ShipmentLocationOptions,
+  kits: Kit[],
+): ShipmentLocationOptions => {
+  const hasDescarteKits = (ref: StockLocationRef) =>
+    kits.some((k) => kitMatchesLocationRefForDescarte(k, ref));
+
+  return {
+    empresas: options.empresas.filter(hasDescarteKits),
+    laboratorioGroups: options.laboratorioGroups
+      .map((group) => ({
+        ...group,
+        postos: group.postos.filter(hasDescarteKits),
+      }))
+      .filter((group) => group.postos.length > 0),
+    postosSemLaboratorio: options.postosSemLaboratorio.filter(hasDescarteKits),
+  };
+};
+
 const normalizeStatus = (status?: string) => (status || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 export const isKitEligibleForDistribuicao = (kit: Kit): boolean => {

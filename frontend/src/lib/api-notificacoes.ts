@@ -4,9 +4,23 @@ import { getAuthToken } from './api-processos';
 export type NotificacaoTipo = 'lembrete' | 'processo' | 'stock' | 'atividade';
 export type NotificacaoNivel = 'critico' | 'aviso' | 'info';
 
+export type NotificacaoCategoria =
+  | 'lembrete'
+  | 'processo_criado'
+  | 'processo_alterado'
+  | 'contacto_criado'
+  | 'contacto_alterado'
+  | 'faturacao_contacto_emitir'
+  | 'faturacao_contacto_pago'
+  | 'faturacao_processo_emitir'
+  | 'faturacao_processo_pago'
+  | 'stock'
+  | 'atividade';
+
 export interface Notificacao {
   id: string;
   tipo: NotificacaoTipo;
+  categoria: NotificacaoCategoria;
   titulo: string;
   mensagem: string;
   nivel: NotificacaoNivel;
@@ -23,7 +37,7 @@ export const notificacoesApi = {
     if (opts?.limit) params.set('limit', String(opts.limit));
     if (opts?.apenasNaoLidas) params.set('apenas_nao_lidas', '1');
     const qs = params.toString() ? `?${params}` : '';
-    return apiRequest<{ data: Notificacao[]; count: number; unreadCount: number }>(
+    return apiRequest<{ data: Notificacao[]; count: number; unreadCount: number; countsByCategoria?: Partial<Record<NotificacaoCategoria, number>> }>(
       `/notificacoes${qs}`,
       { token: t() },
     );

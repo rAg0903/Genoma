@@ -1,7 +1,7 @@
 import { Eye, Edit, Trash2, Clock, AlertTriangle } from 'lucide-react';
 import { Processo } from '../../data/types';
 import { StatusBadge } from '../shared/StatusBadge';
-import { PROCESS_STATUS_STYLES } from '../../../lib/design-system';
+import { CHECKBOX_INPUT_CLASS, PROCESS_STATUS_STYLES } from '../../../lib/design-system';
 import { diasDesde, ultimaAtualizacao, isAtrasado } from '../../../lib/processos';
 import { formatCalendarDatePt } from '../../../lib/dates';
 import { isFaturaEmitida, isFaturaPaga } from '../../../lib/faturacao';
@@ -45,7 +45,7 @@ export function ProcessTable({
           <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
             <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <th className="px-3 py-3 w-10">
-                <input type="checkbox" checked={allSelected} onChange={onToggleAll} className="accent-teal-600 w-4 h-4" />
+                <input type="checkbox" checked={allSelected} onChange={onToggleAll} className={CHECKBOX_INPUT_CLASS} />
               </th>
               <th className="px-3 py-3">Nº Processo</th>
               <th className="px-3 py-3">Paciente</th>
@@ -70,7 +70,7 @@ export function ProcessTable({
                   onClick={() => onOpen(p)}
                 >
                   <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => onToggle(p.id)} className="accent-teal-600 w-4 h-4" />
+                    <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => onToggle(p.id)} className={CHECKBOX_INPUT_CLASS} />
                   </td>
                   <td className="px-3 py-3 text-[13px] font-semibold font-mono text-slate-900 dark:text-slate-100">{p.numero}</td>
                   <td className="px-3 py-3 text-[13px] text-slate-700 dark:text-slate-300">{p.paciente_nome}</td>
@@ -108,7 +108,7 @@ export function ProcessTable({
           <div key={p.id} className="p-4" onClick={() => onOpen(p)}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-start gap-2 min-w-0">
-                <input type="checkbox" checked={selectedIds.has(p.id)} onClick={(e) => e.stopPropagation()} onChange={() => onToggle(p.id)} className="accent-teal-600 w-4 h-4 mt-1" />
+                <input type="checkbox" checked={selectedIds.has(p.id)} onClick={(e) => e.stopPropagation()} onChange={() => onToggle(p.id)} className={`${CHECKBOX_INPUT_CLASS} mt-1`} />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold font-mono text-slate-900 dark:text-slate-100">{p.numero}</span>

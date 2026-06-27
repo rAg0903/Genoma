@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { MapPin, FlaskConical, Building2, ChevronDown, Package, Layers } from 'lucide-react';
+import { useMemo, useState, Fragment } from 'react';
+import { MapPin, FlaskConical, Building2, Package, Layers, ChevronRight } from 'lucide-react';
 import { Kit, Lote, Posto, Laboratorio, Empresa } from '../../data/types';
 import { ChartCard } from '../dashboard/ChartCard';
 import {
@@ -7,7 +7,7 @@ import {
   LOW_STOCK_THRESHOLD,
   StockLocationInventory,
 } from '../../../lib/stocks';
-import { formatNumber } from '../../../lib/design-tokens';
+import { formatNumber, SURFACE } from '../../../lib/design-tokens';
 import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface Props {
@@ -18,36 +18,212 @@ interface Props {
   laboratorios: Laboratorio[];
 }
 
+type InventoryCategory = 'all' | 'empresa' | 'posto' | 'lab_final';
+
+type InventoryRow = {
+  id: string;
+  category: Exclude<InventoryCategory, 'all'>;
+  nome: string;
+  codigo?: string;
+  disponiveis: number;
+  aguarda: number;
+  item: StockLocationInventory;
+};
+
+type InventorySection = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  totalDisponiveis: number;
+  totalPostos?: number;
+  rows: InventoryRow[];
+};
+
+function postoRow(labId: string, posto: StockLocationInventory, labKey: string): InventoryRow {
+  return {
+    id: `posto:${labKey}:${posto.id}`,
+    category: 'posto',
+    nome: posto.nome,
+    codigo: posto.codigo,
+    disponiveis: posto.totalDisponiveis,
+    aguarda: posto.totalAguardaDescarte ?? 0,
+    item: posto,
+  };
+}
+
+function buildInventorySections(
+  inventory: ReturnType<typeof computeStockLocationInventory>,
+): InventorySection[] {
+  const sections: InventorySection[] = [];
+
+  if (inventory.empresas.length > 0) {
+    sections.push({
+      id: 'empresas',
+      title: 'Empresas',
+      totalDisponiveis: inventory.empresas.reduce((s, e) => s + e.totalDisponiveis, 0),
+      rows: inventory.empresas.map((item) => ({
+        id: `empresa:${item.id}`,
+        category: 'empresa',
+        nome: item.nome,
+        codigo: item.codigo,
+        disponiveis: item.totalDisponiveis,
+        aguarda: item.totalAguardaDescarte ?? 0,
+        item,
+      })),
+    });
+  }
+
+  for (const lab of inventory.laboratorios) {
+    if (lab.postos.length === 0) continue;
+    const postosStock = lab.postos.reduce((s, p) => s + p.totalDisponiveis, 0);
+    sections.push({
+      id: `lab:${lab.id}`,
+      title: lab.nome,
+      subtitle: lab.codigo,
+      totalDisponiveis: postosStock,
+      totalPostos: lab.postos.length,
+      rows: lab.postos.map((posto) => postoRow(lab.id, posto, lab.id)),
+    });
+  }
+
+  if (inventory.postosSemLaboratorio.length > 0) {
+    sections.push({
+      id: 'postos-sem-lab',
+      title: 'Postos sem laboratório',
+      totalDisponiveis: inventory.postosSemLaboratorio.reduce((s, p) => s + p.totalDisponiveis, 0),
+      totalPostos: inventory.postosSemLaboratorio.length,
+      rows: inventory.postosSemLaboratorio.map((posto) => postoRow('orphan', posto, 'orphan')),
+    });
+  }
+
+  if (inventory.laboratoriosFinais.length > 0) {
+    sections.push({
+      id: 'labs-finais',
+      title: 'Em laboratório final',
+      subtitle: 'Kits consumidos ou em trânsito para processamento',
+      totalDisponiveis: inventory.laboratoriosFinais.reduce((s, l) => s + l.totalDisponiveis, 0),
+      rows: inventory.laboratoriosFinais.map((lab) => ({
+        id: `labfinal:${lab.id}`,
+        category: 'lab_final',
+        nome: lab.nome,
+        codigo: lab.codigo,
+        disponiveis: lab.totalDisponiveis,
+        aguarda: lab.totalAguardaDescarte ?? 0,
+        item: lab,
+      })),
+    });
+  }
+
+  return sections;
+}
+
+function filterSections(sections: InventorySection[], filter: InventoryCategory): InventorySection[] {
+  if (filter === 'all') return sections;
+  if (filter === 'empresa') {
+    return sections.filter((s) => s.id === 'empresas').map((s) => ({ ...s, rows: [...s.rows] }));
+  }
+  if (filter === 'posto') {
+    return sections
+      .filter((s) => s.id.startsWith('lab:') || s.id === 'postos-sem-lab')
+      .map((s) => ({ ...s, rows: [...s.rows] }));
+  }
+  if (filter === 'lab_final') {
+    return sections.filter((s) => s.id === 'labs-finais').map((s) => ({ ...s, rows: [...s.rows] }));
+  }
+  return sections;
+}
+
+function InventoryDataRow({
+  row,
+  nested,
+  expandedId,
+  onToggle,
+  noKitsLabel,
+  aguardaDescarteLabel,
+}: {
+  row: InventoryRow;
+  nested?: boolean;
+  expandedId: string | null;
+  onToggle: (id: string) => void;
+  noKitsLabel: string;
+  aguardaDescarteLabel?: string;
+}) {
+  const isOpen = expandedId === row.id;
+  const hasDetails = row.item.lotes.length > 0 || (row.item.lotesAguardaDescarte?.length ?? 0) > 0;
+  const status = stockStatusLabel(row.disponiveis);
+
+  return (
+    <Fragment key={row.id}>
+      <tr
+        className={`transition-colors ${hasDetails ? 'cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/40' : ''} ${isOpen ? 'bg-slate-50 dark:bg-slate-800/30' : ''}`}
+        onClick={hasDetails ? () => onToggle(row.id) : undefined}
+      >
+        <td className={`px-3.5 py-2 ${nested ? 'pl-6 border-l-2 border-violet-200 dark:border-violet-800' : ''}`}>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            {CATEGORY_LABEL[row.category]}
+          </span>
+        </td>
+        <td className="px-3 py-2 min-w-0">
+          <p className={`${nested ? 'text-xs' : 'text-[13px]'} font-medium text-slate-900 dark:text-slate-100 truncate`} title={row.nome}>
+            {row.nome}
+          </p>
+          {row.codigo && (
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{row.codigo}</p>
+          )}
+        </td>
+        <td className="px-3 py-2 text-right">
+          <span className={`text-sm font-bold tabular-nums px-1.5 py-0.5 rounded-md ${stockTone(row.disponiveis)}`}>
+            {formatNumber(row.disponiveis)}
+          </span>
+        </td>
+        <td className="px-3 py-2 text-right">
+          {row.aguarda > 0 ? (
+            <span className="text-sm font-bold tabular-nums text-amber-700 dark:text-amber-300">
+              {formatNumber(row.aguarda)}
+            </span>
+          ) : (
+            <span className="text-slate-300 dark:text-slate-600">—</span>
+          )}
+        </td>
+        <td className="px-3 py-2">
+          <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md ${stockTone(row.disponiveis)}`}>
+            {status}
+          </span>
+        </td>
+        <td className="px-2 py-2 text-slate-300 dark:text-slate-600">
+          {hasDetails && (
+            <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+          )}
+        </td>
+      </tr>
+      {isOpen && hasDetails && (
+        <tr>
+          <td colSpan={6} className="p-0">
+            <KitDetailsPanel
+              item={row.item}
+              noKitsLabel={noKitsLabel}
+              aguardaDescarteLabel={aguardaDescarteLabel}
+            />
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  );
+}
+
 function stockTone(total: number): string {
   if (total === 0) return 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300';
   if (total < LOW_STOCK_THRESHOLD) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
   return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
 }
 
-function CountBadge({ value, title }: { value: number; title?: string }) {
-  return (
-    <span
-      title={title}
-      className={`inline-flex min-w-[1.75rem] justify-center text-[11px] font-bold tabular-nums px-1.5 py-0.5 rounded-md ${stockTone(value)}`}
-    >
-      {formatNumber(value)}
-    </span>
-  );
+function stockStatusLabel(total: number): string {
+  if (total === 0) return 'Vazio';
+  if (total < LOW_STOCK_THRESHOLD) return 'Baixo';
+  return 'OK';
 }
 
-function AwaitingBadge({ value }: { value: number }) {
-  if (value <= 0) return null;
-  return (
-    <span
-      title="Aguarda descarte"
-      className="inline-flex items-center text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
-    >
-      +{formatNumber(value)}
-    </span>
-  );
-}
-
-function KitDetails({
+function KitDetailsPanel({
   item,
   noKitsLabel,
   aguardaDescarteLabel,
@@ -64,31 +240,29 @@ function KitDetails({
   }
 
   const renderLotes = (grupos: typeof item.lotes, title?: string) => (
-    <div className={title ? 'border-t border-slate-100 dark:border-slate-800' : ''}>
+    <div className={title ? 'border-t border-slate-200 dark:border-slate-700' : ''}>
       {title && (
         <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400 px-3 pt-2 pb-1">
           {title}
         </p>
       )}
-      <div className="divide-y divide-slate-100 dark:divide-slate-800">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-3">
         {grupos.map((grupo) => (
-          <div key={`${title || 'disp'}-${grupo.lote}`} className="px-3 py-2">
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <div className="min-w-0">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Lote {grupo.lote}</span>
-                {grupo.teste && (
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-2">{grupo.teste}</span>
-                )}
-              </div>
+          <div key={`${title || 'disp'}-${grupo.lote}`} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-2">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">Lote {grupo.lote}</span>
               <span className="text-[10px] font-bold tabular-nums text-teal-700 dark:text-teal-300 flex-shrink-0">
                 {formatNumber(grupo.quantidade)}
               </span>
             </div>
-            <div className="flex flex-wrap gap-1">
+            {grupo.teste && (
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-1 truncate">{grupo.teste}</p>
+            )}
+            <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
               {grupo.codigosKits.map((codigo) => (
                 <span
                   key={codigo}
-                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                  className="text-[10px] font-mono px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                   title={codigo}
                 >
                   {codigo}
@@ -102,95 +276,9 @@ function KitDetails({
   );
 
   return (
-    <div className="bg-slate-50/80 dark:bg-slate-900/50">
+    <div className="bg-slate-50/80 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700">
       {hasDisponiveis && renderLotes(item.lotes)}
       {hasAguarda && renderLotes(item.lotesAguardaDescarte!, aguardaDescarteLabel || 'Aguarda descarte / envio lab')}
-    </div>
-  );
-}
-
-function LocationRow({
-  item,
-  isOpen,
-  onToggle,
-  noKitsLabel,
-  aguardaDescarteLabel,
-  nested = false,
-}: {
-  item: StockLocationInventory;
-  isOpen: boolean;
-  onToggle: () => void;
-  noKitsLabel: string;
-  aguardaDescarteLabel?: string;
-  nested?: boolean;
-}) {
-  const hasDetails = item.lotes.length > 0 || (item.lotesAguardaDescarte?.length ?? 0) > 0;
-
-  return (
-    <div className={nested ? 'border-l-2 border-sky-200 dark:border-sky-800 ml-3' : ''}>
-      <button
-        type="button"
-        onClick={onToggle}
-        className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
-          isOpen ? 'bg-slate-50 dark:bg-slate-800/30' : ''
-        }`}
-      >
-        {nested && <MapPin className="w-3 h-3 text-sky-500 flex-shrink-0" />}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2 min-w-0">
-            <span className={`${nested ? 'text-xs' : 'text-[13px]'} font-medium text-slate-900 dark:text-slate-100 truncate`}>
-              {item.nome}
-            </span>
-            {item.codigo && (
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate flex-shrink">{item.codigo}</span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <CountBadge value={item.totalDisponiveis} />
-          <AwaitingBadge value={item.totalAguardaDescarte ?? 0} />
-          <ChevronDown
-            className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''} ${!hasDetails && item.totalDisponiveis === 0 && !(item.totalAguardaDescarte ?? 0) ? 'opacity-30' : ''}`}
-          />
-        </div>
-      </button>
-      {isOpen && (
-        <KitDetails item={item} noKitsLabel={noKitsLabel} aguardaDescarteLabel={aguardaDescarteLabel} />
-      )}
-    </div>
-  );
-}
-
-function SectionBlock({
-  icon: Icon,
-  iconClass,
-  title,
-  count,
-  children,
-  defaultOpen = true,
-}: {
-  icon: typeof Building2;
-  iconClass: string;
-  title: string;
-  count: number | string;
-  children: ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-white dark:bg-slate-900/30">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2.5 bg-slate-50/80 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-      >
-        <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${iconClass}`} />
-        <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 flex-1 text-left">{title}</span>
-        <span className="text-[10px] text-slate-400 tabular-nums">{count}</span>
-        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && <div className="divide-y divide-slate-100 dark:divide-slate-800">{children}</div>}
     </div>
   );
 }
@@ -232,6 +320,20 @@ function SummaryStrip({
   );
 }
 
+const FILTER_META: { id: InventoryCategory; label: string; icon: typeof MapPin }[] = [
+  { id: 'all', label: 'Todos', icon: Layers },
+  { id: 'empresa', label: 'Empresas', icon: Building2 },
+  { id: 'posto', label: 'Postos', icon: MapPin },
+  { id: 'lab_final', label: 'Lab final', icon: FlaskConical },
+];
+
+const CATEGORY_LABEL: Record<InventoryRow['category'], string> = {
+  empresa: 'Empresa',
+  posto: 'Posto',
+  lab_final: 'Lab final',
+};
+
+
 export function StockByLocationPanel({ kits, lotes, empresas, postos, laboratorios }: Props) {
   const { t } = useLanguage();
   const inventory = useMemo(
@@ -239,9 +341,8 @@ export function StockByLocationPanel({ kits, lotes, empresas, postos, laboratori
     [kits, lotes, empresas, postos, laboratorios],
   );
 
+  const [filter, setFilter] = useState<InventoryCategory>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const toggle = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
 
   const noKitsLabel = t('stocks.locationPanel.noKitsHere');
   const aguardaDescarteLabel = t('stocks.locationPanel.awaitingDiscard');
@@ -254,9 +355,24 @@ export function StockByLocationPanel({ kits, lotes, empresas, postos, laboratori
   const aguardaTotal = kits.filter((k) => k.fase_ciclo === 'aguarda_envio_lab').length;
   const labFinalTotal = inventory.laboratoriosFinais.reduce((s, l) => s + l.totalDisponiveis, 0);
 
-  const renderEmpty = (message: string) => (
-    <p className="text-xs text-slate-400 dark:text-slate-500 px-3 py-4 text-center">{message}</p>
+  const allSections = useMemo(() => buildInventorySections(inventory), [inventory]);
+  const allRows = useMemo(() => allSections.flatMap((s) => s.rows), [allSections]);
+
+  const counts = useMemo(() => ({
+    all: allRows.length,
+    empresa: allRows.filter((r) => r.category === 'empresa').length,
+    posto: allRows.filter((r) => r.category === 'posto').length,
+    lab_final: allRows.filter((r) => r.category === 'lab_final').length,
+  }), [allRows]);
+
+  const visibleSections = useMemo(
+    () => filterSections(allSections, filter),
+    [allSections, filter],
   );
+
+  const visibleRowCount = visibleSections.reduce((s, sec) => s + sec.rows.length, 0);
+
+  const toggleRow = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
 
   return (
     <ChartCard
@@ -277,132 +393,122 @@ export function StockByLocationPanel({ kits, lotes, empresas, postos, laboratori
         }}
       />
 
-      <div className="space-y-2">
-        <SectionBlock
-          icon={Building2}
-          iconClass="text-teal-500"
-          title={t('stocks.locationPanel.companies')}
-          count={inventory.empresas.length}
-        >
-          {inventory.empresas.length === 0
-            ? renderEmpty(t('stocks.locationPanel.noRecords', { section: t('stocks.locationPanel.companies').toLowerCase() }))
-            : inventory.empresas.map((item) => (
-              <LocationRow
-                key={item.id}
-                item={item}
-                isOpen={expandedId === `empresa:${item.id}`}
-                onToggle={() => toggle(`empresa:${item.id}`)}
-                noKitsLabel={noKitsLabel}
-              />
-            ))}
-        </SectionBlock>
+      <div className={`${SURFACE.cardElevated} overflow-hidden -mx-1 sm:mx-0`}>
+        <div className="flex flex-wrap gap-1.5 px-3.5 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+          {FILTER_META.map(({ id, label, icon: Icon }) => {
+            const count = counts[id];
+            if (id !== 'all' && count === 0) return null;
+            const active = filter === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => { setFilter(id); setExpandedId(null); }}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition ${
+                  active
+                    ? 'bg-teal-600 text-white shadow-sm'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-teal-300'
+                }`}
+              >
+                <Icon className="w-3 h-3" />
+                {label}
+                <span className={`tabular-nums ${active ? 'text-teal-100' : 'text-slate-400'}`}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
 
-        <SectionBlock
-          icon={FlaskConical}
-          iconClass="text-violet-500"
-          title={t('stocks.locationPanel.labsWithSites')}
-          count={inventory.laboratorios.length}
-        >
-          {inventory.laboratorios.length === 0
-            ? renderEmpty(t('stocks.locationPanel.noRecords', { section: t('stocks.locationPanel.labs').toLowerCase() }))
-            : inventory.laboratorios.map((lab) => {
-              const postosStockLab = lab.postos.reduce((s, p) => s + p.totalDisponiveis, 0);
-              const labOpen = expandedId === `lab:${lab.id}`;
+        {visibleRowCount === 0 ? (
+          <p className="text-xs text-slate-400 dark:text-slate-500 px-3.5 py-8 text-center">
+            {t('stocks.locationPanel.noRecords', { section: FILTER_META.find((f) => f.id === filter)?.label.toLowerCase() ?? 'locais' })}
+          </p>
+        ) : (
+          <div className="overflow-auto max-h-[min(360px,45vh)]">
+            <table className="w-full text-left border-collapse">
+              <thead className="sticky top-0 z-10 bg-white dark:bg-slate-900 shadow-[0_1px_0_0_rgba(148,163,184,0.25)]">
+                <tr className="text-[10px] uppercase tracking-wide text-slate-400">
+                  <th className="px-3.5 py-2 font-semibold w-20">Tipo</th>
+                  <th className="px-3 py-2 font-semibold">Local</th>
+                  <th className="px-3 py-2 font-semibold text-right w-16">Disp.</th>
+                  <th className="px-3 py-2 font-semibold text-right w-16">Aguarda</th>
+                  <th className="px-3 py-2 font-semibold w-20">Estado</th>
+                  <th className="px-2 py-2 w-8" aria-hidden />
+                </tr>
+              </thead>
+              <tbody>
+                {visibleSections.map((section) => {
+                  const showSectionHeader =
+                    section.id.startsWith('lab:')
+                    || section.id === 'postos-sem-lab'
+                    || (filter === 'all' && (section.id === 'empresas' || section.id === 'labs-finais'))
+                    || (filter === 'empresa' && section.id === 'empresas')
+                    || (filter === 'lab_final' && section.id === 'labs-finais');
 
-              return (
-                <div key={lab.id}>
-                  <button
-                    type="button"
-                    onClick={() => toggle(`lab:${lab.id}`)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
-                      labOpen ? 'bg-slate-50 dark:bg-slate-800/30' : ''
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-[13px] font-medium text-slate-900 dark:text-slate-100 truncate">{lab.nome}</span>
-                        {lab.codigo && (
-                          <span className="text-[10px] text-slate-400 truncate">{lab.codigo}</span>
-                        )}
-                      </div>
-                      {lab.postos.length > 0 && (
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                          {t('stocks.locationPanel.sitesSummary', { count: lab.postos.length, kits: postosStockLab })}
-                        </p>
+                  return (
+                    <Fragment key={section.id}>
+                      {showSectionHeader && (
+                        <tr className="bg-slate-50/90 dark:bg-slate-800/50">
+                          <td colSpan={6} className="px-3.5 py-2 border-y border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center justify-between gap-2 min-w-0">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {section.id.startsWith('lab:') && (
+                                  <FlaskConical className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
+                                )}
+                                {section.id === 'empresas' && (
+                                  <Building2 className="w-3.5 h-3.5 text-teal-500 flex-shrink-0" />
+                                )}
+                                {section.id === 'labs-finais' && (
+                                  <Layers className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                                )}
+                                {section.id === 'postos-sem-lab' && (
+                                  <MapPin className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" />
+                                )}
+                                <div className="min-w-0">
+                                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                                    {section.title}
+                                  </span>
+                                  {section.subtitle && (
+                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-2">
+                                      {section.subtitle}
+                                    </span>
+                                  )}
+                                  {section.totalPostos != null && (
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 ml-2">
+                                      · {section.totalPostos} posto{section.totalPostos !== 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <span className={`text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-md flex-shrink-0 ${stockTone(section.totalDisponiveis)}`}>
+                                {formatNumber(section.totalDisponiveis)}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <CountBadge value={postosStockLab} />
-                      <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${labOpen ? 'rotate-180' : ''}`} />
-                    </div>
-                  </button>
-
-                  {labOpen && (
-                    <div className="border-t border-slate-100 dark:border-slate-800 pb-1">
-                      {lab.postos.length === 0 ? (
-                        <p className="text-[11px] text-slate-400 px-3 py-2">Este laboratório não tem postos associados.</p>
-                      ) : (
-                        lab.postos.map((posto) => (
-                          <LocationRow
-                            key={posto.id}
-                            item={posto}
-                            isOpen={expandedId === `posto:${lab.id}:${posto.id}`}
-                            onToggle={() => toggle(`posto:${lab.id}:${posto.id}`)}
-                            noKitsLabel={noKitsLabel}
-                            aguardaDescarteLabel={aguardaDescarteLabel}
-                            nested
-                          />
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-        </SectionBlock>
-
-        {inventory.postosSemLaboratorio.length > 0 && (
-          <SectionBlock
-            icon={MapPin}
-            iconClass="text-sky-500"
-            title={t('stocks.locationPanel.unassignedSites')}
-            count={inventory.postosSemLaboratorio.length}
-            defaultOpen={false}
-          >
-            {inventory.postosSemLaboratorio.map((item) => (
-              <LocationRow
-                key={item.id}
-                item={item}
-                isOpen={expandedId === `orphan:${item.id}`}
-                onToggle={() => toggle(`orphan:${item.id}`)}
-                noKitsLabel={noKitsLabel}
-                aguardaDescarteLabel={aguardaDescarteLabel}
-              />
-            ))}
-          </SectionBlock>
+                      {section.rows.map((row) => (
+                        <InventoryDataRow
+                          key={row.id}
+                          row={row}
+                          nested={section.id.startsWith('lab:') || section.id === 'postos-sem-lab'}
+                          expandedId={expandedId}
+                          onToggle={toggleRow}
+                          noKitsLabel={noKitsLabel}
+                          aguardaDescarteLabel={aguardaDescarteLabel}
+                        />
+                      ))}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
 
-        {inventory.laboratoriosFinais.length > 0 && (
-          <SectionBlock
-            icon={Layers}
-            iconClass="text-indigo-500"
-            title={t('stocks.locationPanel.labFinal')}
-            count={`${labFinalTotal} kits`}
-            defaultOpen={labFinalTotal > 0}
-          >
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 px-3 py-1.5 border-b border-slate-100 dark:border-slate-800">
-              {t('stocks.locationPanel.labFinalSubtitle')}
-            </p>
-            {inventory.laboratoriosFinais.map((item) => (
-              <LocationRow
-                key={item.id}
-                item={item}
-                isOpen={expandedId === `labfinal:${item.id}`}
-                onToggle={() => toggle(`labfinal:${item.id}`)}
-                noKitsLabel={noKitsLabel}
-              />
-            ))}
-          </SectionBlock>
+        {visibleRowCount > 10 && (
+          <p className="px-3.5 py-1.5 text-[10px] text-slate-400 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20">
+            {visibleRowCount} locais — clique numa linha para ver lotes e kits
+          </p>
         )}
       </div>
     </ChartCard>

@@ -8,6 +8,7 @@ import {
   mapApiPacienteToContact,
 } from '../../lib/pacientes';
 import { resolveTesteIdFromSelection, sortTestesByCodigo } from '../../lib/testes';
+import { resolveProcessoKitCodigo } from '../../lib/processos';
 
 type ApiListResponse<T> = {
   data?: T[];
@@ -40,6 +41,7 @@ interface ApiProcesso {
   kit_codigo?: string | null;
   data_colheita?: string | null;
   data_colheita_prevista?: string | null;
+  data_envio_laboratorio?: string | null;
   data_chegada_laboratorio?: string | null;
   data_resultado?: string | null;
   data_validacao?: string | null;
@@ -153,6 +155,9 @@ interface ApiEmpresa {
   nome?: string;
   morada?: string | null;
   codigo_postal?: string | null;
+  cidade?: string | null;
+  distrito?: string | null;
+  notas?: string | null;
   telefone?: string | null;
   contacto?: string | null;
   email?: string | null;
@@ -167,6 +172,9 @@ const mapEmpresaFromApi = (e: ApiEmpresa): Empresa => ({
   nome: e.nome || '',
   morada: e.morada || '',
   codigo_postal: e.codigo_postal || '',
+  cidade: e.cidade || '',
+  distrito: e.distrito || '',
+  notas: e.notas || '',
   contacto: e.contacto || e.telefone || '',
   email: e.email || '',
   nif: e.nif || '',
@@ -466,11 +474,12 @@ const mapPedidoToProcesso = (pedido: ApiProcesso): Processo => ({
   medico: pedido.medico_nome || '',
   medico_id: pedido.medico_id,
   posto: pedido.posto || '',
-  kit_codigo: pedido.kit_codigo || '',
+  kit_codigo: pedido.kit_codigo || pedido.numero_processo || '',
   estado: mapEstadoFromApi(pedido.status),
   data_entrada: normalizeDate(pedido.data_entrada || pedido.data_pedido) || todayLocal(),
   data_colheita: normalizeDate(pedido.data_colheita),
   data_colheita_prevista: normalizeDate(pedido.data_colheita_prevista),
+  data_envio_laboratorio: normalizeDate(pedido.data_envio_laboratorio),
   data_chegada_laboratorio: normalizeDate(pedido.data_chegada_laboratorio),
   data_resultado: normalizeDate(pedido.data_resultado),
   data_validacao: normalizeDate(pedido.data_validacao),
@@ -645,6 +654,7 @@ export interface DataContextType {
   deleteUtilizador: (id: string) => Promise<void>;
 
   empresas: Empresa[];
+  refreshEmpresas: () => Promise<void>;
   addEmpresa: (e: Omit<Empresa, 'id'>) => Promise<void>;
   updateEmpresa: (id: string, data: Partial<Empresa>) => Promise<void>;
   deleteEmpresa: (id: string) => Promise<void>;
@@ -973,14 +983,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const addProcesso = async (data: Omit<Processo, 'id'>): Promise<Processo> => {
+    const kitCodigo = resolveProcessoKitCodigo(data);
     const estadoExigeKit = ['Colheita Realizada', 'Enviado Laboratorio', 'Em Analise', 'Resultado Disponivel', 'Validado', 'Faturado']
       .includes(data.estado);
-    if (estadoExigeKit && !data.kit_codigo.trim()) {
+    if (estadoExigeKit && !kitCodigo) {
       throw new Error('Código do kit é obrigatório após colheita.');
     }
 
-    const kitDuplicado = data.kit_codigo.trim()
-      ? processos.some((p) => p.kit_codigo.trim().toLowerCase() === data.kit_codigo.trim().toLowerCase())
+    const kitDuplicado = kitCodigo
+      ? processos.some((p) => resolveProcessoKitCodigo(p).toLowerCase() === kitCodigo.toLowerCase())
       : false;
 
     if (kitDuplicado) {
@@ -1010,7 +1021,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       throw new Error('Não foi possível mapear médico, sub-teste ou empresa para criar o processo.');
     }
 
-    const numeroProcesso = (data.numero?.trim() || data.kit_codigo?.trim());
+    const numeroProcesso = (data.numero?.trim() || kitCodigo);
     if (!numeroProcesso) {
       throw new Error('O código do kit é obrigatório para criar o processo.');
     }
@@ -1029,7 +1040,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         numero_processo: numeroProcesso,
         posto: data.posto || null,
         posto_id: data.posto_id || null,
-        kit_codigo: data.kit_codigo || null,
+        kit_codigo: kitCodigo || null,
         data_colheita: data.data_colheita || null,
         data_colheita_prevista: data.data_colheita_prevista || null,
         tipo_gravidez: data.tipo_gravidez || null,
@@ -1075,8 +1086,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const processoAtual = processos.find((p) => p.id === id);
     if (!processoAtual) return;
 
+    const merged = { ...processoAtual, ...data };
+    const kitResultante = resolveProcessoKitCodigo(merged);
     const estadoResultante = data.estado ?? processoAtual.estado;
-    const kitResultante = (data.kit_codigo ?? processoAtual.kit_codigo ?? '').trim();
     const estadoExigeKit = ['Colheita Realizada', 'Enviado Laboratorio', 'Em Analise', 'Resultado Disponivel', 'Validado', 'Faturado']
       .includes(estadoResultante);
 
@@ -1085,7 +1097,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
 
     if (data.kit_codigo !== undefined && kitResultante) {
-      const kitDuplicado = processos.some((p) => p.id !== id && p.kit_codigo.trim().toLowerCase() === kitResultante.toLowerCase());
+      const kitDuplicado = processos.some((p) => p.id !== id && resolveProcessoKitCodigo(p).toLowerCase() === kitResultante.toLowerCase());
       if (kitDuplicado) {
         throw new Error('Já existe um processo com este código de kit.');
       }
@@ -1106,10 +1118,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ...(data.numero !== undefined && data.numero.trim()
           ? { numero_processo: data.numero.trim() }
           : {}),
-        ...(data.posto !== undefined ? { posto: data.posto || null } : {}),
         ...(data.data_entrada !== undefined ? { data_entrada: data.data_entrada || null } : {}),
         ...(data.kit_codigo !== undefined ? { kit_codigo: data.kit_codigo || null } : {}),
-        ...(data.data_colheita !== undefined ? { data_colheita: data.data_colheita || null } : {}),
+        ...(data.estado !== undefined && kitResultante && !processoAtual.kit_codigo?.trim()
+          ? { kit_codigo: kitResultante }
+          : {}),
         ...(data.data_chegada_laboratorio !== undefined ? { data_chegada_laboratorio: data.data_chegada_laboratorio || null } : {}),
         ...(data.data_resultado !== undefined ? { data_resultado: data.data_resultado || null } : {}),
         ...(data.data_validacao !== undefined ? { data_validacao: data.data_validacao || null } : {}),
@@ -1449,6 +1462,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     ...(data.nome !== undefined ? { nome: data.nome } : {}),
     ...(data.morada !== undefined ? { morada: data.morada } : {}),
     ...(data.codigo_postal !== undefined ? { codigo_postal: data.codigo_postal } : {}),
+    ...(data.cidade !== undefined ? { cidade: data.cidade } : {}),
+    ...(data.distrito !== undefined ? { distrito: data.distrito } : {}),
+    ...(data.notas !== undefined ? { notas: data.notas } : {}),
     ...(data.contacto !== undefined ? { contacto: data.contacto, telefone: data.contacto } : {}),
     ...(data.email !== undefined ? { email: data.email } : {}),
     ...(data.nif !== undefined ? { nif: data.nif } : {}),
@@ -1780,7 +1796,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       lotes, addLote, updateLote,
       requisicoesKits, addRequisicaoKit, addDescarteEnvio, updateRequisicaoKit, deleteRequisicaoKit,
       utilizadores, addUtilizador, updateUtilizador, deleteUtilizador,
-      empresas, addEmpresa, updateEmpresa, deleteEmpresa,
+      empresas, refreshEmpresas, addEmpresa, updateEmpresa, deleteEmpresa,
       testes, refreshTestes, addTeste, updateTeste, deleteTeste, addSubTeste, updateSubTeste, deleteSubTeste,
       tiposKit, refreshTiposKit, addTipoKit, updateTipoKit, deleteTipoKit,
       motivosAnulacao, refreshMotivosAnulacao, addMotivoAnulacao, updateMotivoAnulacao, deleteMotivoAnulacao,

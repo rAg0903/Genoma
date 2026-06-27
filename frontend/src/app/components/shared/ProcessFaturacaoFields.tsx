@@ -1,3 +1,4 @@
+import { CHECKBOX_INPUT_CLASS } from '../../../lib/design-system';
 import { todayLocal, formatCalendarDatePt } from '../../../lib/dates';
 import { ProcessFaturacaoData } from '../../../lib/process-form';
 import { InfoField } from '../ContactDetail';
@@ -49,6 +50,7 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true }: Pr
             checked={!!value.nao_gera_comissao}
             onChange={(e) => set({ nao_gera_comissao: e.target.checked })}
             disabled={!canUpdate}
+            className={CHECKBOX_INPUT_CLASS}
           />
           Não gera comissão
         </label>
@@ -125,6 +127,7 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true }: Pr
               pagamento_data: e.target.checked && !value.pagamento_data ? todayLocal() : value.pagamento_data,
             })}
             disabled={!canUpdate}
+            className={CHECKBOX_INPUT_CLASS}
           />
           Pago
         </label>

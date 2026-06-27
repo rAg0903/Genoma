@@ -13,7 +13,7 @@ import { PageHeader } from './shared/PageHeader';
 import { PageTabsRow } from './shared/PageToolbar';
 import { TabsBar } from './shared/TabsBar';
 import { ReadOnlyNotice } from './shared/ReadOnlyNotice';
-import { AlertPanel, DashboardAlert } from './dashboard/AlertPanel';
+import { StockAlertsPanel } from './stocks/StockAlertsPanel';
 import { StockKpis } from './stocks/StockKpis';
 import { StockCharts } from './stocks/StockCharts';
 import { StockByLocationPanel } from './stocks/StockByLocationPanel';
@@ -23,6 +23,7 @@ import { DescartesTab } from './stocks/DescartesTab';
 import { LoteFormModal, RequisicaoFormModal, RequisicaoEditModal, DescarteFormModal } from './stocks/StockForms';
 import { computeStockAlerts } from '../../lib/stocks';
 import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
+import { DashboardAlert } from './dashboard/AlertPanel';
 
 type StocksTab = 'lotes' | 'requisicoes' | 'descartes';
 const STOCKS_TABS: StocksTab[] = ['lotes', 'requisicoes', 'descartes'];
@@ -164,12 +165,12 @@ export function StocksPage() {
 
         <StockByLocationPanel kits={kits} lotes={lotes} empresas={empresas} postos={postos} laboratorios={laboratorios} />
 
-        <div className={`grid grid-cols-1 lg:grid-cols-3 ${LAYOUT.gridGap}`}>
-          <div className="lg:col-span-2"><StockCharts kits={kits} lotes={lotes} /></div>
-          <AlertPanel alerts={alerts} />
-        </div>
-
         <StockKpis kits={kits} lotes={lotes} />
+
+        <div className={`grid grid-cols-1 ${LAYOUT.gridGap}`}>
+          <StockCharts kits={kits} lotes={lotes} />
+          <StockAlertsPanel alerts={alerts} />
+        </div>
       </div>
 
       {loteModal.open && (

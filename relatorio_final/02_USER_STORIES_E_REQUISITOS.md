@@ -185,7 +185,7 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | CA-009.2 | `data_envio_relatorio` é registada no processo | Campo `processos` |
 | CA-009.3 | Destinatário registado em `relatorio_enviado_para` | Enum de destinos |
 | CA-009.4 | Estado de envio: Pendente / Enviado / Falha | `processo_relatorios.estado_envio` |
-| CA-009.5 | Notificação automática preparada (e-mail/SMS) | Módulo `/api/notificacoes` |
+| CA-009.5 | Notificação in-app e canal externo preparado (e-mail/SMS) | `notificacoes.service.js`, `/api/notificacoes`, `NotificationsPage.tsx` |
 
 ---
 
@@ -282,13 +282,13 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | RF-014 | Listagens com pesquisa, filtros e exportação multi-formato | Média | US-012 | Implementado |
 | RF-015 | Gestão de catálogo de testes genómicos (metadados ADN fetal) | Média | US-007 | Implementado |
 | RF-016 | Motivos de anulação configuráveis | Média | US-005 | Parcial* |
-| RF-017 | Notificações automáticas e-mail/SMS | Baixa | US-009 | Preparado** |
+| RF-017 | Notificações in-app e automáticas e-mail/SMS | Baixa | US-009 | Parcial** |
 | RF-018 | Integração com software de faturação certificado | Baixa | US-010 | Pendente |
 | RF-019 | Importação de dados históricos | Baixa | — | Pendente |
 | RF-020 | Isolamento de dados e painel dedicado ao perfil Médico | Alta | US-013 | Implementado |
 
 \* Tabela `motivos_anulacao` criada; ligação ao ecrã de cancelamento de processos pendente.  
-\** Módulo interno implementado; credenciais de envio externo por configurar.
+\** Centro de notificações in-app implementado (categorias, preferências, alertas faturação); envio e-mail/SMS por configurar.
 
 ---
 
@@ -330,14 +330,15 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | RNF-019 | Painel lateral com separadores contextuais | `ProcessDrawer.tsx` |
 | RNF-020 | Atalho de pesquisa global (Ctrl/Cmd+K) | Componente de pesquisa |
 | RNF-021 | Suporte a modo claro/escuro | `ThemeContext.tsx` |
-| RNF-022 | Responsividade para tablets | Tailwind CSS + MUI |
+| RNF-022 | Consistência visual (design tokens slate/teal) | `design-tokens.ts`, `design-system.ts`, `PermissionsMatrix.tsx` |
+| RNF-023 | Responsividade para tablets | Tailwind CSS + MUI |
 
 ### 2.4.4. Fiabilidade e Manutenibilidade
 
 | ID | Requisito | Implementação |
 |---|---|---|
 | RNF-023 | Arquitectura em camadas (Routes → Controllers → Services → Repositories) | `backend/ARCHITECTURE.md` |
-| RNF-024 | Migrações versionadas e reversíveis | `backend/src/migrations/` |
+| RNF-024 | Migrações versionadas (59 ficheiros) | `backend/src/migrations/` |
 | RNF-025 | Documentação API (OpenAPI/Swagger) | `swagger.json` + `swagger-ui-express` |
 | RNF-026 | Tratamento centralizado de erros | `error.middleware.js` |
 | RNF-027 | Prepared statements (prevenção SQL Injection) | `mysql2` parameterized queries |

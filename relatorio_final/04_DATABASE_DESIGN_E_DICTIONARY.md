@@ -322,12 +322,22 @@ O schema encontra-se predominantemente em **3ª Forma Normal (3FN)**:
 | Métrica | Valor |
 |---|---|
 | Total de tabelas | 29 |
-| Migrações aplicadas | 46+ |
+| Migrações aplicadas | 59 |
 | Perfis configurados | 3 |
 | Testes no catálogo | 3 |
 | Kits registados | 4 |
 | Lotes registados | 3 |
 | Registos de auditoria | 14 |
+
+---
+
+## 4.8. Evolução Recente do Schema (Migrações 057–059)
+
+| Migração | Descrição |
+|---|---|
+| `057_processo_data_envio_laboratorio.js` | Campo `data_envio_laboratorio` distinto da recepção no laboratório |
+| `058_backfill_processo_colheita_snapshot.js` | Backfill e preservação do snapshot de colheita no processo |
+| `059_empresa_notas_morada_extra.js` | Colunas `cidade`, `distrito`, `notas` na tabela `empresas` |
 
 ---
 

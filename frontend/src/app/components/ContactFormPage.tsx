@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   Save, User, Phone, MapPin, Baby, Syringe, Receipt, StickyNote, Paperclip,
   AlertTriangle, CheckCircle2, Package, X, Loader2, Ban,
@@ -35,6 +35,7 @@ import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPr
 import { AppModal, ModalAlert } from './shared/AppModal';
 import { Medico, medicosApi } from '../../lib/api-medicos';
 import { parseGestacaoRegistoInput } from '../../lib/gestacao';
+import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
 
 type TabId = 'identificacao' | 'gravidez' | 'colheita' | 'faturacao' | 'notas' | 'anexos';
 
@@ -65,9 +66,12 @@ const emptyColheita = { posto_id: '', data_prevista: '', data_efetiva: '' };
 
 interface KitOpcao { id: string; codigo_barras: string; tracking: string; tipo_kit: string; teste_nome?: string; data_validade: string }
 
+const TAB_IDS = new Set<TabId>(TABS.map((t) => t.id));
+
 export function ContactFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useLanguage();
   const {
     contacts, addContact, updateContact, processos, addProcesso, updateProcesso,
@@ -81,6 +85,14 @@ export function ContactFormPage() {
 
   const editing = Boolean(id);
   const [tab, setTab] = useState<TabId>('identificacao');
+
+  useEffect(() => {
+    const requested = searchParams.get('tab');
+    if (requested && TAB_IDS.has(requested as TabId)) {
+      setTab(requested as TabId);
+    }
+  }, [searchParams]);
+
   const [form, setForm] = useState<Omit<Contact, 'id' | 'created_at'>>(emptyForm);
   const [savedContactId, setSavedContactId] = useState<string | null>(id ?? null);
   const [saving, setSaving] = useState(false);
@@ -637,7 +649,7 @@ export function ContactFormPage() {
                       motivo_anulacao_id: e.target.checked ? anulacao.motivo_anulacao_id : '',
                     })}
                     disabled={!canEditFaturacao || temProcessoAtivo}
-                    className="w-4 h-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                    className={CHECKBOX_INPUT_CLASS}
                   />
                   <span style={{ fontWeight: 500 }}>{t('pages.contacts.form.voided')}</span>
                 </label>

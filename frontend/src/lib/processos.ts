@@ -2,6 +2,11 @@ import { Processo } from '../app/data/types';
 
 export type EstadoProcesso = Processo['estado'];
 
+/** Código do kit no processo (numero_processo costuma ser o código do kit na conversão contacto→processo). */
+export const resolveProcessoKitCodigo = (
+  p: Pick<Processo, 'kit_codigo' | 'numero'>,
+): string => (p.kit_codigo?.trim() || p.numero?.trim() || '');
+
 /** Pipeline visivel na pagina Processos (apos colheita com kit). */
 export const PROCESS_PIPELINE_ESTADOS: EstadoProcesso[] = [
   'Colheita Realizada',
@@ -145,7 +150,7 @@ const ESTADO_TERMINAL = (e: EstadoProcesso) => e === 'Faturado' || e === 'Cancel
 /** Data de referencia da ultima transicao conhecida (para deteccao de "parado"). */
 export const ultimaAtualizacao = (p: Processo): string | undefined =>
   p.data_envio_relatorio || p.data_validacao || p.data_resultado ||
-  p.data_chegada_laboratorio || p.data_colheita || p.data_entrada;
+  p.data_chegada_laboratorio || p.data_envio_laboratorio || p.data_colheita || p.data_entrada;
 
 /** Processo "atrasado": parado ha mais de N dias num estado nao-terminal. */
 export const isAtrasado = (p: Processo, limiteDias = 7): boolean => {

@@ -48,13 +48,16 @@ exports.create = async (data) => {
         
         await connection.execute(
             `INSERT INTO empresas
-              (id, nome, morada, codigo_postal, telefone, email, tipo_empresa, nif, pais, contacto, ativo)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              (id, nome, morada, codigo_postal, cidade, distrito, notas, telefone, email, tipo_empresa, nif, pais, contacto, ativo)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
                 data.nome,
                 data.morada || null,
                 data.codigo_postal || null,
+                data.cidade || null,
+                data.distrito || null,
+                data.notas || null,
                 data.telefone || null,
                 data.email || null,
                 data.tipo_empresa || null,
@@ -96,6 +99,18 @@ exports.update = async (id, data) => {
         if (data.codigo_postal !== undefined) {
             updates.push('codigo_postal = ?');
             values.push(data.codigo_postal);
+        }
+        if (data.cidade !== undefined) {
+            updates.push('cidade = ?');
+            values.push(data.cidade);
+        }
+        if (data.distrito !== undefined) {
+            updates.push('distrito = ?');
+            values.push(data.distrito);
+        }
+        if (data.notas !== undefined) {
+            updates.push('notas = ?');
+            values.push(data.notas);
         }
         if (data.telefone !== undefined) {
             updates.push('telefone = ?');

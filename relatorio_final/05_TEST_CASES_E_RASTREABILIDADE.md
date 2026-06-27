@@ -435,7 +435,7 @@ Médico B: sofiasilva@genoma.pt / Teste1234!
 | US-006 | TC-003 | Parcial (transição Enviado Lab → Em Análise) |
 | US-007 | TC-004 | Completa |
 | US-008 | TC-005 | Completa |
-| US-009 | TC-005 | Parcial (envio notificação pendente) |
+| US-009 | TC-005 | Parcial (in-app implementado; e-mail/SMS pendente) |
 | US-010 | TC-006 | Completa |
 | US-011 | TC-008 | Completa |
 | US-012 | TC-009 | Completa |
@@ -477,6 +477,20 @@ Médico B: sofiasilva@genoma.pt / Teste1234!
 | 2 | Implementação testes Jest (services) | [INSERIR] |
 | 3 | Testes de aceitação com cliente Genoma | [INSERIR] |
 | 4 | Testes de segurança (OWASP Top 10) | [INSERIR] |
+
+---
+
+## 5.8. Validações Manuais Recentes (Junho 2026)
+
+Registo de verificações efectuadas em desenvolvimento (fora da suite automatizada):
+
+| ID | Área | Passos | Resultado |
+|---|---|---|---|
+| VM-001 | Notificações | Filtrar por categoria; marcar lida; verificar prefs em Definições | OK |
+| VM-002 | Breadcrumbs | Abrir processo — breadcrumb mostra `NPT…` em vez de UUID | OK |
+| VM-003 | Dashboard | Clicar «Últimos processos» — abre `/processos/:id` read-only | OK |
+| VM-004 | Maternity | Toggles sub-teste alinhados com matriz de permissões | OK |
+| VM-005 | Empresas | Editar empresa — formulário carrega após `refreshEmpresas` | OK |
 
 ---
 

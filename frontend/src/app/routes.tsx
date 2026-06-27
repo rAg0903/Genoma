@@ -21,6 +21,7 @@ const PostoFormPage = lazy(() => import('./components/LocalFormPage').then((m) =
 const LaboratorioFormPage = lazy(() => import('./components/LocalFormPage').then((m) => ({ default: m.LaboratorioFormPage })));
 const LaboratorioFinalFormPage = lazy(() => import('./components/LocalFormPage').then((m) => ({ default: m.LaboratorioFinalFormPage })));
 const EntidadeFormPage = lazy(() => import('./components/LocalFormPage').then((m) => ({ default: m.EntidadeFormPage })));
+const EmpresaFormPage = lazy(() => import('./components/EmpresaFormPage').then((m) => ({ default: m.EmpresaFormPage })));
 const TesteFormPage = lazy(() => import('./components/TesteFormPage').then((m) => ({ default: m.TesteFormPage })));
 const SubTesteFormPage = lazy(() => import('./components/SubTesteFormPage').then((m) => ({ default: m.SubTesteFormPage })));
 const ProfilePage = lazy(() => import('./components/ProfilePage').then((m) => ({ default: m.ProfilePage })));
@@ -242,6 +243,22 @@ export const router = createBrowserRouter([
         Component: () => withSuspense(
           <ProtectedRoute module="definicoes">
             <EntidadeFormPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'definicoes/empresas/novo',
+        Component: () => withSuspense(
+          <ProtectedRoute module="definicoes">
+            <EmpresaFormPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'definicoes/empresas/:id/editar',
+        Component: () => withSuspense(
+          <ProtectedRoute module="definicoes">
+            <EmpresaFormPage />
           </ProtectedRoute>
         ),
       },

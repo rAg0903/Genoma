@@ -64,6 +64,23 @@ exports.findByProcessoId = async (processoId) => {
   }
 };
 
+/** Snapshots de colheita para enriquecer processos (evita N+1 em listagens). */
+exports.findSnapshotsByProcessoIds = async (processoIds = []) => {
+  const ids = [...new Set(processoIds.filter(Boolean))];
+  if (!ids.length) return [];
+  const connection = await pool.getConnection();
+  try {
+    const placeholders = ids.map(() => '?').join(', ');
+    const [rows] = await connection.execute(
+      `${baseSelect} WHERE c.processo_id IN (${placeholders})`,
+      ids,
+    );
+    return rows;
+  } finally {
+    connection.release();
+  }
+};
+
 /**
  * Cria registo em colheitas a partir de um processo (sem reserva de kit).
  * Ignora se o processo já tiver colheita associada.

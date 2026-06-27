@@ -5,6 +5,7 @@ const testesRepository = require('../repositories/testes.repository');
 const empresasRepository = require('../repositories/empresas.repository');
 const stocksRepository = require('../repositories/stocks.repository');
 const informacaoClinicaRepository = require('../repositories/informacao_clinica.repository');
+const colheitasRepository = require('../repositories/colheitas.repository');
 const utilizadoresRepository = require('../repositories/utilizadores.repository');
 const logService = require('./log.service');
 const motivosAnulacaoService = require('./motivos_anulacao.service');
@@ -16,6 +17,7 @@ const PROCESSO_DATE_FIELDS = [
   'data_entrada',
   'data_colheita',
   'data_colheita_prevista',
+  'data_envio_laboratorio',
   'data_chegada_laboratorio',
   'data_resultado',
   'data_validacao',
@@ -50,6 +52,45 @@ const STATUS_CANONICOS = [
 ];
 
 const RELATORIO_DESTINOS_VALIDOS = ['Nenhum', 'Medico', 'Utente', 'Ambos'];
+
+/** Campos de colheita copiados do contacto — não devem ser apagados por updates parciais. */
+const COLHEITA_SNAPSHOT_FIELDS = new Set(['posto', 'posto_id', 'data_colheita', 'data_colheita_prevista']);
+
+const hasColheitaValue = (value) => value != null && String(value).trim() !== '';
+
+const mergeColheitaIntoProcesso = (processo, colheita) => {
+  if (!processo) return processo;
+  const merged = { ...processo };
+  if (colheita) {
+    if (!hasColheitaValue(merged.posto_id) && colheita.posto_id) merged.posto_id = colheita.posto_id;
+    if (!hasColheitaValue(merged.posto) && colheita.posto_nome) merged.posto = colheita.posto_nome;
+    if (!hasColheitaValue(merged.data_colheita_prevista) && colheita.data_prevista) {
+      merged.data_colheita_prevista = colheita.data_prevista;
+    }
+    if (!hasColheitaValue(merged.data_colheita) && colheita.data_efetiva) {
+      merged.data_colheita = colheita.data_efetiva;
+    }
+  }
+  return mapProcessoResponse(merged);
+};
+
+const enrichProcessosColheita = async (rows) => {
+  if (!rows?.length) return rows || [];
+  const snapshots = await colheitasRepository.findSnapshotsByProcessoIds(rows.map((r) => r.id));
+  const byProcesso = new Map(snapshots.map((s) => [s.processo_id, s]));
+  return rows.map((row) => mergeColheitaIntoProcesso(row, byProcesso.get(row.id)));
+};
+
+const attachProcessoResponse = async (processo) => {
+  if (!processo) return processo;
+  const [withColheita] = await enrichProcessosColheita([processo]);
+  return attachInformacaoClinica(withColheita);
+};
+
+const attachProcessosResponse = async (rows) => {
+  const enriched = await enrichProcessosColheita(rows);
+  return Promise.all(enriched.map((row) => attachInformacaoClinica(row)));
+};
 
 // Maquina de estados do Processo. Define para cada estado os estados de destino
 // validos. Cancelado e atingivel a partir de qualquer estado nao-terminal.
@@ -111,6 +152,17 @@ const statusExigeKit = (status) => [
   'Faturado',
 ].includes(status);
 
+const resolveKitCodigoProcesso = (processo, workflowKit) => {
+  if (workflowKit !== undefined) {
+    const normalized = normalizeStringOrNull(workflowKit);
+    if (normalized) return normalized;
+  }
+  const kit = processo.kit_codigo && String(processo.kit_codigo).trim();
+  if (kit) return kit;
+  const numero = processo.numero_processo && String(processo.numero_processo).trim();
+  return numero || null;
+};
+
 const normalizeWorkflowPayload = (data) => {
   const normalized = {};
 
@@ -120,6 +172,7 @@ const normalizeWorkflowPayload = (data) => {
   if (data.kit_codigo !== undefined) normalized.kit_codigo = normalizeStringOrNull(data.kit_codigo);
   if (data.data_colheita !== undefined) normalized.data_colheita = normalizeStringOrNull(data.data_colheita);
   if (data.data_colheita_prevista !== undefined) normalized.data_colheita_prevista = normalizeStringOrNull(data.data_colheita_prevista);
+  if (data.data_envio_laboratorio !== undefined) normalized.data_envio_laboratorio = normalizeStringOrNull(data.data_envio_laboratorio);
   if (data.data_chegada_laboratorio !== undefined) normalized.data_chegada_laboratorio = normalizeStringOrNull(data.data_chegada_laboratorio);
   if (data.data_resultado !== undefined) normalized.data_resultado = normalizeStringOrNull(data.data_resultado);
   if (data.data_validacao !== undefined) normalized.data_validacao = normalizeStringOrNull(data.data_validacao);
@@ -299,7 +352,7 @@ exports.listAll = async (user) => {
   } else {
     rows = await processosRepository.findAll();
   }
-  return Promise.all(rows.map((row) => attachInformacaoClinica(row)));
+  return attachProcessosResponse(rows);
 };
 
 exports.getById = async (id, user) => {
@@ -314,7 +367,7 @@ exports.getById = async (id, user) => {
     throw new Error('Sem permissao para aceder a este processo');
   }
 
-  return attachInformacaoClinica(processo);
+  return attachProcessoResponse(processo);
 };
 
 exports.listByPaciente = async (pacienteId, user) => {
@@ -325,9 +378,9 @@ exports.listByPaciente = async (pacienteId, user) => {
   const rows = await processosRepository.findByPaciente(pacienteId);
   if (await isMedicoUser(user)) {
     const ownRows = rows.filter((row) => row.medico_id === user.id);
-    return Promise.all(ownRows.map((row) => attachInformacaoClinica(row)));
+    return attachProcessosResponse(ownRows);
   }
-  return Promise.all(rows.map((row) => attachInformacaoClinica(row)));
+  return attachProcessosResponse(rows);
 };
 
 exports.create = async (data, user) => {
@@ -448,7 +501,7 @@ exports.create = async (data, user) => {
     });
   }
 
-  return attachInformacaoClinica(processo);
+  return attachProcessoResponse(processo);
 };
 
 exports.update = async (id, data, user) => {
@@ -469,15 +522,13 @@ exports.update = async (id, data, user) => {
   if (data.status !== undefined) {
     assertTransicaoValida(processo.status_id, statusResultante);
   }
-  const kitResultante = workflowData.kit_codigo !== undefined
-    ? workflowData.kit_codigo
-    : (processo.kit_codigo || null);
+  const kitResultante = resolveKitCodigoProcesso(processo, workflowData.kit_codigo);
 
   if (workflowData.desconto_percentual !== undefined && (workflowData.desconto_percentual < 0 || workflowData.desconto_percentual > 100)) {
     throw new Error('Desconto percentual deve estar entre 0 e 100.');
   }
 
-  if (statusExigeKit(statusResultante) && !kitResultante) {
+  if (statusExigeKit(statusResultante) && !kitResultante && !processo.kit_id) {
     throw new Error('Codigo do kit e obrigatorio apos colheita.');
   }
 
@@ -520,7 +571,11 @@ exports.update = async (id, data, user) => {
   if (data.medico_id !== undefined) updateData.medico_id = data.medico_id;
   if (data.teste_id !== undefined) updateData.teste_id = data.teste_id;
   if (data.data_entrada !== undefined) updateData.data_entrada = data.data_entrada || null;
-  if (workflowData.posto !== undefined) updateData.posto = workflowData.posto;
+  if (workflowData.posto !== undefined) {
+    if (hasColheitaValue(workflowData.posto) || !hasColheitaValue(processo.posto)) {
+      updateData.posto = workflowData.posto;
+    }
+  }
   if (workflowData.numero_processo) updateData.numero_processo = workflowData.numero_processo;
   if (workflowData.observacoes !== undefined) updateData.observacoes = workflowData.observacoes;
 
@@ -538,10 +593,13 @@ exports.update = async (id, data, user) => {
       throw new Error('Kit nao encontrado para o codigo informado.');
     }
     updateData.kit_id = kitId;
+  } else if (!processo.kit_id && kitResultante) {
+    const kitId = await resolveKitId(kitResultante);
+    if (kitId) updateData.kit_id = kitId;
   }
 
   const workflowDbFields = [
-    'data_colheita', 'data_colheita_prevista', 'data_chegada_laboratorio', 'data_resultado',
+    'data_colheita', 'data_colheita_prevista', 'data_envio_laboratorio', 'data_chegada_laboratorio', 'data_resultado',
     'data_validacao', 'data_envio_relatorio', 'responsavel_fluxo', 'relatorio_validado',
     'relatorio_enviado_para', 'resultado_tudo_ok', 'resultado_anomalias', 'fracao_fetal',
     'fatura_emitida', 'fatura_numero', 'fatura_data_emissao', 'valor_base', 'desconto_percentual',
@@ -550,14 +608,31 @@ exports.update = async (id, data, user) => {
     'fatura_envio_email', 'fatura_envio_sms', 'posto_id',
   ];
   for (const key of workflowDbFields) {
-    if (workflowData[key] !== undefined) updateData[key] = workflowData[key];
+    if (workflowData[key] === undefined) continue;
+    if (COLHEITA_SNAPSHOT_FIELDS.has(key)
+      && !hasColheitaValue(workflowData[key])
+      && hasColheitaValue(processo[key])) {
+      continue;
+    }
+    updateData[key] = workflowData[key];
   }
 
   if (data.status !== undefined) {
-    if ((statusResultante === 'Enviado Laboratorio' || statusResultante === 'Em Analise')
+    const hoje = formatCalendarDate(new Date());
+    if (statusResultante === 'Em Analise'
+      && !processo.data_envio_laboratorio
+      && updateData.data_envio_laboratorio === undefined) {
+      updateData.data_envio_laboratorio = hoje;
+    }
+    if (statusResultante === 'Enviado Laboratorio'
       && !processo.data_chegada_laboratorio
       && updateData.data_chegada_laboratorio === undefined) {
-      updateData.data_chegada_laboratorio = formatCalendarDate(new Date());
+      updateData.data_chegada_laboratorio = hoje;
+    }
+    if (statusResultante === 'Enviado Laboratorio'
+      && !processo.data_envio_laboratorio
+      && updateData.data_envio_laboratorio === undefined) {
+      updateData.data_envio_laboratorio = updateData.data_chegada_laboratorio || hoje;
     }
     if (statusResultante === 'Colheita Realizada'
       && !processo.data_colheita
@@ -578,10 +653,10 @@ exports.update = async (id, data, user) => {
 
   const numeroAtual = processo.numero_processo && String(processo.numero_processo).trim();
   if (!numeroAtual && !updateData.numero_processo) {
-    const kitNumero = processo.kit_codigo && String(processo.kit_codigo).trim();
+    const kitNumero = kitResultante && String(kitResultante).trim();
     if (kitNumero) {
       updateData.numero_processo = kitNumero;
-    } else if (statusExigeKit(statusResultante)) {
+    } else if (statusExigeKit(statusResultante) && !processo.kit_id) {
       throw new Error('Processo sem codigo de kit associado.');
     }
   }
@@ -603,7 +678,8 @@ exports.update = async (id, data, user) => {
     });
   }
 
-  return attachInformacaoClinica({ id, ...processo, ...updateData });
+  const updated = await processosRepository.findById(id);
+  return attachProcessoResponse(updated);
 };
 
 exports.delete = async (id, user) => {

@@ -71,6 +71,7 @@ export interface Processo {
   data_entrada: string;
   data_colheita?: string;
   data_colheita_prevista?: string;
+  data_envio_laboratorio?: string;
   data_chegada_laboratorio?: string;
   data_resultado?: string;
   data_validacao?: string;
@@ -201,9 +202,12 @@ export interface Empresa {
   nome: string;
   morada: string;
   codigo_postal?: string;
+  cidade?: string;
+  distrito?: string;
   contacto: string;
   email: string;
   nif: string;
+  notas?: string;
   tipo_empresa?: 'CLINICA' | 'POSTO' | 'LABORATORIO' | 'PARCEIRO';
   pais?: string;
   ativo?: boolean;

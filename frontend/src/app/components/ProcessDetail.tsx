@@ -225,6 +225,7 @@ export function ProcessDetail({
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <InfoField label="Responsável de Fluxo" value={processo.responsavel_fluxo || ''} />
                   <InfoField label="Envio Relatório" value={processo.relatorio_enviado_para || 'Nenhum'} />
+                  <InfoField label="Envio ao Laboratório" value={fmt(processo.data_envio_laboratorio)} />
                   <InfoField label="Chegada ao Laboratório" value={fmt(processo.data_chegada_laboratorio)} />
                   <InfoField label="Data Resultado" value={fmt(processo.data_resultado)} />
                   <InfoField label="Data Validação" value={fmt(processo.data_validacao)} />

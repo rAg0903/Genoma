@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { Notificacao, notificacoesApi } from '../../lib/api-notificacoes';
+import { notificationMatchesPrefs, readNotifPrefs } from '../../lib/notificacoes';
 import { formatRelativeTime, LanguagePreference, useLanguage } from '../../i18n/LanguageContext';
 import {
   Breadcrumb,
@@ -13,6 +14,9 @@ import {
   BreadcrumbSeparator,
 } from './ui/breadcrumb';
 import { useTheme } from '../context/ThemeContext';
+import { getAdminBreadcrumbItems } from '../../lib/admin-breadcrumbs';
+import { getContactBreadcrumbItems, getProcessBreadcrumbItems } from '../../lib/entity-breadcrumbs';
+import { useData } from '../context/DataContext';
 
 interface TopbarProps {
   onMenuToggle: () => void;
@@ -25,21 +29,27 @@ const ROUTE_LABEL_KEYS: Record<string, string> = {
   '/stocks': 'nav.stocks',
   '/listagens': 'nav.listings',
   '/definicoes': 'nav.administration',
-  '/definicoes/testes/novo': 'nav.newTest',
-  '/definicoes/testes': 'nav.tests',
-  '/definicoes/medicos/novo': 'nav.newDoctor',
-  '/definicoes/medicos': 'nav.doctors',
-  '/definicoes/utilizadores': 'navSub.utilizadores',
-  '/definicoes/laboratorios/novo': 'navSub.laboratorios',
-  '/definicoes/entidades/novo': 'navSub.entidades',
   '/perfil': 'nav.profile',
   '/notificacoes': 'nav.notifications',
 };
 
-function getBreadcrumbItems(pathname: string, t: (key: string) => string) {
+function getBreadcrumbItems(
+  pathname: string,
+  t: (key: string) => string,
+  ctx: { processos: { id: string; numero: string }[]; contacts: { id: string; nome: string }[] },
+) {
   if (pathname === '/') {
     return [{ path: '/', label: t('nav.dashboard') }];
   }
+
+  const adminItems = getAdminBreadcrumbItems(pathname, t);
+  if (adminItems) return adminItems;
+
+  const processItems = getProcessBreadcrumbItems(pathname, t, ctx.processos);
+  if (processItems) return processItems;
+
+  const contactItems = getContactBreadcrumbItems(pathname, t, ctx.contacts);
+  if (contactItems) return contactItems;
 
   const segments = pathname.split('/').filter(Boolean);
   return segments.map((segment, index) => {
@@ -63,14 +73,15 @@ function formatSegmentLabel(segment: string) {
 export function Topbar({ onMenuToggle }: TopbarProps) {
   const { isDark, toggleTheme } = useTheme();
   const { t, localeTag, language, setLanguage } = useLanguage();
+  const { processos, contacts } = useData();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [notifOpen, setNotifOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notificacao[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState(readNotifPrefs);
   const notifRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
 
@@ -89,15 +100,19 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
     setLangOpen(false);
   };
 
+  useEffect(() => {
+    const syncPrefs = () => setNotifPrefs(readNotifPrefs());
+    window.addEventListener('genoma:notificacoes-prefs', syncPrefs);
+    return () => window.removeEventListener('genoma:notificacoes-prefs', syncPrefs);
+  }, []);
+
   const loadNotifications = useCallback(async () => {
     setNotifLoading(true);
     try {
-      const res = await notificacoesApi.list({ limit: 8 });
+      const res = await notificacoesApi.list({ limit: 50 });
       setNotifications(res.data || []);
-      setUnreadCount(res.unreadCount ?? 0);
     } catch {
       setNotifications([]);
-      setUnreadCount(0);
     } finally {
       setNotifLoading(false);
     }
@@ -127,7 +142,6 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
       try {
         await notificacoesApi.markRead(n.id);
         setNotifications((prev) => prev.map((item) => (item.id === n.id ? { ...item, lida: true } : item)));
-        setUnreadCount((c) => Math.max(0, c - 1));
       } catch {
         // continua para navegação
       }
@@ -137,8 +151,18 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
     else navigate('/notificacoes');
   };
 
-  const breadcrumbItems = useMemo(() => getBreadcrumbItems(pathname, t), [pathname, t]);
+  const breadcrumbItems = useMemo(
+    () => getBreadcrumbItems(pathname, t, { processos, contacts }),
+    [pathname, t, processos, contacts],
+  );
   const pageLabel = breadcrumbItems[breadcrumbItems.length - 1]?.label ?? t('nav.dashboard');
+
+  const visibleNotifications = useMemo(
+    () => notifications.filter((n) => notificationMatchesPrefs(n, notifPrefs)),
+    [notifications, notifPrefs],
+  );
+  const displayNotifications = visibleNotifications.slice(0, 8);
+  const visibleUnreadCount = visibleNotifications.filter((n) => !n.lida).length;
 
   return (
     <div className="h-16 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-5 flex-shrink-0 gap-3 relative z-40 overflow-visible">
@@ -277,17 +301,17 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
           <button
             type="button"
             onClick={() => setNotifOpen(!notifOpen)}
-            aria-label={unreadCount > 0 ? t('nav.notificationsUnread', { count: unreadCount }) : t('nav.notifications')}
+            aria-label={visibleUnreadCount > 0 ? t('nav.notificationsUnread', { count: visibleUnreadCount }) : t('nav.notifications')}
             className="relative flex items-center justify-center w-9 h-9 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors overflow-visible"
           >
             <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300 shrink-0" />
-            {unreadCount > 0 && (
+            {visibleUnreadCount > 0 && (
               <span
                 className={`absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 bg-red-500 text-white font-bold rounded-full border-2 border-slate-50 dark:border-slate-900 flex items-center justify-center tabular-nums leading-none pointer-events-none ${
-                  unreadCount >= 100 ? 'min-w-[26px] h-[18px] px-1 text-[9px]' : unreadCount >= 10 ? 'min-w-[22px] h-[18px] px-1 text-[9px]' : 'min-w-[18px] h-[18px] px-1 text-[10px]'
+                  visibleUnreadCount >= 100 ? 'min-w-[26px] h-[18px] px-1 text-[9px]' : visibleUnreadCount >= 10 ? 'min-w-[22px] h-[18px] px-1 text-[9px]' : 'min-w-[18px] h-[18px] px-1 text-[10px]'
                 }`}
               >
-                {unreadCount}
+                {visibleUnreadCount}
               </span>
             )}
           </button>
@@ -295,23 +319,23 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
             <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-[100]">
               <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-slate-900 dark:text-slate-100" style={{ fontSize: '14px', fontWeight: 600 }}>
-                  {t('nav.notifications')}{unreadCount > 0 ? ` (${unreadCount})` : ''}
+                  {t('nav.notifications')}{visibleUnreadCount > 0 ? ` (${visibleUnreadCount})` : ''}
                 </span>
                 <button onClick={() => setNotifOpen(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
                   <X className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                 </button>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-80 overflow-y-auto">
-                {notifLoading && notifications.length === 0 ? (
+                {notifLoading && displayNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-slate-400">
                     <Loader2 className="w-4 h-4 animate-spin mr-2" /> {t('common.loading')}
                   </div>
-                ) : notifications.length === 0 ? (
+                ) : displayNotifications.length === 0 ? (
                   <div className="p-6 text-center text-slate-500 dark:text-slate-400" style={{ fontSize: '13px' }}>
                     {t('nav.noNotifications')}
                   </div>
                 ) : (
-                  notifications.map((n) => (
+                  displayNotifications.map((n) => (
                     <button
                       key={n.id}
                       type="button"

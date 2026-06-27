@@ -764,9 +764,20 @@ exports.createDescarte = async (data, user) => {
       await conn2.execute(
         `UPDATE processos SET status_id = 'Enviado Laboratorio',
           laboratorio_final_id = COALESCE(laboratorio_final_id, ?),
-          data_chegada_laboratorio = COALESCE(data_chegada_laboratorio, ?)
+          data_chegada_laboratorio = COALESCE(data_chegada_laboratorio, ?),
+          data_envio_laboratorio = COALESCE(data_envio_laboratorio, ?),
+          data_colheita = COALESCE(
+            data_colheita,
+            (SELECT MIN(mk.data) FROM movimentos_kits mk
+             WHERE mk.kit_id = processos.kit_id AND mk.motivo = 'ConsumoColheita')
+          ),
+          data_entrada = COALESCE(
+            data_entrada,
+            (SELECT MIN(mk.data) FROM movimentos_kits mk
+             WHERE mk.kit_id = processos.kit_id AND mk.motivo = 'ConsumoColheita')
+          )
          WHERE kit_id = ? AND status_id IN ('Colheita Realizada', 'Enviado Laboratorio')`,
-        [labId, dataDescarte, kit.id],
+        [labId, dataDescarte, dataDescarte, kit.id],
       );
     }
   } finally {

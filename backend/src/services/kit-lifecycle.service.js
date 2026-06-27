@@ -311,9 +311,10 @@ exports.confirmLabArrival = async (connection, { kitId, processoId, dataChegada 
 
   if (resolvedProcessoId) {
     await connection.execute(
-      `UPDATE processos SET data_chegada_laboratorio = ?, status_id = 'Enviado Laboratorio'
+      `UPDATE processos SET data_chegada_laboratorio = ?, status_id = 'Enviado Laboratorio',
+        data_envio_laboratorio = COALESCE(data_envio_laboratorio, ?)
        WHERE id = ?`,
-      [chegada, resolvedProcessoId],
+      [chegada, chegada, resolvedProcessoId],
     );
   }
 };

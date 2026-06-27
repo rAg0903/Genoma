@@ -171,6 +171,9 @@ exports.findAtividadeRecente = async () => {
         l.registro_id,
         l.data,
         u.nome AS utilizador_nome,
+        pf.nome AS utilizador_perfil_nome,
+        med.titulo AS utilizador_medico_titulo,
+        med.genero AS utilizador_medico_genero,
         COALESCE(pr.numero_processo, pr_col.numero_processo) AS numero_processo,
         COALESCE(pr.id, pr_col.id) AS processo_id,
         COALESCE(pa_from_processo.nome, pa_direct.nome, pa_col.nome) AS paciente_nome,
@@ -184,6 +187,8 @@ exports.findAtividadeRecente = async () => {
         COALESCE(rq.destino_nome, emp_d.nome, po_d.nome, lab_d.nome) AS requisicao_destino_nome
       FROM logs_auditoria l
       LEFT JOIN utilizadores u ON u.id = l.utilizador_id
+      LEFT JOIN perfis pf ON pf.id = u.perfil_id
+      LEFT JOIN medicos med ON med.utilizador_id = u.id
       LEFT JOIN processos pr ON l.tabela_afetada = 'processos' AND pr.id = l.registro_id
       LEFT JOIN pacientes pa_from_processo ON pa_from_processo.id = pr.paciente_id
       LEFT JOIN pacientes pa_direct ON l.tabela_afetada = 'pacientes' AND pa_direct.id = l.registro_id
@@ -205,6 +210,116 @@ exports.findAtividadeRecente = async () => {
       LEFT JOIN laboratorios lab_d ON lab_d.id = rq.destino_laboratorio_id
       WHERE l.data >= DATE_SUB(NOW(), INTERVAL 14 DAY)
       ORDER BY l.data DESC
+      LIMIT 40
+    `);
+    return rows;
+  } finally {
+    connection.release();
+  }
+};
+
+/** Contactos com médico e teste definidos, sem fatura registada no contacto. */
+exports.findContactosAguardarFatura = async () => {
+  const connection = await pool.getConnection();
+  try {
+    const [rows] = await connection.execute(`
+      SELECT
+        p.id,
+        p.nome AS paciente_nome,
+        p.created_at,
+        u.nome AS medico_nome,
+        m.titulo AS medico_titulo,
+        m.genero AS medico_genero,
+        t.nome AS teste_nome
+      FROM pacientes p
+      INNER JOIN medicos m ON m.utilizador_id = p.medico_id
+      INNER JOIN utilizadores u ON u.id = m.utilizador_id
+      LEFT JOIN testes t ON t.id = p.teste_id
+      WHERE p.medico_id IS NOT NULL
+        AND p.teste_id IS NOT NULL
+        AND (p.estado_contacto IS NULL OR p.estado_contacto <> 'Cancelado')
+        AND (p.fatura_emitida = 0 OR p.fatura_emitida IS NULL)
+        AND (p.fatura_numero IS NULL OR TRIM(p.fatura_numero) = '')
+      ORDER BY p.created_at DESC
+      LIMIT 25
+    `);
+    return rows;
+  } finally {
+    connection.release();
+  }
+};
+
+/** Contactos faturados (teste) que aguardam pagamento. */
+exports.findContactosAguardarPagamento = async () => {
+  const connection = await pool.getConnection();
+  try {
+    const [rows] = await connection.execute(`
+      SELECT
+        p.id,
+        p.nome AS paciente_nome,
+        p.fatura_numero,
+        p.fatura_data_emissao,
+        p.valor_final,
+        u.nome AS medico_nome
+      FROM pacientes p
+      LEFT JOIN medicos m ON m.utilizador_id = p.medico_id
+      LEFT JOIN utilizadores u ON u.id = m.utilizador_id
+      WHERE (p.fatura_emitida = 1 OR (p.fatura_numero IS NOT NULL AND TRIM(p.fatura_numero) <> ''))
+        AND (p.pago = 0 OR p.pago IS NULL)
+        AND (p.recibo_numero IS NULL OR TRIM(p.recibo_numero) = '')
+        AND (p.estado_contacto IS NULL OR p.estado_contacto <> 'Cancelado')
+      ORDER BY p.fatura_data_emissao DESC, p.created_at DESC
+      LIMIT 25
+    `);
+    return rows;
+  } finally {
+    connection.release();
+  }
+};
+
+/** Processos validados, fatura ao cliente por emitir. */
+exports.findProcessosAguardarFatura = async () => {
+  const connection = await pool.getConnection();
+  try {
+    const [rows] = await connection.execute(`
+      SELECT
+        pr.id,
+        pr.numero_processo,
+        pr.data_entrada,
+        pr.valor_final,
+        pa.nome AS paciente_nome
+      FROM processos pr
+      INNER JOIN pacientes pa ON pa.id = pr.paciente_id
+      WHERE pr.status_id = 'Validado'
+        AND (pr.fatura_emitida = 0 OR pr.fatura_emitida IS NULL)
+      ORDER BY pr.data_entrada DESC
+      LIMIT 25
+    `);
+    return rows;
+  } finally {
+    connection.release();
+  }
+};
+
+/** Processos faturados ao cliente que aguardam pagamento. */
+exports.findProcessosAguardarPagamento = async () => {
+  const connection = await pool.getConnection();
+  try {
+    const [rows] = await connection.execute(`
+      SELECT
+        pr.id,
+        pr.numero_processo,
+        pr.fatura_numero,
+        pr.fatura_data_emissao,
+        pr.valor_final,
+        pa.nome AS paciente_nome
+      FROM processos pr
+      INNER JOIN pacientes pa ON pa.id = pr.paciente_id
+      WHERE pr.fatura_emitida = 1
+        AND (pr.pago = 0 OR pr.pago IS NULL)
+        AND pr.pagamento_data IS NULL
+        AND pr.status_id <> 'Cancelado'
+      ORDER BY pr.fatura_data_emissao DESC
       LIMIT 25
     `);
     return rows;

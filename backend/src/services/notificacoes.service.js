@@ -1,4 +1,9 @@
 const notificacoesRepository = require('../repositories/notificacoes.repository');
+const {
+  formatUtilizadorReferencia,
+  formatMedicoReferencia,
+  suffixContacto,
+} = require('../utils/format-utilizador-referencia');
 
 const NIVEL_WEIGHT = { critico: 0, aviso: 1, info: 2 };
 
@@ -13,6 +18,12 @@ const toIso = (value) => {
   return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
 };
 
+const formatMoney = (value) => {
+  const n = Number(value);
+  if (!n || Number.isNaN(n)) return '';
+  return ` (${n.toFixed(2).replace('.', ',')} €)`;
+};
+
 const buildLembreteNotifications = (rows) => {
   const hoje = todayIso();
   return rows.map((row) => {
@@ -25,6 +36,7 @@ const buildLembreteNotifications = (rows) => {
     return {
       id: `lembrete:${row.id}`,
       tipo: 'lembrete',
+      categoria: 'lembrete',
       titulo: atrasado ? 'Lembrete em atraso' : 'Lembrete pendente',
       mensagem: partes.join(' '),
       nivel,
@@ -34,26 +46,26 @@ const buildLembreteNotifications = (rows) => {
   });
 };
 
+/** Resultados disponíveis — aguardam validação clínica. */
 const buildProcessoNotifications = (rows) =>
-  rows.map((row) => {
-    const resultado = row.status === 'Resultado Disponivel';
-    return {
-      id: `processo:${row.id}:${resultado ? 'resultado' : 'validado'}`,
+  rows
+    .filter((row) => row.status === 'Resultado Disponivel')
+    .map((row) => ({
+      id: `processo:${row.id}:resultado`,
       tipo: 'processo',
-      titulo: resultado ? 'Resultado disponível' : 'Processo validado',
-      mensagem: resultado
-        ? `${row.numero_processo} — ${row.paciente_nome} aguarda validação`
-        : `${row.numero_processo} — ${row.paciente_nome} pronto para faturação`,
-      nivel: resultado ? 'aviso' : 'info',
+      categoria: 'processo_alterado',
+      titulo: 'Resultado disponível',
+      mensagem: `${row.numero_processo} — ${row.paciente_nome} aguarda validação`,
+      nivel: 'aviso',
       link: `/processos/${row.id}/editar`,
       created_at: toIso(row.data_entrada),
-    };
-  });
+    }));
 
 const buildKitNotifications = (rows) =>
   rows.map((row) => ({
     id: `kit:${row.id}`,
     tipo: 'stock',
+    categoria: 'stock',
     titulo: 'Kit expirado',
     mensagem: `${row.codigo_barras} (${row.localizacao || 'sem localização'})`,
     nivel: 'critico',
@@ -85,6 +97,7 @@ const buildStockNotifications = (baixo, lotes, requisicoes) => {
     items.push({
       id: `stock:baixo:${row.localizacao}`,
       tipo: 'stock',
+      categoria: 'stock',
       titulo: 'Stock baixo',
       mensagem: `${row.localizacao}: ${row.total} kit(s) disponível(is)`,
       nivel: row.total === 0 ? 'critico' : 'aviso',
@@ -97,6 +110,7 @@ const buildStockNotifications = (baixo, lotes, requisicoes) => {
     items.push({
       id: 'stock:lotes-a-expirar',
       tipo: 'stock',
+      categoria: 'stock',
       titulo: 'Lotes a expirar',
       mensagem: `${lotes.length} lote(s) expiram nos próximos 45 dias`,
       nivel: 'aviso',
@@ -112,6 +126,7 @@ const buildStockNotifications = (baixo, lotes, requisicoes) => {
     items.push({
       id: `stock:requisicao:${row.id}`,
       tipo: 'stock',
+      categoria: 'stock',
       titulo: row.status === 'Em transito' ? 'Envio em trânsito' : 'Envio pendente',
       mensagem: `${origem} → ${destino}${parada ? ' (parado >3d)' : ''}`,
       nivel: parada ? 'aviso' : 'info',
@@ -123,19 +138,108 @@ const buildStockNotifications = (baixo, lotes, requisicoes) => {
   return items;
 };
 
+const buildFaturacaoContactoNotifications = (aguardarFatura, aguardarPagamento) => {
+  const items = [];
+
+  aguardarFatura.forEach((row) => {
+    const medico = formatMedicoReferencia({
+      nome: row.medico_nome,
+      titulo: row.medico_titulo,
+      genero: row.medico_genero,
+    });
+    const teste = row.teste_nome ? ` (${row.teste_nome})` : '';
+    items.push({
+      id: `faturacao:contacto:emitir:${row.id}`,
+      tipo: 'processo',
+      categoria: 'faturacao_contacto_emitir',
+      titulo: 'Emitir fatura no contacto',
+      mensagem: `Foi inserido o contacto de ${medico} para ${row.paciente_nome}${teste}. `
+        + 'Por favor emitir a respetiva fatura e inseri-la no registo do contacto.',
+      nivel: 'aviso',
+      link: `/contactos/${row.id}/editar?tab=faturacao`,
+      created_at: toIso(row.created_at),
+    });
+  });
+
+  aguardarPagamento.forEach((row) => {
+    const fatura = row.fatura_numero ? ` (${row.fatura_numero})` : '';
+    items.push({
+      id: `faturacao:contacto:pagar:${row.id}`,
+      tipo: 'processo',
+      categoria: 'faturacao_contacto_pago',
+      titulo: 'Pagamento pendente (contacto)',
+      mensagem: `${row.paciente_nome}${fatura}: teste faturado, aguarda pagamento${formatMoney(row.valor_final)}`,
+      nivel: 'aviso',
+      link: `/contactos/${row.id}/editar?tab=faturacao`,
+      created_at: toIso(row.fatura_data_emissao),
+    });
+  });
+
+  return items;
+};
+
+const buildFaturacaoProcessoNotifications = (aguardarFatura, aguardarPagamento) => {
+  const items = [];
+
+  aguardarFatura.forEach((row) => {
+    items.push({
+      id: `faturacao:processo:emitir:${row.id}`,
+      tipo: 'processo',
+      categoria: 'faturacao_processo_emitir',
+      titulo: 'Faturar processo ao cliente',
+      mensagem: `${row.numero_processo} — ${row.paciente_nome}: processo validado, aguarda emissão de fatura ao cliente`,
+      nivel: 'aviso',
+      link: `/processos/${row.id}/editar?tab=faturacao`,
+      created_at: toIso(row.data_entrada),
+    });
+  });
+
+  aguardarPagamento.forEach((row) => {
+    const fatura = row.fatura_numero ? ` (${row.fatura_numero})` : '';
+    items.push({
+      id: `faturacao:processo:pagar:${row.id}`,
+      tipo: 'processo',
+      categoria: 'faturacao_processo_pago',
+      titulo: 'Pagamento pendente (processo)',
+      mensagem: `${row.numero_processo} — ${row.paciente_nome}${fatura}: faturado ao cliente, aguarda pagamento${formatMoney(row.valor_final)}`,
+      nivel: 'aviso',
+      link: `/processos/${row.id}/editar?tab=faturacao`,
+      created_at: toIso(row.fatura_data_emissao),
+    });
+  });
+
+  return items;
+};
+
 const lowerFirst = (text) => {
   if (!text) return '';
   return text.charAt(0).toLowerCase() + text.slice(1);
+};
+
+const resolveAtividadeCategoria = (row) => {
+  const acao = (row.acao || '').toLowerCase();
+  if (acao.includes('criou processo')) return 'processo_criado';
+  if (acao.includes('atualizou processo') || acao.includes('deletou processo') || acao.includes('eliminou processo')) {
+    return 'processo_alterado';
+  }
+  if (acao.includes('criou paciente')) return 'contacto_criado';
+  if (acao.includes('atualizou paciente') || acao.includes('deletou paciente') || acao.includes('eliminou paciente')) {
+    return 'contacto_alterado';
+  }
+  if (acao.includes('kit') || acao.includes('lote') || acao.includes('requisicao') || acao.includes('envio') || acao.includes('colheita')) {
+    return 'stock';
+  }
+  return 'atividade';
 };
 
 const buildAtividadeTitulo = (row) => {
   const acao = (row.acao || '').toLowerCase();
   if (acao.includes('criou processo')) return 'Processo criado';
   if (acao.includes('atualizou processo')) return 'Processo atualizado';
-  if (acao.includes('deletou processo')) return 'Processo eliminado';
+  if (acao.includes('deletou processo') || acao.includes('eliminou processo')) return 'Processo eliminado';
   if (acao.includes('criou paciente')) return 'Contacto criado';
   if (acao.includes('atualizou paciente')) return 'Contacto atualizado';
-  if (acao.includes('deletou paciente')) return 'Contacto eliminado';
+  if (acao.includes('deletou paciente') || acao.includes('eliminou paciente')) return 'Contacto eliminado';
   if (acao.includes('kit utilizado')) return 'Kit utilizado';
   if (acao.includes('colheita')) return 'Colheita';
   if (acao.includes('criou kit')) return 'Kit criado';
@@ -145,28 +249,37 @@ const buildAtividadeTitulo = (row) => {
 };
 
 const buildAtividadeMensagem = (row) => {
-  const user = row.utilizador_nome || 'Utilizador';
+  const user = formatUtilizadorReferencia({
+    nome: row.utilizador_nome,
+    perfil_nome: row.utilizador_perfil_nome,
+    medico_titulo: row.utilizador_medico_titulo,
+    medico_genero: row.utilizador_medico_genero,
+  });
   const acao = (row.acao || '').trim();
   const acaoLower = acao.toLowerCase();
 
   if (row.tabela_afetada === 'processos' && row.numero_processo) {
-    const paciente = row.paciente_nome ? ` do paciente ${row.paciente_nome}` : '';
-    if (acaoLower.includes('criou')) return `${user} criou o processo ${row.numero_processo}${paciente}`;
-    if (acaoLower.includes('atualizou')) return `${user} atualizou o processo ${row.numero_processo}${paciente}`;
-    if (acaoLower.includes('deletou')) return `${user} eliminou o processo ${row.numero_processo}${paciente}`;
-    return `${user} ${lowerFirst(acao)} — ${row.numero_processo}${paciente}`;
+    const contacto = suffixContacto(row.paciente_nome);
+    if (acaoLower.includes('criou')) return `${user} criou o processo ${row.numero_processo}${contacto}`;
+    if (acaoLower.includes('atualizou')) return `${user} atualizou o processo ${row.numero_processo}${contacto}`;
+    if (acaoLower.includes('deletou') || acaoLower.includes('eliminou')) {
+      return `${user} eliminou o processo ${row.numero_processo}${contacto}`;
+    }
+    return `${user} ${lowerFirst(acao)} — ${row.numero_processo}${contacto}`;
   }
 
   if (row.tabela_afetada === 'pacientes' && row.paciente_nome) {
     if (acaoLower.includes('criou')) return `${user} criou o contacto ${row.paciente_nome}`;
     if (acaoLower.includes('atualizou')) return `${user} atualizou o contacto ${row.paciente_nome}`;
-    if (acaoLower.includes('deletou')) return `${user} eliminou o contacto ${row.paciente_nome}`;
+    if (acaoLower.includes('deletou') || acaoLower.includes('eliminou')) {
+      return `${user} eliminou o contacto ${row.paciente_nome}`;
+    }
     return `${user} ${lowerFirst(acao)} — ${row.paciente_nome}`;
   }
 
   if (row.tabela_afetada === 'colheitas' && row.numero_processo) {
-    const paciente = row.paciente_nome ? ` do paciente ${row.paciente_nome}` : '';
-    return `${user} ${lowerFirst(acao)} — processo ${row.numero_processo}${paciente}`;
+    const contacto = suffixContacto(row.paciente_nome);
+    return `${user} ${lowerFirst(acao)} — processo ${row.numero_processo}${contacto}`;
   }
 
   if (acaoLower.includes('kit utilizado') && row.kit_codigo) {
@@ -217,6 +330,7 @@ const buildAtividadeNotifications = (rows) =>
   rows.map((row) => ({
     id: `atividade:${row.id}`,
     tipo: 'atividade',
+    categoria: resolveAtividadeCategoria(row),
     titulo: buildAtividadeTitulo(row),
     mensagem: buildAtividadeMensagem(row),
     nivel: 'info',
@@ -234,6 +348,13 @@ const sortNotifications = (items) =>
 const attachReadState = (items, lidas) =>
   items.map((item) => ({ ...item, lida: lidas.has(item.id) }));
 
+const countByCategoria = (items) =>
+  items.reduce((acc, item) => {
+    const key = item.categoria || 'atividade';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
 exports.listForUser = async (utilizadorId, { limit = 50, apenasNaoLidas = false } = {}) => {
   const [
     lidas,
@@ -244,6 +365,10 @@ exports.listForUser = async (utilizadorId, { limit = 50, apenasNaoLidas = false 
     lotesAExpirar,
     requisicoes,
     atividade,
+    contactosAguardarFatura,
+    contactosAguardarPagamento,
+    processosAguardarFatura,
+    processosAguardarPagamento,
   ] = await Promise.all([
     notificacoesRepository.findLidasByUtilizador(utilizadorId),
     notificacoesRepository.findLembretesPendentes(),
@@ -253,26 +378,33 @@ exports.listForUser = async (utilizadorId, { limit = 50, apenasNaoLidas = false 
     notificacoesRepository.findLotesAExpirar(),
     notificacoesRepository.findRequisicoesPendentes(),
     notificacoesRepository.findAtividadeRecente(),
+    notificacoesRepository.findContactosAguardarFatura(),
+    notificacoesRepository.findContactosAguardarPagamento(),
+    notificacoesRepository.findProcessosAguardarFatura(),
+    notificacoesRepository.findProcessosAguardarPagamento(),
   ]);
 
   const raw = sortNotifications([
     ...buildLembreteNotifications(lembretes),
     ...buildProcessoNotifications(processos),
+    ...buildFaturacaoContactoNotifications(contactosAguardarFatura, contactosAguardarPagamento),
+    ...buildFaturacaoProcessoNotifications(processosAguardarFatura, processosAguardarPagamento),
     ...buildKitNotifications(kits),
     ...buildStockNotifications(stockBaixo, lotesAExpirar, requisicoes),
     ...buildAtividadeNotifications(atividade),
   ]);
 
-  let data = attachReadState(raw, lidas);
-  if (apenasNaoLidas) data = data.filter((n) => !n.lida);
+  const withReadState = attachReadState(raw, lidas);
+  let data = apenasNaoLidas ? withReadState.filter((n) => !n.lida) : withReadState;
 
-  const unreadCount = data.filter((n) => !n.lida).length;
-  const totalUnread = attachReadState(raw, lidas).filter((n) => !n.lida).length;
+  const totalUnread = withReadState.filter((n) => !n.lida).length;
+  const countsByCategoria = countByCategoria(withReadState);
 
   return {
     data: data.slice(0, limit),
     count: data.length,
     unreadCount: totalUnread,
+    countsByCategoria,
   };
 };
 

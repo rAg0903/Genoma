@@ -11,6 +11,9 @@ export const FORM_INPUT_CLASS = CONTROL.input;
 
 export const FORM_LABEL_CLASS = FORM.label;
 
+/** Checkbox nativo — cor teal consistente com «Médico ativo» e restantes formulários. */
+export const CHECKBOX_INPUT_CLASS = FORM.checkbox;
+
 export const KIT_STATUS_STYLES: Record<string, string> = {
   Disponível: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   Reservado: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
