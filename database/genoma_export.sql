@@ -2,7 +2,7 @@
 -- CRM Genoma — exportação completa da base de dados
 -- Base de dados: genoma
 -- Servidor: 12.1.2-MariaDB
--- Exportado em: 2026-06-27T00:12:00.310Z
+-- Exportado em: 2026-06-27T16:48:22.801Z
 -- Gerado por: backend/src/utils/export-database.js
 -- ============================================================
 
@@ -86,6 +86,9 @@ CREATE TABLE `empresas` (
   `nif` varchar(20) DEFAULT NULL,
   `pais` varchar(50) DEFAULT NULL,
   `contacto` varchar(100) DEFAULT NULL,
+  `cidade` varchar(100) DEFAULT NULL,
+  `distrito` varchar(100) DEFAULT NULL,
+  `notas` text DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -729,6 +732,7 @@ CREATE TABLE `processos` (
   `fatura_envio_sms` date DEFAULT NULL,
   `motivo_anulacao_id` char(36) DEFAULT NULL,
   `data_anulacao` date DEFAULT NULL,
+  `data_envio_laboratorio` date DEFAULT NULL COMMENT 'Data envio amostra ao laboratório',
   PRIMARY KEY (`id`),
   UNIQUE KEY `numero_processo` (`numero_processo`),
   UNIQUE KEY `uk_processos_numero` (`numero_processo`),
@@ -933,8 +937,8 @@ INSERT INTO `colheitas` (`id`, `processo_id`, `posto_id`, `data_prevista`, `peri
 
 
 -- Dados: empresas (1 registos)
-INSERT INTO `empresas` (`id`, `nome`, `morada`, `codigo_postal`, `telefone`, `email`, `created_at`, `ativo`, `tipo_empresa`, `nif`, `pais`, `contacto`) VALUES
-('5c7356ae-cdde-4e06-b473-da17686e8daa', 'Genoma', 'Praça Mouzinho de Albuquerque, 113 - 5º', '4100-359', '+351 918768897', 'genomabusiness@genoma.pt', '2026-06-26 22:47:57', 1, 'CLINICA', '510987672', 'Portugal', 'Rafael Males');
+INSERT INTO `empresas` (`id`, `nome`, `morada`, `codigo_postal`, `telefone`, `email`, `created_at`, `ativo`, `tipo_empresa`, `nif`, `pais`, `contacto`, `cidade`, `distrito`, `notas`) VALUES
+('5c7356ae-cdde-4e06-b473-da17686e8daa', 'Genoma', 'Praça Mouzinho de Albuquerque, 113 - 5º', '4100-359', '+351 918768897', 'genomabusiness@genoma.pt', '2026-06-26 22:47:57', 1, 'CLINICA', '510987672', 'Portugal', 'Rafael Males', NULL, NULL, NULL);
 
 
 -- Dados: entidade_condicoes_testes (20 registos)
@@ -1036,40 +1040,40 @@ INSERT INTO `informacao_clinica` (`id`, `processo_id`, `semanas_gravidez`, `dias
 
 -- Dados: kits (34 registos)
 INSERT INTO `kits` (`id`, `numero_kit`, `tracking`, `codigo_barras`, `tipo_kit_id`, `lote_id`, `empresa_id`, `posto_id`, `status`, `data_validade`, `localizacao`, `fase_ciclo`, `laboratorio_id`) VALUES
-('099590bd-e502-4ce5-96bf-3bc3f8a931a0', 'NPT5914597', 'NPT5914597', 'NPT5914597', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '9640cc9d-c3e2-4ff5-b3a1-e596aac4e41e', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('0ba4b051-4218-4c07-961b-a15e7bebc5c7', 'NPT5914605', 'NPT5914605', 'NPT5914605', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, 'a7da3aa9-cb98-4323-abad-5c6d3ceb7ec0', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('099590bd-e502-4ce5-96bf-3bc3f8a931a0', 'NPT5914597', 'NPT5914597', 'NPT5914597', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '9640cc9d-c3e2-4ff5-b3a1-e596aac4e41e', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('0ba4b051-4218-4c07-961b-a15e7bebc5c7', 'NPT5914605', 'NPT5914605', 'NPT5914605', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'a7da3aa9-cb98-4323-abad-5c6d3ceb7ec0', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
 ('0dd580c5-f946-495c-81ca-4197425e80d9', 'NPT5914582', 'NPT5914582', 'NPT5914582', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, 'Disponivel', '2027-06-29 23:00:00', 'Escritorio', 'em_empresa', NULL),
-('1f09d2d6-f3a3-41d9-91eb-4b1b3f526762', 'NPT5914603', 'NPT5914603', 'NPT5914603', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '8419cfa9-ef80-4ad8-aa7e-d28a2b87ecd3', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('27943e0b-e2e6-4a32-9555-73f1b08fef09', 'NPT5914604', 'NPT5914604', 'NPT5914604', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, 'a7da3aa9-cb98-4323-abad-5c6d3ceb7ec0', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('1f09d2d6-f3a3-41d9-91eb-4b1b3f526762', 'NPT5914603', 'NPT5914603', 'NPT5914603', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '8419cfa9-ef80-4ad8-aa7e-d28a2b87ecd3', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('27943e0b-e2e6-4a32-9555-73f1b08fef09', 'NPT5914604', 'NPT5914604', 'NPT5914604', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'a7da3aa9-cb98-4323-abad-5c6d3ceb7ec0', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
 ('2b17ef55-dbc2-4b94-a9a4-c5eeaa237bed', 'NPT5914577', 'NPT5914577', 'NPT5914577', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, 'Disponivel', '2027-06-29 23:00:00', 'Escritorio', 'em_empresa', NULL),
 ('3408f2bd-5739-459f-89df-8c148f12c7b8', 'NPT5914573', 'NPT5914573', 'NPT5914573', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, 'Disponivel', '2027-06-29 23:00:00', 'Escritorio', 'em_empresa', NULL),
 ('4bfa45b8-87ce-4430-8c6d-6287c2ce5b2a', 'NPT5914578', 'NPT5914578', 'NPT5914578', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, 'Disponivel', '2027-06-29 23:00:00', 'Escritorio', 'em_empresa', NULL),
-('631a13a6-3c4f-40d3-80f0-6f20970f14d0', 'NPT5914606', 'NPT5914606', 'NPT5914606', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, 'a7da3aa9-cb98-4323-abad-5c6d3ceb7ec0', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('6a0d4fa3-b8f5-4c91-b5a9-a47bcebb2c29', 'NPT5914599', 'NPT5914599', 'NPT5914599', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '5f1a666c-007d-463a-a693-556a3cfd1001', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('82231c1b-2664-4d90-b531-55c3750ec3c9', 'NPT5914591', 'NPT5914591', 'NPT5914591', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, 'df9b1034-ba18-45cc-958c-50a546868ff7', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('85b2c590-22c7-494d-940a-9aa1c7251e19', 'NPT5914601', 'NPT5914601', 'NPT5914601', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '8419cfa9-ef80-4ad8-aa7e-d28a2b87ecd3', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('87d3eb37-8729-459a-a6aa-f96f1912155e', 'NPT5914584', 'NPT5914584', 'NPT5914584', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, 'f6eabc47-4550-4b19-b5bc-b27db7c3b6e4', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('631a13a6-3c4f-40d3-80f0-6f20970f14d0', 'NPT5914606', 'NPT5914606', 'NPT5914606', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'a7da3aa9-cb98-4323-abad-5c6d3ceb7ec0', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('6a0d4fa3-b8f5-4c91-b5a9-a47bcebb2c29', 'NPT5914599', 'NPT5914599', 'NPT5914599', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '5f1a666c-007d-463a-a693-556a3cfd1001', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('82231c1b-2664-4d90-b531-55c3750ec3c9', 'NPT5914591', 'NPT5914591', 'NPT5914591', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'df9b1034-ba18-45cc-958c-50a546868ff7', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('85b2c590-22c7-494d-940a-9aa1c7251e19', 'NPT5914601', 'NPT5914601', 'NPT5914601', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '8419cfa9-ef80-4ad8-aa7e-d28a2b87ecd3', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('87d3eb37-8729-459a-a6aa-f96f1912155e', 'NPT5914584', 'NPT5914584', 'NPT5914584', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'f6eabc47-4550-4b19-b5bc-b27db7c3b6e4', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
 ('8b24c84b-5213-4e47-85cb-7a8fc7b5be63', 'NPT5914574', 'NPT5914574', 'NPT5914574', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, 'Disponivel', '2027-06-29 23:00:00', 'Escritorio', 'em_empresa', NULL),
-('8c10e0be-c624-428b-af67-e50831e6a2c0', 'NPT5914592', 'NPT5914592', 'NPT5914592', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '81bfb463-cd12-449a-8a89-3e4e30e4672c', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('8ee53ee0-442f-4ed5-9a2b-c98ab5ab6c71', 'NPT5914595', 'NPT5914595', 'NPT5914595', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '9640cc9d-c3e2-4ff5-b3a1-e596aac4e41e', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('8c10e0be-c624-428b-af67-e50831e6a2c0', 'NPT5914592', 'NPT5914592', 'NPT5914592', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '81bfb463-cd12-449a-8a89-3e4e30e4672c', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('8ee53ee0-442f-4ed5-9a2b-c98ab5ab6c71', 'NPT5914595', 'NPT5914595', 'NPT5914595', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '9640cc9d-c3e2-4ff5-b3a1-e596aac4e41e', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
 ('94e65552-3814-4fe6-9e91-98f616bd8189', 'NPT5914581', 'NPT5914581', 'NPT5914581', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, 'Disponivel', '2027-06-29 23:00:00', 'Escritorio', 'em_empresa', NULL),
-('9542160a-4023-4583-b05b-9f55e1dd0f81', 'NPT5914585', 'NPT5914585', 'NPT5914585', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, 'f6eabc47-4550-4b19-b5bc-b27db7c3b6e4', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('983d8416-5441-401a-8b02-4b1d39c6599c', 'NPT5914602', 'NPT5914602', 'NPT5914602', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '8419cfa9-ef80-4ad8-aa7e-d28a2b87ecd3', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('a316d0d4-b60e-4612-bbd2-4c6f053a37c5', 'NPT5914588', 'NPT5914588', 'NPT5914588', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '28669dab-7ffe-4ae2-8aca-64ae52d19422', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('9542160a-4023-4583-b05b-9f55e1dd0f81', 'NPT5914585', 'NPT5914585', 'NPT5914585', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'f6eabc47-4550-4b19-b5bc-b27db7c3b6e4', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('983d8416-5441-401a-8b02-4b1d39c6599c', 'NPT5914602', 'NPT5914602', 'NPT5914602', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '8419cfa9-ef80-4ad8-aa7e-d28a2b87ecd3', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('a316d0d4-b60e-4612-bbd2-4c6f053a37c5', 'NPT5914588', 'NPT5914588', 'NPT5914588', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '28669dab-7ffe-4ae2-8aca-64ae52d19422', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
 ('a34d3dc7-a4e0-491b-a18a-122bbdafcc30', 'NPT5914576', 'NPT5914576', 'NPT5914576', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, 'Disponivel', '2027-06-29 23:00:00', 'Escritorio', 'em_empresa', NULL),
 ('a4f671a2-1b6f-4f60-bd61-dfa3a9b1c359', 'NPT5914579', 'NPT5914579', 'NPT5914579', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, 'Disponivel', '2027-06-29 23:00:00', 'Escritorio', 'em_empresa', NULL),
-('a724d977-d4a4-434e-b54f-8ac8fda74ef7', 'NPT5914587', 'NPT5914587', 'NPT5914587', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '28669dab-7ffe-4ae2-8aca-64ae52d19422', 'Utilizado', '2027-06-29 23:00:00', 'Posto', 'aguarda_envio_lab', NULL),
-('ab605b04-ccc6-4b6f-9d39-1103026bc02c', 'NPT5914583', 'NPT5914583', 'NPT5914583', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, 'f6eabc47-4550-4b19-b5bc-b27db7c3b6e4', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('c1c4f322-2083-4283-bbb5-6aa720c7bd48', 'NPT5914590', 'NPT5914590', 'NPT5914590', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, 'df9b1034-ba18-45cc-958c-50a546868ff7', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('c1f72f81-0eed-4038-a5cc-44a9a48f9c5d', 'NPT5914594', 'NPT5914594', 'NPT5914594', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '81bfb463-cd12-449a-8a89-3e4e30e4672c', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('a724d977-d4a4-434e-b54f-8ac8fda74ef7', 'NPT5914587', 'NPT5914587', 'NPT5914587', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, 'Utilizado', '2027-06-29 23:00:00', 'Laboratorio', 'em_lab_final', 'da97ef7f-b994-4e1f-a54c-3a1e083d6d9f'),
+('ab605b04-ccc6-4b6f-9d39-1103026bc02c', 'NPT5914583', 'NPT5914583', 'NPT5914583', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'f6eabc47-4550-4b19-b5bc-b27db7c3b6e4', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('c1c4f322-2083-4283-bbb5-6aa720c7bd48', 'NPT5914590', 'NPT5914590', 'NPT5914590', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'df9b1034-ba18-45cc-958c-50a546868ff7', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('c1f72f81-0eed-4038-a5cc-44a9a48f9c5d', 'NPT5914594', 'NPT5914594', 'NPT5914594', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '81bfb463-cd12-449a-8a89-3e4e30e4672c', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
 ('c275c49e-8b67-44cb-9b82-cfa3d3a0e1b3', 'NPT5914580', 'NPT5914580', 'NPT5914580', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, 'Disponivel', '2027-06-29 23:00:00', 'Escritorio', 'em_empresa', NULL),
-('c30bb25f-ff6c-428f-bd2f-59e7a67ef0f1', 'NPT5914598', 'NPT5914598', 'NPT5914598', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '5f1a666c-007d-463a-a693-556a3cfd1001', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('c8b34515-a1c5-49a3-94d4-bbf32469b924', 'NPT5914589', 'NPT5914589', 'NPT5914589', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, 'df9b1034-ba18-45cc-958c-50a546868ff7', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('dd64e60f-b5fa-4457-b27b-0fc7f56f079e', 'NPT5914600', 'NPT5914600', 'NPT5914600', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '5f1a666c-007d-463a-a693-556a3cfd1001', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('e33d9b9d-ba2e-42d9-8021-e4a120aed876', 'NPT5914593', 'NPT5914593', 'NPT5914593', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '81bfb463-cd12-449a-8a89-3e4e30e4672c', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
-('eec432a6-5ec9-4ce0-bde9-a685b373adc0', 'NPT5914586', 'NPT5914586', 'NPT5914586', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '28669dab-7ffe-4ae2-8aca-64ae52d19422', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('c30bb25f-ff6c-428f-bd2f-59e7a67ef0f1', 'NPT5914598', 'NPT5914598', 'NPT5914598', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '5f1a666c-007d-463a-a693-556a3cfd1001', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('c8b34515-a1c5-49a3-94d4-bbf32469b924', 'NPT5914589', 'NPT5914589', 'NPT5914589', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'df9b1034-ba18-45cc-958c-50a546868ff7', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('dd64e60f-b5fa-4457-b27b-0fc7f56f079e', 'NPT5914600', 'NPT5914600', 'NPT5914600', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '5f1a666c-007d-463a-a693-556a3cfd1001', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('e33d9b9d-ba2e-42d9-8021-e4a120aed876', 'NPT5914593', 'NPT5914593', 'NPT5914593', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '81bfb463-cd12-449a-8a89-3e4e30e4672c', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
+('eec432a6-5ec9-4ce0-bde9-a685b373adc0', 'NPT5914586', 'NPT5914586', 'NPT5914586', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '28669dab-7ffe-4ae2-8aca-64ae52d19422', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL),
 ('f6b43212-a903-43b5-9d64-dc4e9b78e4e1', 'NPT5914575', 'NPT5914575', 'NPT5914575', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, 'Disponivel', '2027-06-29 23:00:00', 'Escritorio', 'em_empresa', NULL),
-('faa64899-a590-469e-82f0-e3aa27265ca0', 'NPT5914596', 'NPT5914596', 'NPT5914596', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', NULL, '9640cc9d-c3e2-4ff5-b3a1-e596aac4e41e', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL);
+('faa64899-a590-469e-82f0-e3aa27265ca0', 'NPT5914596', 'NPT5914596', 'NPT5914596', '53706ed2-19de-4f69-a1aa-c506d2e36ca0', 'a4806d71-5c00-416e-b308-3059e8035e54', '5c7356ae-cdde-4e06-b473-da17686e8daa', '9640cc9d-c3e2-4ff5-b3a1-e596aac4e41e', 'Disponivel', '2027-06-29 23:00:00', 'Posto', 'em_posto_aguarda', NULL);
 
 
 -- Dados: laboratorio_condicoes_testes (3 registos)
@@ -1099,13 +1103,17 @@ INSERT INTO `laboratorios` (`id`, `nome`, `codigo`, `morada`, `codigo_postal`, `
 ('da97ef7f-b994-4e1f-a54c-3a1e083d6d9f', 'FeatureHealth UK', 'FHUK-001', 'Unit 5, Apex Business Park, Apex Way', 'LE19 1SX', 'Hinckley', 'Leicestershire', 'Reino Unido', '+44 116 123 4567', 'lab@featurehealth.co.uk', 1, '2026-06-26 22:47:57', 'Laboratório final de processamento NIPT.', 'final');
 
 
--- Dados: logs_auditoria (6 registos)
+-- Dados: logs_auditoria (10 registos)
 INSERT INTO `logs_auditoria` (`id`, `empresa_id`, `utilizador_id`, `acao`, `tabela_afetada`, `registro_id`, `data`) VALUES
+('217f2992-d38a-468e-bfb3-b7f9d3e18d81', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'bedc7ff6-fba9-4f9e-8677-458d0ad40eaf', 'Atualizou processo', 'processos', '6c775e84-2fbc-4856-92ea-51f32b11db48', '2026-06-27 09:17:21'),
+('26a3d477-cd3b-48f1-b63a-791cdb026e98', '5c7356ae-cdde-4e06-b473-da17686e8daa', '74cedf4b-3b26-45b7-a396-4a15bfce0828', 'Atualizou processo', 'processos', '6c775e84-2fbc-4856-92ea-51f32b11db48', '2026-06-27 08:54:38'),
 ('412733a8-93de-40df-997e-8de815719e11', NULL, '74cedf4b-3b26-45b7-a396-4a15bfce0828', 'Criou paciente', 'pacientes', 'e597b5ef-454f-4b5b-b58c-69f2af6104c5', '2026-06-26 23:06:06'),
 ('5aaaaf3b-fd1f-4033-8fb2-ee9610ade31b', NULL, '74cedf4b-3b26-45b7-a396-4a15bfce0828', 'Atualizou paciente', 'pacientes', 'e597b5ef-454f-4b5b-b58c-69f2af6104c5', '2026-06-26 23:17:43'),
+('7a3075c8-8109-44f0-9664-a4a3ce312827', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'bedc7ff6-fba9-4f9e-8677-458d0ad40eaf', 'Atualizou sub-teste', 'testes', '2aaf7c92-0e6a-4eb1-9ad3-897effb2d437', '2026-06-27 11:22:01'),
 ('81e110f8-afe3-4bbc-91db-1f4902241338', NULL, '74cedf4b-3b26-45b7-a396-4a15bfce0828', 'Atualizou paciente', 'pacientes', 'e597b5ef-454f-4b5b-b58c-69f2af6104c5', '2026-06-26 23:18:15'),
 ('8db97684-5204-455f-90eb-5a65bec55241', NULL, '74cedf4b-3b26-45b7-a396-4a15bfce0828', 'Atualizou paciente', 'pacientes', 'e597b5ef-454f-4b5b-b58c-69f2af6104c5', '2026-06-26 23:18:06'),
 ('c6d8ee6a-6194-4c4c-b8a9-1a66f6c9566a', NULL, '74cedf4b-3b26-45b7-a396-4a15bfce0828', 'Kit utilizado em colheita', 'postos', 'a724d977-d4a4-434e-b54f-8ac8fda74ef7', '2026-06-26 23:18:15'),
+('d2f0d439-c8ed-4ceb-9f80-11d11fd5e860', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'bedc7ff6-fba9-4f9e-8677-458d0ad40eaf', 'Atualizou sub-teste', 'testes', 'caaa2f36-5f82-4943-8cd3-8cc377e7a1a2', '2026-06-27 11:22:13'),
 ('edfe35de-daee-4409-8e97-e0622f5cc596', '5c7356ae-cdde-4e06-b473-da17686e8daa', '74cedf4b-3b26-45b7-a396-4a15bfce0828', 'Criou processo', 'processos', '6c775e84-2fbc-4856-92ea-51f32b11db48', '2026-06-26 23:18:15');
 
 
@@ -1160,7 +1168,7 @@ INSERT INTO `motivos_anulacao` (`id`, `nome`, `ativo`, `created_at`, `contexto`,
 ('f57e6fa4-11d1-4d8e-a7a5-5ef8c2acc337', 'Erro atribuição processo', 1, '2026-06-26 22:47:57', 'processo', 0);
 
 
--- Dados: movimentos_kits (25 registos)
+-- Dados: movimentos_kits (26 registos)
 INSERT INTO `movimentos_kits` (`id`, `data`, `kit_id`, `origem`, `destino`, `motivo`, `observacoes`, `requisicao_id`, `created_at`, `origem_empresa_id`, `origem_posto_id`, `origem_laboratorio_id`, `destino_empresa_id`, `destino_posto_id`, `destino_laboratorio_id`, `processo_id`) VALUES
 ('0543f24e-b170-4ddc-8869-e9f49c53e21a', '2026-01-10 00:00:00', '631a13a6-3c4f-40d3-80f0-6f20970f14d0', 'Escritorio', 'Posto', 'Envio', 'Seed — envio escritório → posto', 'ff1c9eed-8ea8-45d3-854a-360be119fd0a', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, 'a7da3aa9-cb98-4323-abad-5c6d3ceb7ec0', NULL, NULL),
 ('10e46fac-f457-47e0-9474-49477880c1b6', '2026-01-10 00:00:00', '983d8416-5441-401a-8b02-4b1d39c6599c', 'Escritorio', 'Posto', 'Envio', 'Seed — envio escritório → posto', '2e3196af-d4ba-4bba-8150-131d33974e21', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, '8419cfa9-ef80-4ad8-aa7e-d28a2b87ecd3', NULL, NULL),
@@ -1168,6 +1176,7 @@ INSERT INTO `movimentos_kits` (`id`, `data`, `kit_id`, `origem`, `destino`, `mot
 ('2043e5c6-d5bf-4a59-8971-11bead64328d', '2026-01-10 00:00:00', 'ab605b04-ccc6-4b6f-9d39-1103026bc02c', 'Escritorio', 'Posto', 'Envio', 'Seed — envio escritório → posto', '4fe407ed-e0a8-4285-a5b8-d68ca7cd0f21', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, 'f6eabc47-4550-4b19-b5bc-b27db7c3b6e4', NULL, NULL),
 ('214b9385-b06e-4ae0-ad6c-ef5d5e2dcfe8', '2026-01-10 00:00:00', 'e33d9b9d-ba2e-42d9-8021-e4a120aed876', 'Escritorio', 'Posto', 'Envio', 'Seed — envio escritório → posto', '53a60fbc-5c97-4e19-ace8-d71682b4eab4', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, '81bfb463-cd12-449a-8a89-3e4e30e4672c', NULL, NULL),
 ('2af3f530-a4ce-4e01-b7e7-8f26829ba18b', '2026-01-10 00:00:00', 'c1f72f81-0eed-4038-a5cc-44a9a48f9c5d', 'Escritorio', 'Posto', 'Envio', 'Seed — envio escritório → posto', '53a60fbc-5c97-4e19-ace8-d71682b4eab4', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, '81bfb463-cd12-449a-8a89-3e4e30e4672c', NULL, NULL),
+('39229657-908f-490d-a5df-e8d8863e0a2a', '2026-06-26 23:00:00', 'a724d977-d4a4-434e-b54f-8ac8fda74ef7', 'Posto', 'Laboratorio', 'Descarte', NULL, '5b936937-72d7-41fa-aa4a-badcd3c21997', '2026-06-27 09:22:03', NULL, '28669dab-7ffe-4ae2-8aca-64ae52d19422', NULL, NULL, NULL, 'da97ef7f-b994-4e1f-a54c-3a1e083d6d9f', NULL),
 ('3be276fc-a92a-4c7e-8153-f07ff4bca733', '2026-01-10 00:00:00', '9542160a-4023-4583-b05b-9f55e1dd0f81', 'Escritorio', 'Posto', 'Envio', 'Seed — envio escritório → posto', '4fe407ed-e0a8-4285-a5b8-d68ca7cd0f21', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, 'f6eabc47-4550-4b19-b5bc-b27db7c3b6e4', NULL, NULL),
 ('3bfff3cd-a9dd-4fa6-b832-d664e87fe326', '2026-01-10 00:00:00', '8c10e0be-c624-428b-af67-e50831e6a2c0', 'Escritorio', 'Posto', 'Envio', 'Seed — envio escritório → posto', '53a60fbc-5c97-4e19-ace8-d71682b4eab4', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, '81bfb463-cd12-449a-8a89-3e4e30e4672c', NULL, NULL),
 ('50a0d211-7cb9-4133-8998-0cd24c0e7e08', '2026-01-10 00:00:00', 'c1c4f322-2083-4283-bbb5-6aa720c7bd48', 'Escritorio', 'Posto', 'Envio', 'Seed — envio escritório → posto', '017add43-fe53-4666-a94a-00fffbb54a0d', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, 'df9b1034-ba18-45cc-958c-50a546868ff7', NULL, NULL),
@@ -1223,18 +1232,6 @@ INSERT INTO `perfis` (`id`, `nome`, `ativo`) VALUES
 ('f4f873e8-6a26-4fb7-9a8e-7c24896ada24', 'Medico', 1);
 
 
--- Dados: posto_condicoes_testes (8 registos)
-INSERT INTO `posto_condicoes_testes` (`id`, `posto_id`, `teste_id`, `comissao`, `prazo_pagamento_dias`) VALUES
-('05a752e8-3461-4acf-aef2-5bfdfb42c0d6', 'df9b1034-ba18-45cc-958c-50a546868ff7', '2aaf7c92-0e6a-4eb1-9ad3-897effb2d437', '6.00', 30),
-('1a7b4425-d0b3-43f0-b761-c87c6a471266', 'f6eabc47-4550-4b19-b5bc-b27db7c3b6e4', '2aaf7c92-0e6a-4eb1-9ad3-897effb2d437', '6.00', 30),
-('4d3a9a66-51d9-4d0c-b440-830f4a9b2b5f', '9640cc9d-c3e2-4ff5-b3a1-e596aac4e41e', '2aaf7c92-0e6a-4eb1-9ad3-897effb2d437', '6.00', 30),
-('75e7fe49-a45d-4744-bfbe-2cd11861b279', 'a7da3aa9-cb98-4323-abad-5c6d3ceb7ec0', '2aaf7c92-0e6a-4eb1-9ad3-897effb2d437', '6.00', 30),
-('9742ea73-f15a-4892-9771-943f278cd74d', '8419cfa9-ef80-4ad8-aa7e-d28a2b87ecd3', '2aaf7c92-0e6a-4eb1-9ad3-897effb2d437', '6.00', 30),
-('e4c626b5-3d0d-474a-9330-72a7afc242c7', '81bfb463-cd12-449a-8a89-3e4e30e4672c', '2aaf7c92-0e6a-4eb1-9ad3-897effb2d437', '6.00', 30),
-('e5a97692-6f49-4307-acd1-929c265fd332', '5f1a666c-007d-463a-a693-556a3cfd1001', '2aaf7c92-0e6a-4eb1-9ad3-897effb2d437', '6.00', 30),
-('f4ac6869-130b-4cea-b22f-40386cf1093b', '28669dab-7ffe-4ae2-8aca-64ae52d19422', '2aaf7c92-0e6a-4eb1-9ad3-897effb2d437', '6.00', 30);
-
-
 -- Dados: posto_contactos_secundarios (16 registos)
 INSERT INTO `posto_contactos_secundarios` (`id`, `posto_id`, `ordem`, `nome`, `funcao`, `email`, `telefone`) VALUES
 ('1f807bf0-5fa6-438b-8cc8-36962786d956', 'a7da3aa9-cb98-4323-abad-5c6d3ceb7ec0', 2, 'Coordenação Amostras', 'Técnico', 'amostras.unip-003@lab.pt', '+351 22 240 1401'),
@@ -1281,11 +1278,11 @@ INSERT INTO `processo_status` (`nome`, `ordem`, `ativo`) VALUES
 
 
 -- Dados: processos (1 registos)
-INSERT INTO `processos` (`id`, `numero_processo`, `paciente_id`, `medico_id`, `posto_id`, `kit_id`, `status_id`, `data_entrada`, `notas`, `teste_id`, `empresa_id`, `posto`, `data_colheita`, `data_chegada_laboratorio`, `data_resultado`, `data_validacao`, `data_envio_relatorio`, `responsavel_fluxo`, `relatorio_validado`, `relatorio_enviado_para`, `resultado_tudo_ok`, `resultado_anomalias`, `fatura_emitida`, `fatura_numero`, `fatura_data_emissao`, `valor_base`, `desconto_percentual`, `valor_final`, `pagamento_data`, `recibo_numero`, `observacoes`, `fracao_fetal`, `pago`, `data_colheita_prevista`, `laboratorio_final_id`, `entidade_multibanco`, `referencia_multibanco`, `nao_gera_comissao`, `fatura_envio_email`, `fatura_envio_sms`, `motivo_anulacao_id`, `data_anulacao`) VALUES
-('6c775e84-2fbc-4856-92ea-51f32b11db48', 'NPT5914587', 'e597b5ef-454f-4b5b-b58c-69f2af6104c5', '74cedf4b-3b26-45b7-a396-4a15bfce0828', '28669dab-7ffe-4ae2-8aca-64ae52d19422', 'a724d977-d4a4-434e-b54f-8ac8fda74ef7', 'Colheita Realizada', '2026-06-26 23:00:00', NULL, 'caaa2f36-5f82-4943-8cd3-8cc377e7a1a2', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'Centro de Medicina Laboratorial Germano de Sousa - Porto', '2026-06-25 23:00:00', NULL, NULL, NULL, NULL, NULL, 0, 'Nenhum', 1, NULL, 0, NULL, NULL, '496.00', '10.00', '446.40', NULL, NULL, NULL, NULL, 0, '2026-06-26 23:00:00', 'da97ef7f-b994-4e1f-a54c-3a1e083d6d9f', NULL, NULL, 0, NULL, NULL, NULL, NULL);
+INSERT INTO `processos` (`id`, `numero_processo`, `paciente_id`, `medico_id`, `posto_id`, `kit_id`, `status_id`, `data_entrada`, `notas`, `teste_id`, `empresa_id`, `posto`, `data_colheita`, `data_chegada_laboratorio`, `data_resultado`, `data_validacao`, `data_envio_relatorio`, `responsavel_fluxo`, `relatorio_validado`, `relatorio_enviado_para`, `resultado_tudo_ok`, `resultado_anomalias`, `fatura_emitida`, `fatura_numero`, `fatura_data_emissao`, `valor_base`, `desconto_percentual`, `valor_final`, `pagamento_data`, `recibo_numero`, `observacoes`, `fracao_fetal`, `pago`, `data_colheita_prevista`, `laboratorio_final_id`, `entidade_multibanco`, `referencia_multibanco`, `nao_gera_comissao`, `fatura_envio_email`, `fatura_envio_sms`, `motivo_anulacao_id`, `data_anulacao`, `data_envio_laboratorio`) VALUES
+('6c775e84-2fbc-4856-92ea-51f32b11db48', 'NPT5914587', 'e597b5ef-454f-4b5b-b58c-69f2af6104c5', '74cedf4b-3b26-45b7-a396-4a15bfce0828', '28669dab-7ffe-4ae2-8aca-64ae52d19422', 'a724d977-d4a4-434e-b54f-8ac8fda74ef7', 'Enviado Laboratorio', '2026-06-26 23:00:00', NULL, 'caaa2f36-5f82-4943-8cd3-8cc377e7a1a2', '5c7356ae-cdde-4e06-b473-da17686e8daa', 'Centro de Medicina Laboratorial Germano de Sousa - Porto', '2026-06-26 23:00:00', '2026-06-26 23:00:00', NULL, NULL, NULL, NULL, 0, 'Nenhum', 1, NULL, 0, NULL, NULL, '496.00', '10.00', '446.40', NULL, NULL, NULL, NULL, 0, '2026-06-26 23:00:00', 'da97ef7f-b994-4e1f-a54c-3a1e083d6d9f', NULL, NULL, 0, NULL, NULL, NULL, NULL, '2026-06-26 23:00:00');
 
 
--- Dados: requisicao_kits_itens (24 registos)
+-- Dados: requisicao_kits_itens (25 registos)
 INSERT INTO `requisicao_kits_itens` (`id`, `requisicao_id`, `kit_id`, `created_at`) VALUES
 ('3ca6762f-24f1-4339-812b-cbc09c6760b7', '017add43-fe53-4666-a94a-00fffbb54a0d', '82231c1b-2664-4d90-b531-55c3750ec3c9', '2026-06-26 22:47:57'),
 ('3f3dadf2-b3e9-46d6-9fa8-7603263cc5af', '2e3196af-d4ba-4bba-8150-131d33974e21', '983d8416-5441-401a-8b02-4b1d39c6599c', '2026-06-26 22:47:57'),
@@ -1299,6 +1296,7 @@ INSERT INTO `requisicao_kits_itens` (`id`, `requisicao_id`, `kit_id`, `created_a
 ('93efc24a-c91e-4ecb-8b97-899154e4e9b7', '4fe407ed-e0a8-4285-a5b8-d68ca7cd0f21', '87d3eb37-8729-459a-a6aa-f96f1912155e', '2026-06-26 22:47:57'),
 ('b3ab0b45-c121-474e-8681-4488e7a090b0', 'df004a5f-57a2-44d4-879f-1e7c4efbbbab', '8ee53ee0-442f-4ed5-9a2b-c98ab5ab6c71', '2026-06-26 22:47:57'),
 ('b7926471-fb30-4a6d-ac3e-296618108fb7', 'df004a5f-57a2-44d4-879f-1e7c4efbbbab', '099590bd-e502-4ce5-96bf-3bc3f8a931a0', '2026-06-26 22:47:57'),
+('bd671697-10c9-49ce-a916-7997190e7c11', '5b936937-72d7-41fa-aa4a-badcd3c21997', 'a724d977-d4a4-434e-b54f-8ac8fda74ef7', '2026-06-27 09:22:03'),
 ('c67d7078-8ed3-4a88-90aa-4090757e8893', 'ff1c9eed-8ea8-45d3-854a-360be119fd0a', '27943e0b-e2e6-4a32-9555-73f1b08fef09', '2026-06-26 22:47:57'),
 ('d21035c1-46f5-4ced-9fe3-8b94b66965c2', '34a584ea-f5da-4e60-ba75-80f774e783c9', 'dd64e60f-b5fa-4457-b27b-0fc7f56f079e', '2026-06-26 22:47:57'),
 ('d386e4f6-ca14-457f-a64c-57e538f72873', '017add43-fe53-4666-a94a-00fffbb54a0d', 'c8b34515-a1c5-49a3-94d4-bbf32469b924', '2026-06-26 22:47:57'),
@@ -1313,7 +1311,7 @@ INSERT INTO `requisicao_kits_itens` (`id`, `requisicao_id`, `kit_id`, `created_a
 ('fc1d8872-2ae5-448e-ad8a-c752144a1a9f', '4fe407ed-e0a8-4285-a5b8-d68ca7cd0f21', 'ab605b04-ccc6-4b6f-9d39-1103026bc02c', '2026-06-26 22:47:57');
 
 
--- Dados: requisicoes_kits (8 registos)
+-- Dados: requisicoes_kits (9 registos)
 INSERT INTO `requisicoes_kits` (`id`, `numero_envio`, `utilizador_id`, `data`, `origem`, `destino`, `quantidade`, `status`, `tracking_number`, `transportadora`, `lote_id`, `observacoes`, `created_at`, `origem_empresa_id`, `origem_posto_id`, `origem_laboratorio_id`, `destino_empresa_id`, `destino_posto_id`, `destino_laboratorio_id`, `origem_nome`, `destino_nome`) VALUES
 ('017add43-fe53-4666-a94a-00fffbb54a0d', 'ENV-2026-00003', 'bedc7ff6-fba9-4f9e-8677-458d0ad40eaf', '2026-01-10 00:00:00', 'Escritorio', 'Posto', 3, 'Entregue', 'NPT5914589, NPT5914590, NPT5914591', NULL, 'a4806d71-5c00-416e-b308-3059e8035e54', 'Seed — envio escritório → posto', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, 'df9b1034-ba18-45cc-958c-50a546868ff7', NULL, 'Genoma', 'Germano de Sousa - Avenida de Roma'),
 ('2e3196af-d4ba-4bba-8150-131d33974e21', 'ENV-2026-00007', 'bedc7ff6-fba9-4f9e-8677-458d0ad40eaf', '2026-01-10 00:00:00', 'Escritorio', 'Posto', 3, 'Entregue', 'NPT5914601, NPT5914602, NPT5914603', NULL, 'a4806d71-5c00-416e-b308-3059e8035e54', 'Seed — envio escritório → posto', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, '8419cfa9-ef80-4ad8-aa7e-d28a2b87ecd3', NULL, 'Genoma', 'Unilabs Porto | Constituição Marquês'),
@@ -1321,15 +1319,16 @@ INSERT INTO `requisicoes_kits` (`id`, `numero_envio`, `utilizador_id`, `data`, `
 ('4fe407ed-e0a8-4285-a5b8-d68ca7cd0f21', 'ENV-2026-00001', 'bedc7ff6-fba9-4f9e-8677-458d0ad40eaf', '2026-01-10 00:00:00', 'Escritorio', 'Posto', 3, 'Entregue', 'NPT5914583, NPT5914584, NPT5914585', NULL, 'a4806d71-5c00-416e-b308-3059e8035e54', 'Seed — envio escritório → posto', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, 'f6eabc47-4550-4b19-b5bc-b27db7c3b6e4', NULL, 'Genoma', 'Germano de Sousa - Sede e Laboratório Central Telheiras'),
 ('53a60fbc-5c97-4e19-ace8-d71682b4eab4', 'ENV-2026-00004', 'bedc7ff6-fba9-4f9e-8677-458d0ad40eaf', '2026-01-10 00:00:00', 'Escritorio', 'Posto', 3, 'Entregue', 'NPT5914592, NPT5914593, NPT5914594', NULL, 'a4806d71-5c00-416e-b308-3059e8035e54', 'Seed — envio escritório → posto', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, '81bfb463-cd12-449a-8a89-3e4e30e4672c', NULL, 'Genoma', 'Synlab Campanhã'),
 ('53ac2524-138f-4d7a-9c8c-69ad7139dff9', 'ENV-2026-00002', 'bedc7ff6-fba9-4f9e-8677-458d0ad40eaf', '2026-01-10 00:00:00', 'Escritorio', 'Posto', 3, 'Entregue', 'NPT5914586, NPT5914587, NPT5914588', NULL, 'a4806d71-5c00-416e-b308-3059e8035e54', 'Seed — envio escritório → posto', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, '28669dab-7ffe-4ae2-8aca-64ae52d19422', NULL, 'Genoma', 'Centro de Medicina Laboratorial Germano de Sousa - Porto'),
+('5b936937-72d7-41fa-aa4a-badcd3c21997', 'ENV-2026-00009', 'bedc7ff6-fba9-4f9e-8677-458d0ad40eaf', '2026-06-26 23:00:00', 'Posto', 'Laboratorio', 1, 'Entregue', 'NPT5914587', NULL, NULL, NULL, '2026-06-27 09:22:03', NULL, '28669dab-7ffe-4ae2-8aca-64ae52d19422', NULL, NULL, NULL, 'da97ef7f-b994-4e1f-a54c-3a1e083d6d9f', 'Centro de Medicina Laboratorial Germano de Sousa - Porto', 'FeatureHealth UK'),
 ('df004a5f-57a2-44d4-879f-1e7c4efbbbab', 'ENV-2026-00005', 'bedc7ff6-fba9-4f9e-8677-458d0ad40eaf', '2026-01-10 00:00:00', 'Escritorio', 'Posto', 3, 'Entregue', 'NPT5914595, NPT5914596, NPT5914597', NULL, 'a4806d71-5c00-416e-b308-3059e8035e54', 'Seed — envio escritório → posto', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, '9640cc9d-c3e2-4ff5-b3a1-e596aac4e41e', NULL, 'Genoma', 'Synlab Lisboa'),
 ('ff1c9eed-8ea8-45d3-854a-360be119fd0a', 'ENV-2026-00008', 'bedc7ff6-fba9-4f9e-8677-458d0ad40eaf', '2026-01-10 00:00:00', 'Escritorio', 'Posto', 3, 'Entregue', 'NPT5914604, NPT5914605, NPT5914606', NULL, 'a4806d71-5c00-416e-b308-3059e8035e54', 'Seed — envio escritório → posto', '2026-06-26 22:47:57', '5c7356ae-cdde-4e06-b473-da17686e8daa', NULL, NULL, NULL, 'a7da3aa9-cb98-4323-abad-5c6d3ceb7ec0', NULL, 'Genoma', 'Unilabs Porto | Campo Alegre');
 
 
 -- Dados: testes (4 registos)
 INSERT INTO `testes` (`id`, `nome`, `preco`, `descricao`, `ativo`, `codigo`, `categoria`, `laboratorio_id`, `tempo_estimado`, `preco_compra`, `preco_venda`, `tempo_resposta_dias`, `gestacao_minima_semanas`, `tipo_teste`, `empresa`, `tipo_kit`, `cromossomas`, `delecoes_duplicacoes`, `microdelecoes_microduplicacoes`, `gemeos`, `incluir_fracao_fetal`, `laboratorio_processamento_id`, `determinacao_sexo_fetal`, `teste_pai_id`) VALUES
-('2aaf7c92-0e6a-4eb1-9ad3-897effb2d437', 'Básico', '372.00', NULL, 1, 'MT-001', NULL, NULL, NULL, '150.00', '372.00', 8, 10, 'Maternity 21 Plus Core', 'Genoma', 'Maternity', '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21', 1, 1, 1, 1, 'da97ef7f-b994-4e1f-a54c-3a1e083d6d9f', 1, '93752edc-c16d-45af-9d7d-d37003f0bf84'),
-('93752edc-c16d-45af-9d7d-d37003f0bf84', 'Maternity', '0.00', 'Painel NIPT Maternity — testes de rastreio pré-natal não invasivo.', 1, 'MT-001', NULL, NULL, NULL, '0.00', '0.00', NULL, NULL, 'Maternity', 'Genoma', 'Maternity', NULL, 0, 0, 0, 1, NULL, 0, NULL),
-('caaa2f36-5f82-4943-8cd3-8cc377e7a1a2', 'Intermédio', '496.00', NULL, 1, 'MT-002', NULL, NULL, NULL, '200.00', '496.00', 10, 10, 'Maternity Intermédio', 'Genoma', 'Maternity', '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,21', 0, 0, 0, 1, 'da97ef7f-b994-4e1f-a54c-3a1e083d6d9f', 0, '93752edc-c16d-45af-9d7d-d37003f0bf84'),
+('2aaf7c92-0e6a-4eb1-9ad3-897effb2d437', 'Básico', '372.00', NULL, 1, 'MT-001', NULL, NULL, NULL, '150.00', '372.00', 8, 10, 'Maternity 21 Plus Core', 'Genoma', 'Maternity', '1,2,3,4,5,6,7,8,9,10,11,12,13', 1, 1, 1, 1, 'da97ef7f-b994-4e1f-a54c-3a1e083d6d9f', 1, '93752edc-c16d-45af-9d7d-d37003f0bf84'),
+('93752edc-c16d-45af-9d7d-d37003f0bf84', 'Maternity', '0.00', 'Painel NIPT Maternity — testes de rastreio pré-natal não invasivo.', 1, 'MT-001', NULL, NULL, NULL, '0.00', '0.00', NULL, NULL, 'Maternity', 'Genoma', 'Maternity', NULL, 0, 0, 0, 1, 'da97ef7f-b994-4e1f-a54c-3a1e083d6d9f', 0, NULL),
+('caaa2f36-5f82-4943-8cd3-8cc377e7a1a2', 'Intermédio', '496.00', NULL, 1, 'MT-002', NULL, NULL, NULL, '200.00', '496.00', 10, 10, 'Maternity Intermédio', 'Genoma', 'Maternity', '1,2,3,4,5,6,7,8,9,10,11,12,13,17,18,19,21', 0, 0, 0, 1, 'da97ef7f-b994-4e1f-a54c-3a1e083d6d9f', 0, '93752edc-c16d-45af-9d7d-d37003f0bf84'),
 ('d25417d9-1bac-4076-b2c5-cb913287900f', 'Completo', '744.00', NULL, 1, 'MT-003', NULL, NULL, NULL, '300.00', '744.00', 8, 10, 'Maternity Genome', 'Genoma', 'Maternity', '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23', 1, 1, 1, 1, 'da97ef7f-b994-4e1f-a54c-3a1e083d6d9f', 1, '93752edc-c16d-45af-9d7d-d37003f0bf84');
 
 
