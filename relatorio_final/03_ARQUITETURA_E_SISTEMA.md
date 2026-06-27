@@ -67,6 +67,9 @@ frontend/src/
 │   │   └── ThemeContext.tsx    # Tema claro/escuro
 │   └── components/
 │       ├── DashboardPage.tsx
+│       ├── dashboard/
+│       │   ├── MedicoDashboard.tsx   # Painel dedicado ao perfil Médico
+│       │   └── useDashboardData.ts
 │       ├── ContactsPage.tsx
 │       ├── ProcessesPage.tsx
 │       ├── StocksPage.tsx
@@ -76,6 +79,8 @@ frontend/src/
 │   ├── api.ts                  # Cliente HTTP genérico
 │   ├── api-processos.ts        # Endpoints de processos
 │   ├── api-stocks.ts           # Endpoints de stocks
+│   ├── auth-session.ts         # Persistência e bootstrap de sessão
+│   ├── utilizadores.ts         # formatUtilizadorNome, formatUtilizadorGreeting
 │   └── permissions.ts          # RBAC frontend
 └── i18n/
 ```
@@ -251,6 +256,18 @@ O schema evolui de forma controlada através de ficheiros numerados em `backend/
 5. Interface apresenta cadeia completa para acção de recall
 ```
 
+### 3.5.6. Isolamento de Dados por Médico
+
+```
+1. Médico autentica-se (perfil Médico, JWT inclui utilizador_id)
+2. GET /api/pacientes ou /api/processos ou /api/dashboards/operacional
+3. Controller invoca service com scope do utilizador
+4. medico-access.js resolve medico_id associado ao utilizador
+5. Repository aplica WHERE medico_id = :medicoId (ou equivalente em JOINs)
+6. Frontend (MedicoDashboard.tsx) apresenta apenas KPIs e listagens filtradas
+7. Tentativa de aceder a registo de outro médico → 403 ou lista vazia
+```
+
 ---
 
 ## 3.6. Padrões e Boas Práticas
@@ -262,6 +279,7 @@ O schema evolui de forma controlada através de ficheiros numerados em `backend/
 | **State Machine** | Workflow de processos com transições finitas |
 | **Soft Delete** | Campo `ativo` em vez de DELETE físico |
 | **Audit Trail** | `logs_auditoria` para acções críticas |
+| **Scope by Actor** | Filtro opcional por `medico_id` em listagens e dashboard |
 | **API Versioning** | Prefixo `/api` (preparado para v2) |
 | **Deprecation** | Rotas legadas `/pedidos` com middleware de aviso |
 

@@ -243,6 +243,25 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 
 ---
 
+### US-013 — Isolamento de Dados e Painel do Médico Prescritor
+
+**Como** médico prescritor,  
+**quero** consultar apenas os meus doentes, processos e KPIs num painel dedicado,  
+**para** ter uma visão clínica focada sem exposição a dados de outros médicos.
+
+#### Critérios de Aceitação
+
+| ID | Critério | Verificação |
+|---|---|---|
+| CA-013.1 | APIs de contactos e processos filtram por `medico_id` do utilizador autenticado | `medico-access.js`, `pacientes.service.js`, `processos.service.js` |
+| CA-013.2 | Dashboard operacional calcula KPIs apenas com dados do médico | `dashboards.repository.js` |
+| CA-013.3 | Perfil Médico vê `MedicoDashboard.tsx` em vez do painel administrativo | `DashboardPage.tsx` |
+| CA-013.4 | Saudação e menu exibem título Dr./Dra. | `formatUtilizadorGreeting`, `AuthContext.tsx` |
+| CA-013.5 | Formulário de contacto bloqueia campo médico para perfil Médico | `ContactFormPage.tsx` |
+| CA-013.6 | Médicos aparecem em Utilizadores com título; edição via rota dedicada | `SettingsPage.tsx`, `/definicoes/utilizadores/:id/editar` |
+
+---
+
 ## 2.3. Requisitos Funcionais (RF)
 
 | ID | Requisito | Prioridade | User Story | Estado |
@@ -259,13 +278,14 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | RF-010 | Faturação com numeração, descontos e referências MB | Alta | US-010 | Implementado |
 | RF-011 | Rastreabilidade bidireccional lote-kit-processo-resultado | Alta | US-011 | Implementado |
 | RF-012 | Requisições e movimentos de kits entre locais | Média | US-002 | Implementado |
-| RF-013 | Dashboard com KPIs e alertas operacionais | Média | US-005 | Implementado |
+| RF-013 | Dashboard com KPIs e alertas operacionais (scoped por médico) | Média | US-005, US-013 | Implementado |
 | RF-014 | Listagens com pesquisa, filtros e exportação multi-formato | Média | US-012 | Implementado |
 | RF-015 | Gestão de catálogo de testes genómicos (metadados ADN fetal) | Média | US-007 | Implementado |
 | RF-016 | Motivos de anulação configuráveis | Média | US-005 | Parcial* |
 | RF-017 | Notificações automáticas e-mail/SMS | Baixa | US-009 | Preparado** |
 | RF-018 | Integração com software de faturação certificado | Baixa | US-010 | Pendente |
 | RF-019 | Importação de dados históricos | Baixa | — | Pendente |
+| RF-020 | Isolamento de dados e painel dedicado ao perfil Médico | Alta | US-013 | Implementado |
 
 \* Tabela `motivos_anulacao` criada; ligação ao ecrã de cancelamento de processos pendente.  
 \** Módulo interno implementado; credenciais de envio externo por configurar.
@@ -283,6 +303,7 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | RNF-003 | Rate limiting (máx. 100 req/15 min) | `express-rate-limit` em `app.js` |
 | RNF-004 | Headers de segurança HTTP | `helmet` |
 | RNF-005 | Controlo de acesso baseado em perfis (RBAC) | `perfis`, `perfil_stock_submodulos`, `permissions.ts` |
+| RNF-005.1 | Isolamento lógico de dados por médico prescritor | `medico-access.js` |
 | RNF-006 | Auditoria de acções de utilizadores | `logs_auditoria` + `log.service.js` |
 | RNF-007 | Soft-delete (desactivação em vez de eliminação física) | Campo `ativo` nas entidades |
 | RNF-008 | Dados genéticos tratados como dados sensíveis (Art. 9.º RGPD) | [INSERIR POLÍTICA DE RETENÇÃO E PSEUDONIMIZAÇÃO] |
@@ -349,6 +370,7 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | US-010 | RF-010 |
 | US-011 | RF-011 |
 | US-012 | RF-014, RF-002 |
+| US-013 | RF-020, RF-002, RF-013 |
 
 ---
 

@@ -50,6 +50,20 @@ Os seguintes elementos devem ser completados pelo autor antes da entrega final:
 - `BASE_DE_DADOS.md` — Schema completo (29 tabelas)
 - `backend/ARCHITECTURE.md` — Arquitectura do backend
 
+## Últimas actualizações (Junho 2026)
+
+Implementações documentadas nesta fase (commit `f7497dc` e actualizações de relatório):
+
+| Área | Descrição | Ficheiros principais |
+|---|---|---|
+| **Isolamento por médico** | Contactos, processos e listagens filtrados ao médico autenticado | `medico-access.js`, `pacientes.service.js`, `processos.service.js` |
+| **Dashboard médico** | KPIs operacionais scoped por `medico_id`; painel dedicado com acções prioritárias | `MedicoDashboard.tsx`, `dashboards.repository.js` |
+| **Utilizadores ↔ Médicos** | Médicos visíveis em Utilizadores com título Dr./Dra.; edição via `/definicoes/utilizadores/:id/editar` | `utilizadores.service.js`, `SettingsPage.tsx` |
+| **Sessão e auth** | Bootstrap de sessão sem flash de UI admin; limpeza de dados ao logout | `AuthContext.tsx`, `auth-session.ts` |
+| **Seeds CRM** | Dados de referência (empresa Genoma, médicos, inventário via envios) e reset | `seed-admin.js`, `seed-inventory.js`, `reset-crm.js` |
+| **Formulário contacto** | Campo médico pré-preenchido e bloqueado para perfil Médico | `ContactFormPage.tsx` |
+| **Stocks posto** | Verificação de stock por tipo de kit (sub-teste não afecta stock físico) | `postos.repository.js` |
+
 ## Como compilar o relatório final
 
 Para gerar um documento único, pode concatenar os capítulos na ordem indicada ou importá-los para Word/LaTeX mantendo a formatação Markdown.

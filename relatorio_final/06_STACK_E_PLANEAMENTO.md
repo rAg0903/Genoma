@@ -118,6 +118,19 @@
 | `npm run migrate` | Executa migrações de BD |
 | `npm run frontend:build` | Build de produção do frontend |
 
+### 6.1.7. Scripts de Seed e Reset (CRM)
+
+| Script | Função |
+|---|---|
+| `backend/src/utils/seed-admin.js` | Cria utilizador admin e dados base de demonstração |
+| `backend/src/seeds/seed-admin-data.js` | Dados administrativos (empresa, médicos, utilizadores) |
+| `backend/src/utils/seed-inventory.js` | Wrapper para seed de inventário |
+| `backend/src/seeds/seed-inventory-data.js` | Lotes, kits e stocks via envios simulados |
+| `backend/src/utils/reset-crm.js` | Reset parcial de dados CRM para re-demonstração |
+| `backend/src/utils/wipe-crm-data.js` | Limpeza completa de dados operacionais |
+
+**Credenciais de teste (após seed):** admin `admin.teste@genoma.local` / `Teste1234!`; médicos ex. `anaclaraferreira@genoma.pt` / `Teste1234!`
+
 ---
 
 ## 6.2. Infraestrutura e Ambientes
@@ -229,7 +242,8 @@ O projecto CRM Genoma demonstrou a viabilidade técnica, económica e operaciona
 - Implementação de um workflow rigoroso com máquina de estados finita;
 - Rastreabilidade ponta a ponta essencial para conformidade e recalls;
 - Interface moderna e modular com seis áreas funcionais operacionais;
-- Fundações sólidas de segurança (JWT, RBAC, auditoria, rate limiting).
+- Fundações sólidas de segurança (JWT, RBAC, auditoria, rate limiting);
+- **Isolamento de dados por médico prescritor** e painel clínico dedicado (`MedicoDashboard.tsx`).
 
 ### 6.6.2. Objectivos Não Alcançados / Parcialmente Alcançados
 

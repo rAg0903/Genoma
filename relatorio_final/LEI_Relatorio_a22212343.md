@@ -117,7 +117,7 @@ Lote → Kit → Agendamento → Colheita → Processo → Resultado → Relató
 
 O sistema informático existente funcionava essencialmente como um CRM genérico, incapaz de reflectir este percurso, de impedir transições inválidas entre fases laboratoriais, ou de garantir rastreabilidade bidireccional entre lotes, kits, processos e resultados — requisito crítico para conformidade, recalls de material e auditorias.
 
-O **CRM Genoma** foi concebido para responder a esta lacuna, transformando a plataforma num **sistema operacional completo** para gestão de testes genéticos. À data de elaboração deste relatório (Junho de 2026), a solução encontra-se em fase de implementação avançada, com módulos operacionais construídos e a compilar sem erros, incluindo Processos, Contactos, Stocks, Agendamentos, Listagens, Dashboard e Administração.
+O **CRM Genoma** foi concebido para responder a esta lacuna, transformando a plataforma num **sistema operacional completo** para gestão de testes genéticos. À data de elaboração deste relatório (Junho de 2026), a solução encontra-se em fase de implementação avançada, com módulos operacionais construídos e a compilar sem erros, incluindo Processos, Contactos, Stocks, Agendamentos, Listagens, Dashboard e Administração. Foi ainda implementado **isolamento de dados por médico prescritor**, um **painel dedicado ao perfil Médico** e integração coerente entre as tabs **Utilizadores** e **Médicos** na administração.
 
 [INSERIR IMAGEM DO DIAGRAMA DE FLUXO OPERACIONAL AQUI]
 
@@ -325,6 +325,9 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 - **RF-002.2:** Perfis configuráveis com permissões por módulo (Dashboard, Contactos, Processos, Stocks, Listagens, Administração)
 - **RF-002.3:** Permissões granulares de stock via `perfil_stock_submodulos`
 - **RF-002.4:** Perfil Administrador único — não criável/eliminável pela interface
+- **RF-002.5:** Médicos criados em Administração → Médicos geram simultaneamente registo em `utilizadores` (perfil Médico)
+- **RF-002.6:** Listagem de Utilizadores inclui médicos (mesmo com `empresa_id` nulo) e apresenta título **Dr./Dra.** junto ao nome
+- **RF-002.7:** Edição de médico a partir de Utilizadores redirecciona para formulário completo de médico, com breadcrumb `Administração → Utilizadores → … → Editar`
 
 | Campo | Descrição |
 |---|---|
@@ -417,16 +420,34 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | RF-010 | Faturação com numeração, descontos, referências MB (`facturacao`) | Implementado |
 | RF-011 | Rastreabilidade bidireccional (`/api/trace`) | Implementado |
 | RF-012 | Requisições e movimentos de kits | Implementado |
-| RF-013 | Dashboard com KPIs e alertas | Implementado |
+| RF-013 | Dashboard com KPIs e alertas (scoped por médico quando aplicável) | Implementado |
 | RF-014 | Listagens com filtros e exportação Excel/CSV/PDF | Implementado |
-| RF-015 | Catálogo de testes genómicos com metadados ADN fetal | Implementado |
+| RF-015 | Catálogo de testes genómicos com metadados ADN fetal e sub-testes | Implementado |
 | RF-016 | Motivos de anulação configuráveis | Parcial* |
 | RF-017 | Notificações e-mail/SMS | Preparado** |
 | RF-018 | Integração faturação certificada | Pendente |
 | RF-019 | Importação de dados históricos | Pendente |
+| RF-020 | Isolamento de dados e painel dedicado ao perfil Médico | Implementado |
 
 \* Tabela criada; ligação ao ecrã de cancelamento pendente.  
 \** Módulo interno implementado; credenciais externas por configurar.
+
+#### RF-020 — Isolamento de Dados e Experiência do Médico Prescritor
+
+- **RF-020.1:** Utilitário `medico-access.js` identifica perfil Médico e valida acesso a pacientes/processos (`paciente.medico_id` ou `processo.medico_id`)
+- **RF-020.2:** APIs de contactos, processos e listagens filtradas ao médico autenticado
+- **RF-020.3:** Dashboard operacional (`/api/dashboards/operacional`) calcula KPIs apenas com dados do médico (`dashboards.repository.js`)
+- **RF-020.4:** Frontend apresenta `MedicoDashboard.tsx` em substituição do painel administrativo para perfil Médico
+- **RF-020.5:** Saudação e menu lateral exibem título **Dr./Dra.** (`medico_titulo` na sessão)
+- **RF-020.6:** Formulário de contacto bloqueia campo médico ao utilizador Médico logado
+
+| Campo | Descrição |
+|---|---|
+| **Caso de uso** | Consultar painel e dados clínicos (médico) |
+| **Actor** | Médico prescritor |
+| **Pré-condição** | Autenticado com perfil Médico |
+| **Cenário** | 1. Login · 2. Painel mostra KPIs próprios · 3. Contactos/Processos listam apenas doentes/processos associados · 4. Não visualiza dados de outros médicos |
+| **Pós-condição** | Isolamento multi-tenant lógico por médico |
 
 ### 2.5. Requisitos Não Funcionais
 
@@ -497,6 +518,7 @@ O diagrama de casos de uso representa as funcionalidades da plataforma e a inter
 | **Utilizador Autenticado** | Qualquer perfil com credenciais válidas |
 | **Operador / Técnico** | Gestão de processos, stocks e colheitas |
 | **Responsável Clínico** | Validação de resultados e relatórios |
+| **Médico Prescritor** | Contactos, processos e painel apenas dos seus doentes |
 | **Gestor Financeiro** | Faturação e exportações |
 | **Administrador** | Configuração do sistema, utilizadores, catálogo |
 
@@ -516,8 +538,9 @@ O diagrama de casos de uso representa as funcionalidades da plataforma e a inter
 | UC10 | Consultar rastreabilidade (lote ↔ resultado) | Director Lab. |
 | UC11 | Exportar listagens (Excel/CSV/PDF) | Utilizador autorizado |
 | UC12 | Administrar utilizadores, testes e postos | Administrador |
+| UC13 | Consultar painel e doentes (isolamento por médico) | Médico |
 
-**Descrição textual do diagrama:** O actor *Operador* estabelece associação com UC02–UC06 e UC11. O *Responsável Clínico* associa-se a UC07 e UC08. O *Gestor Financeiro* a UC09. O *Administrador* inclui UC12 e generaliza autenticação (UC01). UC10 é transversal a perfis com permissão de rastreio. Relações `<<include>>` de UC05 para UC01 (autenticação) e de UC04 para UC03 (disponibilidade de kits).
+**Descrição textual do diagrama:** O actor *Operador* estabelece associação com UC02–UC06 e UC11. O *Médico Prescritor* associa-se a UC02, UC05 e UC13 com visibilidade restrita aos seus registos. O *Responsável Clínico* associa-se a UC07 e UC08. O *Gestor Financeiro* a UC09. O *Administrador* inclui UC12 e generaliza autenticação (UC01). UC10 é transversal a perfis com permissão de rastreio. Relações `<<include>>` de UC05 para UC01 (autenticação) e de UC04 para UC03 (disponibilidade de kits).
 
 [INSERIR IMAGEM DO DIAGRAMA DE CASOS DE USO AQUI]
 
@@ -752,20 +775,24 @@ Este capítulo descreve o trabalho de implementação efectivamente realizado: s
 
 | Módulo | Rota | Funcionalidades principais |
 |---|---|---|
-| **Dashboard** | `/` | KPIs, alertas, processos atrasados, colheitas do dia |
-| **Contactos** | `/contactos` | CRUD pacientes; conversão em processo |
+| **Dashboard** | `/` | KPIs e alertas operacionais; **painel dedicado Médico** (`MedicoDashboard.tsx`) com KPIs scoped por `medico_id` |
+| **Contactos** | `/contactos` | CRUD pacientes; conversão em processo; **filtro automático por médico** quando perfil Médico |
 | **Processos** | `/processos` | Pipeline Kanban; drawer lateral; workflow completo |
 | **Stocks** | `/stocks` | Lotes, kits, requisições, movimentos, alertas |
 | **Agendamentos** | *(integrado)* | Calendário; reserva automática de kit |
 | **Listagens** | `/listagens` | 9 listagens; filtros; exportação Excel/CSV/PDF |
-| **Administração** | `/definicoes` | Utilizadores, perfis, testes, postos, laboratórios, motivos anulação |
+| **Administração** | `/definicoes` | Utilizadores (incl. médicos com título Dr./Dra.), perfis, testes, postos, laboratórios, motivos anulação; edição de médico via `/definicoes/utilizadores/:id/editar` |
 
 #### Estado de Implementação (Junho 2026)
 
-Conforme `PONTO_DE_SITUACAO_E_PERGUNTAS_CLIENTE.md`:
+Conforme `PONTO_DE_SITUACAO_E_PERGUNTAS_CLIENTE.md` e commit `f7497dc`:
 
 - Todos os módulos **constroem e compilam sem erros**
-- Migrações de BD aplicáveis definidas (foto perfil, motivos anulação, password opcional)
+- **Isolamento por médico prescritor** em contactos, processos, listagens e dashboard operacional
+- **Painel clínico dedicado** ao perfil Médico (sem alertas administrativos)
+- **Integração Utilizadores ↔ Médicos** com título profissional na listagem, sessão e saudação
+- **Scripts de seed/reset CRM** para ambiente de demonstração (`seed-admin.js`, `seed-inventory.js`, `reset-crm.js`)
+- Migrações de BD aplicáveis definidas (foto perfil, motivos anulação, password opcional, sub-testes)
 - **Pendente:** ligação de motivos de anulação ao ecrã de processos; credenciais e-mail/SMS; importação histórica; modelo gráfico de relatório Genoma
 
 ### 4.2. Design da Interface do Utilizador
@@ -781,6 +808,16 @@ Conforme `PONTO_DE_SITUACAO_E_PERGUNTAS_CLIENTE.md`:
 | Resultado | Registo por cromossoma; upload PDF |
 | Faturação | Emissão com desconto e referências MB |
 | Listagens | Filtros avançados; exportação multi-formato |
+
+#### Storyboard — Médico Prescritor
+
+| Etapa | Descrição |
+|---|---|
+| Login | Autenticação JWT; sessão inclui `medico_titulo` (Dr./Dra.) |
+| Dashboard | `MedicoDashboard.tsx`: saudação personalizada, KPIs clínicos próprios, acções prioritárias (sem alertas admin) |
+| Contactos | Apenas doentes associados ao médico; campo médico bloqueado ao criar contacto |
+| Processos | Pipeline filtrado aos processos do médico |
+| Menu lateral | Nome com título profissional (`formatUtilizadorNome`) |
 
 #### Wireframes e Mockups
 
@@ -821,6 +858,7 @@ Avaliação alinhada com **WCAG 2.1/2.2 (nível AA)**. Componentes Radix UI gara
 | TC-008 | RF-011 — Rastreabilidade | Alta | Cadeia lote → processo → resultado | Por executar |
 | TC-009 | RF-014 — Exportação | Média | Excel/CSV/PDF com filtros | Por executar |
 | TC-010 | RF-006 — Integridade kit 1:1 | Alta | Segundo processo com mesmo kit falha | Por executar |
+| TC-011 | RF-020 — Isolamento médico | Crítica | Médico A não vê contactos/processos/KPIs do Médico B | Por executar |
 
 Detalhe completo dos passos de execução: **Anexo B** e `05_TEST_CASES_E_RASTREABILIDADE.md`.
 
@@ -840,10 +878,11 @@ Detalhe completo dos passos de execução: **Anexo B** e `05_TEST_CASES_E_RASTRE
 | RF-010 | Faturação | UC09 | TC-006, TC-006-N |
 | RF-011 | Rastreabilidade | UC10 | TC-008 |
 | RF-012 | Movimentos kits | UC03 | TC-001 |
-| RF-013 | Dashboard | UC05 | TC-003 |
+| RF-013 | Dashboard | UC05, UC13 | TC-003, TC-011 |
 | RF-014 | Listagens/exportação | UC11 | TC-009 |
+| RF-020 | Isolamento médico / painel dedicado | UC13 | TC-011 |
 
-**Cobertura:** 13 de 19 RF com test cases definidos (68%). Todas as 12 user stories possuem pelo menos um TC associado.
+**Cobertura:** 14 de 20 RF com test cases definidos (70%). Todas as 13 user stories possuem pelo menos um TC associado.
 
 Documentos importantes produzidos durante a implementação encontram-se no repositório (`backend/`, `frontend/`, `BASE_DE_DADOS.md`, `backend/ARCHITECTURE.md`).
 
@@ -866,6 +905,8 @@ O projecto CRM Genoma demonstrou a viabilidade técnica, operacional e económic
 5. **Assegurar segurança e conformidade** com JWT, bcrypt, RBAC, auditoria, soft-delete e tratamento de dados genéticos sensíveis ao abrigo do RGPD.
 
 6. **Entregar módulos funcionais** — Dashboard, Contactos, Processos, Stocks, Listagens e Administração — operacionais e a compilar sem erros.
+
+7. **Implementar experiência dedicada ao médico prescritor** — isolamento de dados, painel clínico e integração coerente com a administração de utilizadores.
 
 O projecto cumpre os objectivos definidos na fase de análise e concepção, constituindo uma base sólida para entrada em produção após validação com o cliente Genoma.
 

@@ -360,25 +360,64 @@ const TRANSICOES_VALIDAS = {
 
 ---
 
+### TC-011 — Isolamento de Dados por Médico Prescritor
+
+| Campo | Valor |
+|---|---|
+| **ID** | TC-011 |
+| **Título** | Médico A não acede a contactos, processos nem KPIs do Médico B |
+| **Prioridade** | Crítica |
+| **Pré-condições** | Dois médicos com utilizadores activos (ex.: `anaclaraferreira@genoma.pt`, `sofiasilva@genoma.pt`); cada um com pelo menos 1 contacto/processos próprios |
+| **RF Associados** | RF-020 |
+| **US Associada** | US-013 |
+
+#### Passos de Execução
+
+| Passo | Acção | Resultado Esperado |
+|---|---|---|
+| 1 | Login como Médico A | Redireccionamento para `MedicoDashboard.tsx` |
+| 2 | Verificar KPIs no painel | Valores reflectem apenas dados do Médico A |
+| 3 | Abrir Contactos | Listagem contém apenas doentes com `medico_id` = Médico A |
+| 4 | Abrir Processos | Pipeline mostra apenas processos do Médico A |
+| 5 | Login como Médico B | KPIs e listagens diferentes do Médico A |
+| 6 | Tentar aceder directamente a ID de paciente do Médico A (API ou URL) | 403 ou registo inacessível |
+| 7 | Verificar saudação e menu lateral | Nome com título Dr./Dra. |
+
+#### Dados de Teste
+
+```
+Médico A: anaclaraferreira@genoma.pt / Teste1234!
+Médico B: sofiasilva@genoma.pt / Teste1234!
+```
+
+#### Resultado
+
+| Execução | Data | Resultado | Observações |
+|---|---|---|---|
+| [INSERIR] | [INSERIR] | [PASS/FAIL] | [INSERIR] |
+
+---
+
 ## 5.3. Matriz de Rastreabilidade (RF ↔ Test Cases)
 
-| RF | Descrição Resumida | TC-001 | TC-002 | TC-003 | TC-004 | TC-005 | TC-006 | TC-007 | TC-008 | TC-009 | TC-010 |
-|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| RF-001 | Autenticação JWT | | | | | | | ✓ | | | |
-| RF-002 | Perfis e permissões | | | | | | | ✓ | | | |
-| RF-003 | CRUD pacientes | | | | | | | | | | |
-| RF-004 | Lotes e kits | ✓ | | | | | | | | | |
-| RF-005 | Agendamento colheitas | | ✓ | | | | | | | | |
-| RF-006 | Gestão de processos | | ✓ | | | | | | | | ✓ |
-| RF-007 | Workflow / estados | | | ✓ | | | | | | | ✓ |
-| RF-008 | Resultados genéticos | | | | ✓ | | | | | | |
-| RF-009 | Validação e relatórios | | | | | ✓ | | | | | |
-| RF-010 | Faturação | | | | | | ✓ | | | | |
-| RF-011 | Rastreabilidade | | | | | | | | ✓ | | |
-| RF-012 | Movimentos de kits | ✓ | | | | | | | | | |
-| RF-013 | Dashboard KPIs | | | ✓ | | | | | | | |
-| RF-014 | Listagens e exportação | | | | | | | | | ✓ | |
-| RF-015 | Catálogo de testes | ✓ | ✓ | | ✓ | | | | | | |
+| RF | Descrição Resumida | TC-001 | TC-002 | TC-003 | TC-004 | TC-005 | TC-006 | TC-007 | TC-008 | TC-009 | TC-010 | TC-011 |
+|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| RF-001 | Autenticação JWT | | | | | | | ✓ | | | | |
+| RF-002 | Perfis e permissões | | | | | | | ✓ | | | | ✓ |
+| RF-003 | CRUD pacientes | | | | | | | | | | | ✓ |
+| RF-004 | Lotes e kits | ✓ | | | | | | | | | | |
+| RF-005 | Agendamento colheitas | | ✓ | | | | | | | | | |
+| RF-006 | Gestão de processos | | ✓ | | | | | | | | ✓ | ✓ |
+| RF-007 | Workflow / estados | | | ✓ | | | | | | | ✓ | |
+| RF-008 | Resultados genéticos | | | | ✓ | | | | | | | |
+| RF-009 | Validação e relatórios | | | | | ✓ | | | | | | |
+| RF-010 | Faturação | | | | | | ✓ | | | | | |
+| RF-011 | Rastreabilidade | | | | | | | | ✓ | | | |
+| RF-012 | Movimentos de kits | ✓ | | | | | | | | | | |
+| RF-013 | Dashboard KPIs | | | ✓ | | | | | | | | ✓ |
+| RF-014 | Listagens e exportação | | | | | | | | | ✓ | | ✓ |
+| RF-015 | Catálogo de testes | ✓ | ✓ | | ✓ | | | | | | | |
+| RF-020 | Isolamento médico | | | | | | | | | | | ✓ |
 
 **Legenda:** ✓ = Test Case cobre o requisito
 
@@ -400,6 +439,7 @@ const TRANSICOES_VALIDAS = {
 | US-010 | TC-006 | Completa |
 | US-011 | TC-008 | Completa |
 | US-012 | TC-009 | Completa |
+| US-013 | TC-011 | Completa |
 
 ---
 
@@ -409,6 +449,7 @@ const TRANSICOES_VALIDAS = {
 |---|---|---|
 | RNF-001 | Autenticação obrigatória | TC-007 |
 | RNF-005 | RBAC por perfis | TC-007 |
+| RNF-005.1 | Isolamento por médico | TC-011 |
 | RNF-006 | Auditoria de acções | TC-001, TC-005, TC-008 |
 | RNF-027 | SQL Injection prevention | [INSERIR TC DE SEGURANÇA] |
 | RNF-003 | Rate limiting | [INSERIR TC DE CARGA] |
@@ -419,10 +460,10 @@ const TRANSICOES_VALIDAS = {
 
 | Métrica | Valor |
 |---|---|
-| Total de Test Cases definidos | 10 |
-| RF com cobertura de teste | 13 / 19 (68%) |
-| RF sem teste definido | RF-003, RF-015 (parcial), RF-016 a RF-019 |
-| User Stories com cobertura | 12 / 12 (100% com pelo menos 1 TC) |
+| Total de Test Cases definidos | 11 |
+| RF com cobertura de teste | 14 / 20 (70%) |
+| RF sem teste definido | RF-016 a RF-019 |
+| User Stories com cobertura | 13 / 13 (100% com pelo menos 1 TC) |
 
 ---
 
