@@ -32,6 +32,7 @@ Lote → Kit → Agendamento → Colheita → Processo → Resultado → Relató
 | **Faturação** | Emissão de faturas com numeração, descontos e referências multibanco |
 | **Rastreabilidade** | Cadeia completa lote ↔ kit ↔ processo ↔ resultado, em ambos os sentidos |
 | **Listagens e exportação** | Consultas avançadas com exportação para Excel, CSV e PDF |
+| **Painel médico** | Dashboard dedicado ao perfil Médico, com KPIs e dados isolados por prescritor |
 | **Administração** | Utilizadores, perfis, permissões, catálogo de testes e configuração do sistema |
 
 ---
@@ -50,7 +51,7 @@ Aplicação **Three-Tier / API-Based** com separação clara entre apresentaçã
 └───────────┬─────────────┘
             │  SQL (mysql2 pool)
 ┌───────────▼─────────────┐
-│   MariaDB / MySQL       │  ← 29 tabelas · UUIDs · Soft delete · Auditoria
+│   MariaDB / MySQL       │  ← 42 tabelas · UUIDs · Soft delete · Auditoria
 └─────────────────────────┘
 ```
 
@@ -107,8 +108,9 @@ Aplicação **Three-Tier / API-Based** com separação clara entre apresentaçã
 genoma_app-main/
 ├── frontend/          # SPA React + Vite + TypeScript
 ├── backend/           # API REST Express + MariaDB
+├── database/          # Exportação SQL da BD (partilha entre ambientes)
 ├── relatorio_final/   # Documentação académica (PFC — ISLA)
-├── BASE_DE_DADOS.md   # Schema completo (29 tabelas)
+├── BASE_DE_DADOS.md   # Schema completo (documentação)
 └── README.md          # Este ficheiro
 ```
 
@@ -126,8 +128,8 @@ genoma_app-main/
 
 ```bash
 # Clonar o repositório
-git clone [INSERIR URL DO REPOSITÓRIO]
-cd genoma_app-main
+git clone https://github.com/Males24/CRM-Genoma2026.git
+cd CRM-Genoma2026
 
 # Instalar dependências
 cd backend && npm install
@@ -137,8 +139,15 @@ cd ../frontend && npm install
 cp backend/.env.example backend/.env
 # Editar backend/.env com credenciais da BD e JWT_SECRET
 
-# Executar migrações
-npm run migrate
+# Opção A — Importar base de dados completa (recomendado para demo)
+mysql -u root -p < database/genoma_export.sql
+
+# Opção B — Criar schema vazio via migrações
+npm run migrate --prefix backend
+
+# (Opcional) Popular dados de demonstração
+npm run seed:admin --prefix backend
+npm run seed:inventory --prefix backend
 
 # Iniciar backend (porta 3000)
 npm run backend:dev
@@ -149,18 +158,36 @@ npm run frontend:dev
 
 A aplicação fica disponível em `http://localhost:5173`. A API REST responde em `http://localhost:3000/api`.
 
+### Credenciais de teste (após importar `database/genoma_export.sql`)
+
+| Perfil | Email | Password |
+|---|---|---|
+| Administrador | `admin.teste@genoma.local` | `Teste1234!` |
+| Médico | `anaclaraferreira@genoma.pt` | `Teste1234!` |
+| Médico | `sofiasilva@genoma.pt` | `Teste1234!` |
+
+### Scripts úteis (backend)
+
+| Comando | Descrição |
+|---|---|
+| `npm run migrate --prefix backend` | Executar migrações de BD |
+| `npm run seed:admin --prefix backend` | Criar admin e dados base |
+| `npm run seed:inventory --prefix backend` | Popular stocks (lotes/kits) |
+| `npm run reset:crm --prefix backend` | Reset parcial de dados CRM |
+| `npm run export:database --prefix backend` | Exportar BD para `database/genoma_export.sql` |
+
 ---
 
 ## Módulos Principais
 
 | Módulo | Rota | Funcionalidade |
 |---|---|---|
-| Dashboard | `/` | KPIs, alertas e visão operacional |
-| Contactos | `/contactos` | Pacientes e conversão em processo |
+| Dashboard | `/` | KPIs e alertas; painel dedicado para perfil **Médico** (`MedicoDashboard`) |
+| Contactos | `/contactos` | Pacientes e conversão em processo (filtrado por médico quando aplicável) |
 | Processos | `/processos` | Pipeline clínico-laboratorial (Kanban) |
 | Stocks | `/stocks` | Lotes, kits, requisições e movimentos |
 | Listagens | `/listagens` | Consultas, filtros e exportações |
-| Administração | `/definicoes` | Utilizadores, testes, postos, laboratórios |
+| Administração | `/definicoes` | Utilizadores (incl. médicos), testes, postos, laboratórios |
 
 ---
 
@@ -171,6 +198,7 @@ Este projecto integra o **Projeto Final de Curso (PFC)** da ISLA. A documentaç�
 | Capítulo | Documento |
 |---|---|
 | Índice geral | [Relatório Final de Curso](./relatorio_final/README.md) |
+| Relatório completo | [LEI_Relatorio_a22212343.md](./relatorio_final/LEI_Relatorio_a22212343.md) |
 | 01 · Viabilidade e Entrevistas | [Viabilidade Técnica, Económica e Operacional](./relatorio_final/01_VIABILIDADE_E_INTERVIEWS.md) |
 | 02 · User Stories e Requisitos | [User Stories, RF e RNF](./relatorio_final/02_USER_STORIES_E_REQUISITOS.md) |
 | 03 · Arquitectura do Sistema | [Arquitectura Three-Tier e Fluxos de Dados](./relatorio_final/03_ARQUITETURA_E_SISTEMA.md) |
@@ -180,7 +208,8 @@ Este projecto integra o **Projeto Final de Curso (PFC)** da ISLA. A documentaç�
 
 ### Documentação técnica complementar
 
-- [Schema da base de dados (29 tabelas)](./BASE_DE_DADOS.md)
+- [Exportação e importação da base de dados](./database/README.md)
+- [Schema da base de dados](./BASE_DE_DADOS.md)
 - [Arquitectura do backend](./backend/ARCHITECTURE.md)
 - [Ponto de situação do projecto](./PONTO_DE_SITUACAO_E_PERGUNTAS_CLIENTE.md)
 
@@ -190,6 +219,7 @@ Este projecto integra o **Projeto Final de Curso (PFC)** da ISLA. A documentaç�
 
 - Autenticação **JWT** com passwords encriptadas (**bcrypt**)
 - **RBAC** — controlo de acesso por perfis e permissões granulares
+- **Isolamento por médico** — contactos, processos e dashboard filtrados ao prescritor autenticado
 - **Auditoria** — registo de acções em `logs_auditoria`
 - **Soft delete** — desactivação lógica em vez de eliminação física
 - **Rate limiting** — protecção contra abuso da API
