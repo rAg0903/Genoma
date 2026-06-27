@@ -12,6 +12,7 @@
     "seed:inventory": "node src/utils/seed-inventory.js",
     "wipe:crm": "node src/utils/wipe-crm-data.js",
     "reset:crm": "node src/utils/reset-crm.js",
+    "export:database": "node src/utils/export-database.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint .",
