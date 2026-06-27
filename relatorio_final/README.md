@@ -12,12 +12,10 @@
 
 Esta pasta contém a estrutura modular do Relatório de Projeto Final de Curso (PFC), organizada por capítulos obrigatórios da ISLA. O conteúdo técnico foi derivado do código-fonte real do projecto **Genoma CRM** (`genoma_app-main`).
 
-## Documento de Referência (Exemplo ISLA)
+## Documento Principal
 
 | Ficheiro | Conteúdo |
 |---|---|
-| [LEI_Relatorio_Exemplo.md](./LEI_Relatorio_Exemplo.md) | Exemplo completo de relatório PFC (Clube Desportivo) — estrutura e formatação de referência |
-| [LEI_Relatorio_Exemplo_Vazio.md](./LEI_Relatorio_Exemplo_Vazio.md) | Modelo vazio oficial ISLA (capa, resumo, índice, capítulos 1–6, anexos) |
 | [LEI_Relatorio_a22212343.md](./LEI_Relatorio_a22212343.md) | **Relatório final completo — CRM Genoma (Rafael Males, a22212343)** |
 
 ## Índice de Capítulos
@@ -25,10 +23,10 @@ Esta pasta contém a estrutura modular do Relatório de Projeto Final de Curso (
 | Ficheiro | Conteúdo |
 |---|---|
 | [01_VIABILIDADE_E_INTERVIEWS.md](./01_VIABILIDADE_E_INTERVIEWS.md) | Viabilidade técnica, económica e operacional; guião de entrevistas |
-| [02_USER_STORIES_E_REQUISITOS.md](./02_USER_STORIES_E_REQUISITOS.md) | 12 User Stories, RF e RNF |
+| [02_USER_STORIES_E_REQUISITOS.md](./02_USER_STORIES_E_REQUISITOS.md) | 13 User Stories, RF e RNF |
 | [03_ARQUITETURA_E_SISTEMA.md](./03_ARQUITETURA_E_SISTEMA.md) | Arquitectura Three-Tier, fluxos de dados |
 | [04_DATABASE_DESIGN_E_DICTIONARY.md](./04_DATABASE_DESIGN_E_DICTIONARY.md) | Dicionário de dados das tabelas principais |
-| [05_TEST_CASES_E_RASTREABILIDADE.md](./05_TEST_CASES_E_RASTREABILIDADE.md) | 10 casos de teste e matriz RF ↔ TC |
+| [05_TEST_CASES_E_RASTREABILIDADE.md](./05_TEST_CASES_E_RASTREABILIDADE.md) | 11 casos de teste e matriz RF ↔ TC |
 | [06_STACK_E_PLANEAMENTO.md](./06_STACK_E_PLANEAMENTO.md) | Stack tecnológico, planeamento e conclusões |
 
 ## Placeholders por preencher
