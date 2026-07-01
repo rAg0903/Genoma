@@ -25,6 +25,8 @@ import {
   isRelatorioPorEnviar, isFaturaPorEmitir, proximosEstados,
 } from '../../lib/processos';
 import { isProcessoLaboratorio } from '../../lib/contactos';
+import { deleteTargetLabel } from '../../lib/confirm-delete';
+import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 
 const isHoje = (d?: string) => {
   if (!d) return false;
@@ -46,6 +48,7 @@ export function ProcessesPage() {
   const { processos, updateProcesso, deleteProcesso, refreshProcessos, motivosAnulacao } = useData();
   const { hasPermission } = useAuth();
   const { t } = useLanguage();
+  const confirmDelete = useConfirmDelete();
   const navigate = useNavigate();
   const canCreate = hasPermission('processos', 'create');
   const canUpdate = hasPermission('processos', 'update');
@@ -108,7 +111,7 @@ export function ProcessesPage() {
   };
 
   const handleDelete = async (p: Processo) => {
-    if (!confirm(`Eliminar o processo ${p.numero}?`)) return;
+    if (!(await confirmDelete(deleteTargetLabel('o processo', p.numero)))) return;
     try {
       await deleteProcesso(p.id);
       toast.success('Processo eliminado.');

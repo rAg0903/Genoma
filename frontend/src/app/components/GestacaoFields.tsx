@@ -5,9 +5,7 @@ import {
   formatDataPartoPt,
   parseGestacaoRegistoInput,
 } from '../../lib/gestacao';
-
-const readOnlyInputClass =
-  'w-16 px-2 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-center';
+import { CONTROL, FORM } from '../../lib/design-tokens';
 
 interface GestacaoFieldsProps {
   semanasRegisto: string;
@@ -15,8 +13,80 @@ interface GestacaoFieldsProps {
   dataRegisto: string;
   onSemanasChange: (value: string) => void;
   onDiasChange: (value: string) => void;
-  labelClass: string;
   inputClass: string;
+}
+
+function clampNumeric(value: string, max: number) {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+  const n = Math.min(max, Number.parseInt(digits, 10));
+  return Number.isNaN(n) ? '' : String(n);
+}
+
+function MetricPair({
+  label,
+  semanas,
+  dias,
+  semanasLabel = 'Semanas',
+  diasLabel = 'Dias',
+  editable,
+  onSemanasChange,
+  onDiasChange,
+  inputClass,
+  computed,
+}: {
+  label: string;
+  semanas: string;
+  dias: string;
+  semanasLabel?: string;
+  diasLabel?: string;
+  editable?: boolean;
+  onSemanasChange?: (value: string) => void;
+  onDiasChange?: (value: string) => void;
+  inputClass: string;
+  computed?: boolean;
+}) {
+  const fieldClass = computed
+    ? `${inputClass} ${FORM.readOnlyInput} ${CONTROL.numberInput} text-center tabular-nums w-[4.75rem]`
+    : `${inputClass} ${CONTROL.numberInput} text-center tabular-nums w-[4.75rem]`;
+
+  return (
+    <div className="min-w-0">
+      <p className={`${FORM.label} ${computed ? 'text-slate-400 dark:text-slate-500' : ''}`}>{label}</p>
+      <div className="mt-1.5 flex items-start gap-3">
+        <div>
+          <input
+            type="text"
+            inputMode="numeric"
+            readOnly={!editable}
+            tabIndex={editable ? 0 : -1}
+            className={fieldClass}
+            value={semanas}
+            onChange={editable && onSemanasChange
+              ? (e) => onSemanasChange(clampNumeric(e.target.value, 42))
+              : undefined}
+            placeholder="0"
+          />
+          <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-500">{semanasLabel}</span>
+        </div>
+        <div>
+          <input
+            type="text"
+            inputMode="numeric"
+            readOnly={!editable}
+            tabIndex={editable ? 0 : -1}
+            className={fieldClass}
+            value={dias}
+            onChange={editable && onDiasChange
+              ? (e) => onDiasChange(clampNumeric(e.target.value, 6))
+              : undefined}
+            placeholder="0"
+          />
+          <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-500">{diasLabel}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function GestacaoFields({
@@ -25,7 +95,6 @@ export function GestacaoFields({
   dataRegisto,
   onSemanasChange,
   onDiasChange,
-  labelClass,
   inputClass,
 }: GestacaoFieldsProps) {
   const calculos = useMemo(() => {
@@ -37,84 +106,36 @@ export function GestacaoFields({
   }, [semanasRegisto, diasRegisto, dataRegisto]);
 
   return (
-    <>
-      <div className="sm:col-span-2">
-        <label className={labelClass} style={{ fontSize: '13px' }}>
-          Tempo de gestação (data registo)
-        </label>
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={0}
-              max={42}
-              className={inputClass}
-              style={{ fontSize: '14px', width: '4.5rem' }}
-              value={semanasRegisto}
-              onChange={(e) => onSemanasChange(e.target.value)}
-              placeholder="0"
-            />
-            <span className="text-gray-500 dark:text-gray-400" style={{ fontSize: '13px' }}>semanas</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={0}
-              max={6}
-              className={inputClass}
-              style={{ fontSize: '14px', width: '4.5rem' }}
-              value={diasRegisto}
-              onChange={(e) => onDiasChange(e.target.value)}
-              placeholder="0"
-            />
-            <span className="text-gray-500 dark:text-gray-400" style={{ fontSize: '13px' }}>dias</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="sm:col-span-2">
-        <label className={`${labelClass} text-gray-400 dark:text-gray-500`} style={{ fontSize: '13px' }}>
-          Tempo de gestação (actual)
-        </label>
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <input
-              readOnly
-              tabIndex={-1}
-              className={readOnlyInputClass}
-              style={{ fontSize: '14px' }}
-              value={calculos?.atual ? String(calculos.atual.semanas) : ''}
-            />
-            <span className="text-gray-400 dark:text-gray-500" style={{ fontSize: '13px' }}>semanas</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              readOnly
-              tabIndex={-1}
-              className={readOnlyInputClass}
-              style={{ fontSize: '14px' }}
-              value={calculos?.atual ? String(calculos.atual.dias) : ''}
-            />
-            <span className="text-gray-400 dark:text-gray-500" style={{ fontSize: '13px' }}>dias</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="sm:col-span-2">
-        <label className={`${labelClass} text-gray-400 dark:text-gray-500`} style={{ fontSize: '13px' }}>
-          Data prevista do parto
-        </label>
-        <div className="flex items-center gap-3">
+    <div className="w-full max-w-3xl">
+      <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${FORM.metricGroup}`}>
+        <MetricPair
+          label="Tempo de gestação (registo)"
+          semanas={semanasRegisto}
+          dias={diasRegisto}
+          editable
+          onSemanasChange={onSemanasChange}
+          onDiasChange={onDiasChange}
+          inputClass={inputClass}
+        />
+        <MetricPair
+          label="Tempo de gestação (actual)"
+          semanas={calculos?.atual ? String(calculos.atual.semanas) : ''}
+          dias={calculos?.atual ? String(calculos.atual.dias) : ''}
+          inputClass={inputClass}
+          computed
+        />
+        <div className="min-w-0">
+          <p className={`${FORM.label} text-slate-400 dark:text-slate-500`}>Data prevista do parto</p>
           <input
             readOnly
             tabIndex={-1}
-            className={`${inputClass} bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 max-w-[10rem]`}
-            style={{ fontSize: '14px' }}
+            className={`${inputClass} ${FORM.readOnlyInput} mt-1.5 tabular-nums w-[9.25rem]`}
             value={calculos?.parto ? formatDataPartoPt(calculos.parto) : ''}
+            placeholder="—"
           />
-          <span className="text-gray-400 dark:text-gray-500" style={{ fontSize: '12px' }}>dd/mm/aaaa</span>
+          <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-500">Calculada automaticamente</span>
         </div>
       </div>
-    </>
+    </div>
   );
 }

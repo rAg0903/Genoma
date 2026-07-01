@@ -8,6 +8,11 @@ const pt = {
     email: 'Email',
     name: 'Nome',
     search: 'Pesquisar...',
+    globalSearchPlaceholder: 'Pesquisar ou escrever «médicos», «pacientes», «processos»…',
+    globalSearchAria: 'Pesquisa global',
+    globalSearchMinChars: 'Escreva 2+ caracteres — ou o início de uma categoria: «me», «pa», «pro», «ki», «lo»…',
+    globalSearchNoResults: 'Sem resultados para «{query}».',
+    closeShortcut: 'ESC',
     refresh: 'Atualizar',
     loading: 'A carregar…',
     menu: 'Menu',
@@ -16,6 +21,13 @@ const pt = {
     new: 'Novo',
     actions: 'Ações',
     operationFailed: 'Operação falhou.',
+  },
+  confirmDelete: {
+    title: 'Confirmar eliminação',
+    message: 'Tem a certeza de que pretende eliminar {label}?',
+    warning: 'Esta ação não pode ser desfeita.',
+    confirm: 'Eliminar',
+    cancel: 'Cancelar',
   },
   nav: {
     dashboard: 'Painel',
@@ -528,6 +540,19 @@ const pt = {
       confirm: 'Confirmar recepção',
       confirmed: 'Recepção no laboratório confirmada.',
     },
+  },
+  errors: {
+    notFound: {
+      title: 'Página não encontrada',
+      description: 'Esta página não existe ou foi movida.',
+      back: 'Voltar',
+      dashboard: 'Ir para o painel',
+    },
+  },
+  contactToProcesso: {
+    title: 'Contacto convertido em processo',
+    message:
+      'A colheita deste contacto já foi registada e o caso passou para a fase de processo clínico. Por esse motivo, foi redireccionado para a ficha de processo correspondente.',
   },
 } as const;
 

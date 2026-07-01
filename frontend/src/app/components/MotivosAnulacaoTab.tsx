@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
 import { FORM } from '../../lib/design-tokens';
 import { motivosAnulacaoApi } from '../../lib/api-motivos-anulacao';
 import type { MotivoAnulacao } from '../data/types';
 import { MOTIVO_CONTEXTO_LABEL } from '../../lib/motivos-anulacao';
+import { deleteTargetLabel } from '../../lib/confirm-delete';
+import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 import type { MotivoAnulacaoContexto } from '../../lib/motivos-anulacao';
 import { AppModal, ModalActions, ModalCheckbox, ModalField, MODAL_INPUT_CLASS } from './shared/AppModal';
 import {
@@ -21,7 +23,9 @@ import {
 } from './definicoes/admin-tab-ui';
 
 export function MotivosAnulacaoTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
+  const confirmDelete = useConfirmDelete();
   const [motivos, setMotivos] = useState<MotivoAnulacao[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [editItem, setEditItem] = useState<MotivoAnulacao | null>(null);
@@ -32,10 +36,13 @@ export function MotivosAnulacaoTab({ canCreate, canUpdate, canDelete }: { canCre
   });
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       setMotivos(await motivosAnulacaoApi.list());
     } catch {
       setMotivos([]);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -76,8 +83,8 @@ export function MotivosAnulacaoTab({ canCreate, canUpdate, canDelete }: { canCre
     }
   };
 
-  const handleDelete = (id: string, nome: string) => {
-    if (!confirm(`Eliminar motivo "${nome}"?`)) return;
+  const handleDelete = async (id: string, nome: string) => {
+    if (!(await confirmDelete(deleteTargetLabel('o motivo de anulação', nome)))) return;
     void motivosAnulacaoApi.remove(id)
       .then(async () => {
         toast.success('Motivo de anulação eliminado.');
@@ -100,6 +107,11 @@ export function MotivosAnulacaoTab({ canCreate, canUpdate, canDelete }: { canCre
         ) : undefined}
       />
       <AdminTabPanel>
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-slate-400">
+            <Loader2 className="w-5 h-5 animate-spin mr-2" /> A carregar motivos de anulação…
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className={ADMIN_TABLE_HEAD_CLASS}>
@@ -128,7 +140,7 @@ export function MotivosAnulacaoTab({ canCreate, canUpdate, canDelete }: { canCre
                         </button>
                       )}
                       {canDelete && (
-                        <button type="button" onClick={() => handleDelete(m.id, m.nome)} className={ADMIN_DELETE_BTN_CLASS} title="Eliminar">
+                        <button type="button" onClick={() => void handleDelete(m.id, m.nome)} className={ADMIN_DELETE_BTN_CLASS} title="Eliminar">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
@@ -139,6 +151,7 @@ export function MotivosAnulacaoTab({ canCreate, canUpdate, canDelete }: { canCre
             </tbody>
           </table>
         </div>
+        )}
       </AdminTabPanel>
       {(canCreate || canUpdate) && isOpen && (
         <AppModal

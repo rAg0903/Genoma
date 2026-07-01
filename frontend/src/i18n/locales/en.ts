@@ -10,6 +10,11 @@ const en: TranslationTree = {
     email: 'Email',
     name: 'Name',
     search: 'Search...',
+    globalSearchPlaceholder: 'Search or type «doctors», «patients», «processes»…',
+    globalSearchAria: 'Global search',
+    globalSearchMinChars: 'Type 2+ characters — or the start of a category: «me», «pa», «pro», «ki», «lo»…',
+    globalSearchNoResults: 'No results for “{query}”.',
+    closeShortcut: 'ESC',
     refresh: 'Refresh',
     loading: 'Loading…',
     menu: 'Menu',
@@ -18,6 +23,13 @@ const en: TranslationTree = {
     new: 'New',
     actions: 'Actions',
     operationFailed: 'Operation failed.',
+  },
+  confirmDelete: {
+    title: 'Confirm deletion',
+    message: 'Are you sure you want to delete {label}?',
+    warning: 'This action cannot be undone.',
+    confirm: 'Delete',
+    cancel: 'Cancel',
   },
   nav: {
     dashboard: 'Dashboard',
@@ -530,6 +542,19 @@ const en: TranslationTree = {
       confirm: 'Confirm receipt',
       confirmed: 'Laboratory receipt confirmed.',
     },
+  },
+  errors: {
+    notFound: {
+      title: 'Page not found',
+      description: 'This page does not exist or has been moved.',
+      back: 'Go back',
+      dashboard: 'Go to dashboard',
+    },
+  },
+  contactToProcesso: {
+    title: 'Contact converted to process',
+    message:
+      'This contact\'s collection has been recorded and the case has moved to the clinical process stage. You have been redirected to the corresponding process record.',
   },
 };
 

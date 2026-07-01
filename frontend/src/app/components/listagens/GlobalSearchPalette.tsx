@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Command } from 'cmdk';
 import { Search, Loader2, Activity, FlaskConical, Users, Stethoscope, Package, Boxes } from 'lucide-react';
 import { listagensApi, SearchGroup, SearchResultItem } from '../../../lib/api-listagens';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 const TIPO_ICON: Record<string, typeof Activity> = {
   processo: Activity,
@@ -23,6 +24,7 @@ interface Props {
  * pacientes, medicos, kits e lotes. Abre com Ctrl/Cmd+K.
  */
 export function GlobalSearchPalette({ open, onClose, onNavigate }: Props) {
+  const { t } = useLanguage();
   const [value, setValue] = useState('');
   const [grupos, setGrupos] = useState<SearchGroup[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,17 +77,17 @@ export function GlobalSearchPalette({ open, onClose, onNavigate }: Props) {
             autoFocus
             value={value}
             onValueChange={setValue}
-            placeholder="Pesquisar paciente, médico, processo, kit, lote..."
+            placeholder={t('common.globalSearchPlaceholder')}
             className="flex-1 py-3.5 bg-transparent text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none"
           />
-          <kbd className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400">ESC</kbd>
+          <kbd className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400">{t('common.closeShortcut')}</kbd>
         </div>
 
         <Command.List className="max-h-[55vh] overflow-y-auto p-2">
           {value.trim().length < 2 ? (
-            <p className="px-3 py-8 text-center text-sm text-slate-400">Escreva pelo menos 2 caracteres para pesquisar.</p>
+            <p className="px-3 py-8 text-center text-sm text-slate-400">{t('common.globalSearchMinChars')}</p>
           ) : !loading && total === 0 ? (
-            <Command.Empty className="px-3 py-8 text-center text-sm text-slate-400">Sem resultados para “{value}”.</Command.Empty>
+            <Command.Empty className="px-3 py-8 text-center text-sm text-slate-400">{t('common.globalSearchNoResults', { query: value })}</Command.Empty>
           ) : (
             grupos.map((grupo) => {
               const Icon = TIPO_ICON[grupo.tipo] || Activity;

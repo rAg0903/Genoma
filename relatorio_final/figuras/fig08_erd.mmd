@@ -1,0 +1,59 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ecfdf5', 'primaryTextColor': '#134e4a', 'primaryBorderColor': '#0d9488', 'lineColor': '#0f766e', 'fontFamily': 'Segoe UI, Arial, sans-serif'}}}%%
+erDiagram
+    perfis ||--o{ utilizadores : perfil_id
+    empresas ||--o{ utilizadores : empresa_id
+    utilizadores ||--o| medicos : utilizador_id
+    empresas ||--o{ postos : empresa_id
+    pacientes ||--o{ processos : paciente_id
+    medicos ||--o{ processos : medico_id
+    testes ||--o{ processos : teste_id
+    testes ||--o{ lotes : tipo_kit_id
+    lotes ||--o{ kits : lote_id
+    kits ||--o| processos : kit_id
+    processo_status ||--o{ processos : status_id
+    processos ||--o{ colheitas : processo_id
+    processos ||--o{ resultados_geneticos : processo_id
+    processos ||--o| facturacao : processo_id
+    processos ||--o{ processo_relatorios : processo_id
+    utilizadores ||--o{ logs_auditoria : utilizador_id
+    kits ||--o{ movimentos_kits : kit_id
+
+    perfis {
+        char id PK
+        varchar nome
+    }
+    utilizadores {
+        char id PK
+        char perfil_id FK
+        varchar email
+    }
+    pacientes {
+        char id PK
+        varchar nome
+    }
+    medicos {
+        char id PK
+        char utilizador_id FK
+    }
+    testes {
+        char id PK
+        varchar nome
+    }
+    lotes {
+        char id PK
+        varchar codigo_lote
+    }
+    kits {
+        char id PK
+        varchar codigo_barras
+        enum status
+    }
+    processos {
+        char id PK
+        varchar numero_processo
+        char kit_id FK
+    }
+    facturacao {
+        char id PK
+        char processo_id FK
+    }

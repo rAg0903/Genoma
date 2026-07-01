@@ -7,6 +7,7 @@ import { GenomaLogo } from './shared/GenomaLogo';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { DefinicoesSubmodule, ListingsSubmodule, PermissionModule, StockSubmodule } from '../../lib/permissions';
+import { APP } from '../../lib/design-tokens';
 import { LISTING_ORDER } from './listagens/listingConfig';
 import { formatUtilizadorNome } from '../../lib/utilizadores';
 
@@ -145,15 +146,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <aside
       className={`
-        w-64 lg:w-60 h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col flex-shrink-0
-        border-r border-slate-200 dark:border-slate-800
+        w-64 lg:w-60 h-screen flex flex-col flex-shrink-0
+        ${APP.sidebar}
         fixed lg:relative inset-y-0 left-0 z-30
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}
     >
       {/* Logo */}
-      <div className="h-16 px-5 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+      <div className={`h-16 px-5 border-b ${APP.sidebarSectionBorder} flex items-center justify-between`}>
         <div className="flex items-center gap-3">
           <GenomaLogo className="h-8 w-auto" />
         </div>
@@ -196,17 +197,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <div
                     className={`relative flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${
                       isActive
-                        ? 'text-white bg-slate-900 dark:bg-slate-100 dark:text-slate-900 shadow-sm'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/40 hover:text-slate-900 dark:hover:text-slate-100'
+                        ? 'text-white bg-slate-900 dark:bg-[#1e2a40] dark:text-slate-100 dark:ring-1 dark:ring-[#334155]/70 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#1a2438] hover:text-slate-900 dark:hover:text-slate-100'
                     }`}
                   >
                     {isActive && (
-                      <span className="absolute -left-4 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-slate-900 dark:bg-slate-100" />
+                      <span className="absolute -left-4 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-slate-900 dark:bg-teal-500" />
                     )}
                     <div className="flex items-center gap-3">
                       <Icon
                         className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
-                          isActive ? 'text-white dark:text-slate-900' : 'text-slate-500 dark:text-slate-500'
+                          isActive ? 'text-white dark:text-teal-400' : 'text-slate-500 dark:text-slate-500'
                         }`}
                       />
                       <span style={{ fontSize: '14px', fontWeight: isActive ? 600 : 500 }}>{item.label}</span>
@@ -215,9 +216,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <ChevronDown
                         className={`w-4 h-4 flex-shrink-0 transition-transform ${
                           shouldShowSubItems
-                            ? 'rotate-180 text-white/80 dark:text-slate-700'
+                            ? 'rotate-180 text-white/80 dark:text-teal-400/80'
                             : isActive
-                              ? 'text-white/80 dark:text-slate-700'
+                              ? 'text-white/80 dark:text-teal-400/80'
                               : 'text-slate-400 dark:text-slate-500'
                         }`}
                       />
@@ -259,7 +260,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                             <span className="absolute left-1.5 top-0 bottom-0 w-px bg-slate-200 dark:bg-slate-800" />
                             <span className="absolute left-1.5 top-1/2 h-px w-3 -translate-y-1/2 bg-slate-300 dark:bg-slate-700" />
                             <span className={`absolute left-3.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full ${
-                              isSubItemActive ? 'bg-slate-900 dark:bg-slate-100' : 'bg-slate-300 dark:bg-slate-700'
+                              isSubItemActive ? 'bg-slate-900 dark:bg-teal-500' : 'bg-slate-300 dark:bg-slate-600'
                             }`} />
                             <span className="ml-[6px]">{subItem.label}</span>
                           </NavLink>
@@ -275,7 +276,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-slate-200/80 dark:border-slate-800">
+      <div className={`border-t ${APP.sidebarSectionBorder}`}>
         <div className="px-4 py-3">
           <UserAccountMenu placement="top-start" onMenuAction={onClose} trigger={({ onClick }) => (
             <button

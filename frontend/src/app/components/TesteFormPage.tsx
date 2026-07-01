@@ -1,18 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { Edit, FlaskConical, Layers, Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { Building2, Clock, Edit, FlaskConical, Layers, Loader2, Plus, Save, StickyNote, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { Teste } from '../data/types';
 import { filterLaboratoriosFinais } from '../../lib/stock-locations';
 import { findTestePrincipal, getTestesPrincipais, sortTestesByCodigo } from '../../lib/testes';
-import { FORM_INPUT_CLASS, ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
-import { CONTROL } from '../../lib/design-tokens';
-import { FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
-
-const inputClass = FORM_INPUT_CLASS;
-const labelClass = 'block mb-1.5 text-gray-600 dark:text-gray-400';
+import { deleteTargetLabel } from '../../lib/confirm-delete';
+import { useConfirmDelete } from '../context/ConfirmDeleteContext';
+import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
+import { FORM } from '../../lib/design-tokens';
+import { DetailDivider, DetailPanel, DetailSection } from './ContactDetail';
+import {
+  FormField,
+  FormInput,
+  FormNumberInput,
+  FormPageBody,
+  FormPageHeader,
+  FormPageShell,
+  FormPrimaryButton,
+  FormRadixSelect,
+  FormSectionNote,
+  FormTabContent,
+  FormTextarea,
+} from './shared/FormPageChrome';
 
 const emptyTeste = (): Omit<Teste, 'id'> => ({
   nome: '',
@@ -79,18 +91,8 @@ const TABS: { id: TabId; label: string; icon: typeof FlaskConical }[] = [
   { id: 'sub_testes', label: 'Sub-testes', icon: Layers },
 ];
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className={labelClass} style={{ fontSize: '13px', fontWeight: 500 }}>
-        {label}{required ? ' *' : ''}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 export function TesteFormPage() {
+  const confirmDelete = useConfirmDelete();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -130,6 +132,22 @@ export function TesteFormPage() {
   const laboratoriosFinais = useMemo(
     () => filterLaboratoriosFinais(laboratorios).sort((a, b) => a.nome.localeCompare(b.nome, 'pt')),
     [laboratorios],
+  );
+
+  const empresaOptions = useMemo(() => {
+    const opts = empresasAtivas.map((e) => ({ value: e.nome, label: e.nome }));
+    if (empresaOrfa) opts.push({ value: empresaOrfa, label: empresaOrfa });
+    return opts;
+  }, [empresasAtivas, empresaOrfa]);
+
+  const tipoKitOptions = useMemo(
+    () => tiposKit.filter((t) => t.ativo !== false).map((t) => ({ value: t.nome, label: t.nome })),
+    [tiposKit],
+  );
+
+  const laboratorioOptions = useMemo(
+    () => laboratoriosFinais.map((l) => ({ value: l.id, label: l.nome })),
+    [laboratoriosFinais],
   );
 
   useEffect(() => {
@@ -181,8 +199,8 @@ export function TesteFormPage() {
   const openNewSubTeste = () => navigate(`/definicoes/testes/${id}/sub-testes/novo`);
   const openEditSubTeste = (subId: string) => navigate(`/definicoes/testes/${id}/sub-testes/${subId}/editar`);
 
-  const handleDeleteSubTeste = (subId: string, nome: string) => {
-    if (!confirm(`Eliminar sub-teste ${nome}?`)) return;
+  const handleDeleteSubTeste = async (subId: string, nome: string) => {
+    if (!(await confirmDelete(deleteTargetLabel('o sub-teste', nome)))) return;
     void deleteSubTeste(subId)
       .then(() => toast.success('Sub-teste eliminado.'))
       .catch((e) => toast.error(e instanceof Error ? e.message : 'Falha ao eliminar sub-teste.'));
@@ -220,135 +238,166 @@ export function TesteFormPage() {
         />
 
         {tab === 'dados' && (
-          <form id="teste-form" onSubmit={(e) => void handleSave(e)} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 md:p-6 space-y-5 max-w-5xl">
-            <div className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Nome do teste" required>
-                  <input required type="text" name="teste-nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} className={inputClass} placeholder="Maternity" style={{ fontSize: '14px' }} />
-                </Field>
-              </div>
+          <FormTabContent>
+            <form id="teste-form" onSubmit={(e) => void handleSave(e)}>
+              <DetailPanel>
+                <DetailSection title="Identificação" icon={FlaskConical}>
+                  <div className={FORM.fieldRow}>
+                    <FormField label="Nome do teste" required width="2xl">
+                      <FormInput
+                        required
+                        name="teste-nome"
+                        value={form.nome}
+                        onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+                        placeholder="Maternity"
+                      />
+                    </FormField>
+                  </div>
+                </DetailSection>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Empresa">
-                  <select value={form.empresa} onChange={(e) => setForm((f) => ({ ...f, empresa: e.target.value }))} className={inputClass} style={{ fontSize: '14px' }}>
-                    <option value="">Selecione...</option>
-                    {empresasAtivas.map((e) => (
-                      <option key={e.id} value={e.nome}>{e.nome}</option>
-                    ))}
-                    {empresaOrfa && <option value={empresaOrfa}>{empresaOrfa}</option>}
-                  </select>
-                </Field>
-                <Field label="Tipo de kit">
-                  <select value={form.tipo_kit} onChange={(e) => setForm((f) => ({ ...f, tipo_kit: e.target.value }))} className={inputClass} style={{ fontSize: '14px' }}>
-                    <option value="">Selecione...</option>
-                    {tiposKit.filter((t) => t.ativo !== false).map((t) => (
-                      <option key={t.id} value={t.nome}>{t.nome}</option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
+                <DetailDivider />
 
-              <Field label="Laboratório final (descarte)" required>
-                <select
-                  required
-                  value={form.laboratorio_final_id || ''}
-                  onChange={(e) => setForm((f) => ({ ...f, laboratorio_final_id: e.target.value || null }))}
-                  className={inputClass}
-                  style={{ fontSize: '14px' }}
-                >
-                  <option value="">Selecione o laboratório de processamento...</option>
-                  {laboratoriosFinais.map((l) => (
-                    <option key={l.id} value={l.id}>{l.nome}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-slate-400 mt-1">
-                  Destino dos kits utilizados/expirados deste teste. Os preços são definidos nos sub-testes.
-                </p>
-              </Field>
+                <DetailSection title="Configuração" icon={Building2}>
+                  <div className={FORM.fieldRow}>
+                    <FormField label="Empresa" width="xl">
+                      <FormRadixSelect
+                        value={form.empresa}
+                        onChange={(v) => setForm((f) => ({ ...f, empresa: v }))}
+                        placeholder="Selecione…"
+                        options={empresaOptions}
+                      />
+                    </FormField>
+                    <FormField label="Tipo de kit" width="lg">
+                      <FormRadixSelect
+                        value={form.tipo_kit}
+                        onChange={(v) => setForm((f) => ({ ...f, tipo_kit: v }))}
+                        placeholder="Selecione…"
+                        options={tipoKitOptions}
+                      />
+                    </FormField>
+                    <FormField label="Laboratório final (descarte)" required width="2xl">
+                      <FormRadixSelect
+                        value={form.laboratorio_final_id || ''}
+                        onChange={(v) => setForm((f) => ({ ...f, laboratorio_final_id: v || null }))}
+                        placeholder="Selecione o laboratório de processamento…"
+                        options={laboratorioOptions}
+                      />
+                    </FormField>
+                  </div>
+                  <div className="mt-3">
+                    <FormSectionNote>
+                      Destino dos kits utilizados/expirados deste teste. Os preços são definidos nos sub-testes.
+                    </FormSectionNote>
+                  </div>
+                </DetailSection>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Tempo de resposta (dias)">
-                  <input type="number" value={form.tempo_resposta_dias ?? ''} onChange={(e) => setForm((f) => ({ ...f, tempo_resposta_dias: e.target.value === '' ? null : parseInt(e.target.value, 10) }))} className={inputClass} placeholder="10" style={{ fontSize: '14px' }} />
-                </Field>
-                <Field label="Gestação mínima (semanas)">
-                  <input type="number" value={form.gestacao_minima_semanas ?? ''} onChange={(e) => setForm((f) => ({ ...f, gestacao_minima_semanas: e.target.value === '' ? null : parseInt(e.target.value, 10) }))} className={inputClass} placeholder="10" style={{ fontSize: '14px' }} />
-                </Field>
-              </div>
+                <DetailDivider />
 
-              <Field label="Descrição">
-                <textarea name="teste-descricao" value={form.descricao} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} rows={3} className={inputClass} style={{ fontSize: '14px', resize: 'vertical' }} />
-              </Field>
-            </div>
+                <DetailSection title="Parâmetros" icon={Clock}>
+                  <div className={FORM.fieldRow}>
+                    <FormField label="Tempo de resposta (dias)" width="sm">
+                      <FormNumberInput
+                        inputMode="numeric"
+                        value={form.tempo_resposta_dias ?? ''}
+                        onChange={(e) => setForm((f) => ({
+                          ...f,
+                          tempo_resposta_dias: e.target.value === '' ? null : parseInt(e.target.value, 10),
+                        }))}
+                        placeholder="10"
+                      />
+                    </FormField>
+                    <FormField label="Gestação mínima (semanas)" width="sm">
+                      <FormNumberInput
+                        inputMode="numeric"
+                        value={form.gestacao_minima_semanas ?? ''}
+                        onChange={(e) => setForm((f) => ({
+                          ...f,
+                          gestacao_minima_semanas: e.target.value === '' ? null : parseInt(e.target.value, 10),
+                        }))}
+                        placeholder="10"
+                      />
+                    </FormField>
+                  </div>
+                </DetailSection>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-              <button type="button" onClick={voltar} className={CONTROL.buttonSecondary}>
-                Voltar à lista
-              </button>
-              {podeGuardar && (
-                <FormPrimaryButton type="submit" disabled={saving}>
-                  {saving ? 'A guardar…' : editing ? 'Gravar' : 'Criar'}
-                </FormPrimaryButton>
-              )}
-            </div>
-          </form>
+                <DetailDivider />
+
+                <DetailSection title="Descrição" icon={StickyNote}>
+                  <FormField label="Descrição" width="3xl">
+                    <FormTextarea
+                      name="teste-descricao"
+                      value={form.descricao}
+                      onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
+                      rows={3}
+                    />
+                  </FormField>
+                </DetailSection>
+              </DetailPanel>
+            </form>
+          </FormTabContent>
         )}
 
         {tab === 'sub_testes' && editing && id && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 md:p-6 max-w-5xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-[15px] font-semibold text-gray-900 dark:text-gray-100">Sub-testes</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Variantes com preços e parâmetros Maternity. Estes são os testes selecionáveis na colheita.
-                </p>
-              </div>
-              {canCreate && (
-                <button type="button" onClick={openNewSubTeste} className={ADD_ACTION_BUTTON_CLASS}>
-                  <Plus className="w-4 h-4" /> Novo sub-teste
-                </button>
-              )}
-            </div>
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Sub-testes" icon={Layers}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                  <FormSectionNote className="mb-0">
+                    Variantes com preços e parâmetros Maternity. Estes são os testes selecionáveis na colheita.
+                  </FormSectionNote>
+                  {canCreate && (
+                    <button type="button" onClick={openNewSubTeste} className={`${ADD_ACTION_BUTTON_CLASS} shrink-0`}>
+                      <Plus className="w-4 h-4" /> Novo sub-teste
+                    </button>
+                  )}
+                </div>
 
-            {subTestes.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">Sem sub-testes. Adicione variantes como Maternity 21 Plus Core, Genome, etc.</p>
-            ) : (
-              <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                <table className="w-full">
-                  <thead className="bg-slate-50 dark:bg-slate-900/50 text-[11px] uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th className="px-4 py-2.5 text-left font-semibold">Código</th>
-                      <th className="px-4 py-2.5 text-left font-semibold">Nome</th>
-                      <th className="px-4 py-2.5 text-left font-semibold">Preço venda</th>
-                      <th className="px-4 py-2.5 text-right font-semibold">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {subTestes.map((st) => (
-                      <tr key={st.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                        <td className="px-4 py-3"><span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-mono text-xs font-semibold">{st.codigo}</span></td>
-                        <td className="px-4 py-3 text-[13px] font-medium text-gray-800 dark:text-gray-100">{st.nome}</td>
-                        <td className="px-4 py-3 text-[14px] font-semibold">{(st.preco_venda ?? st.preco ?? 0).toFixed(2)} €</td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-end gap-1">
-                            {canUpdate && (
-                              <button type="button" onClick={() => openEditSubTeste(st.id)} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700" title="Editar sub-teste">
-                                <Edit className="w-4 h-4" />
-                              </button>
-                            )}
-                            {canDelete && (
-                              <button type="button" onClick={() => handleDeleteSubTeste(st.id, st.nome)} className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" title="Eliminar sub-teste">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                {subTestes.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-8">
+                    Sem sub-testes. Adicione variantes como Maternity 21 Plus Core, Genome, etc.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 dark:bg-slate-900/50 text-[11px] uppercase tracking-wide text-slate-500">
+                        <tr>
+                          <th className="px-4 py-2.5 text-left font-semibold">Código</th>
+                          <th className="px-4 py-2.5 text-left font-semibold">Nome</th>
+                          <th className="px-4 py-2.5 text-left font-semibold">Preço venda</th>
+                          <th className="px-4 py-2.5 text-right font-semibold">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {subTestes.map((st) => (
+                          <tr key={st.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded font-mono text-xs font-semibold">{st.codigo}</span>
+                            </td>
+                            <td className="px-4 py-3 text-[13px] font-medium text-gray-800 dark:text-gray-100">{st.nome}</td>
+                            <td className="px-4 py-3 text-[14px] font-semibold">{(st.preco_venda ?? st.preco ?? 0).toFixed(2)} €</td>
+                            <td className="px-4 py-3">
+                              <div className="flex justify-end gap-1">
+                                {canUpdate && (
+                                  <button type="button" onClick={() => openEditSubTeste(st.id)} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700" title="Editar sub-teste">
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <button type="button" onClick={() => handleDeleteSubTeste(st.id, st.nome)} className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" title="Eliminar sub-teste">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
         )}
       </FormPageBody>
     </FormPageShell>

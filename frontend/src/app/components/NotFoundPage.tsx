@@ -1,45 +1,72 @@
-import { Link } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
+import { useLanguage } from '../../i18n/LanguageContext';
 
-export function NotFoundPage() {
+function NotFoundInner() {
+  const navigate = useNavigate();
+  const { t } = useLanguage();
+
+  const canGoBack = typeof window !== 'undefined' && window.history.length > 1;
+
   return (
-    <div
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,_#ffffff_0%,_#f0f6ff_48%,_#eaf2ff_100%)] dark:bg-[radial-gradient(circle_at_top_left,_#0b1220_0%,_#0f172a_48%,_#111827_100%)] px-6 py-16"
-      style={{ fontFamily: 'Inter, sans-serif' }}
-    >
-      <div className="pointer-events-none absolute -left-20 top-10 h-56 w-56 rounded-full bg-sky-100/70 blur-3xl" />
-      <div className="pointer-events-none absolute -right-24 bottom-10 h-72 w-72 rounded-full bg-emerald-100/60 blur-3xl" />
+    <div className="flex min-h-full flex-1 flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
+      <p
+        aria-hidden
+        className="select-none text-[clamp(7rem,22vw,12rem)] font-bold leading-none tracking-tighter text-slate-200 dark:text-slate-800/90"
+      >
+        404
+      </p>
 
-      <section className="relative z-10 flex w-full max-w-4xl flex-col items-center text-center">
-        <div className="mt-2 flex items-center justify-center gap-4 sm:gap-12">
-          <span className="text-[98px] sm:text-[160px] font-semibold text-slate-300/90 dark:text-slate-500/70">4</span>
-          <div className="flex flex-col items-center">
-            <div className="relative h-26 w-26 sm:h-36 sm:w-36 rounded-full bg-[radial-gradient(circle_at_30%_25%,_#e0f2fe_0%,_#bae6fd_45%,_#7dd3fc_75%,_#38bdf8_100%)] shadow-[0_16px_36px_rgba(56,189,248,0.32)]">
-              <div className="absolute -right-3 top-6 h-6 w-6 rounded-full bg-white/70 blur-sm" />
-              <div className="absolute left-6 bottom-6 h-8 w-8 rounded-full bg-white/50 blur-sm" />
-            </div>
-            <div className="mt-3 h-3.5 w-12 rounded-full bg-slate-900/85 dark:bg-slate-100/90" />
-            <div className="mt-1.5 h-1.5 w-9 rounded-full bg-slate-700/70 dark:bg-slate-300/70" />
-          </div>
-          <span className="text-[98px] sm:text-[160px] font-semibold text-slate-300/90 dark:text-slate-500/70">4</span>
-        </div>
+      <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">
+        {t('errors.notFound.title')}
+      </h1>
 
-        <div className="mt-6 max-w-lg px-2 sm:px-0">
-          <p className="text-slate-900 dark:text-slate-100" style={{ fontSize: '20px', fontWeight: 700 }}>Pagina nao encontrada</p>
-          <p className="mt-2 text-slate-600/90 dark:text-slate-300/90" style={{ fontSize: '14px', lineHeight: 1.6 }}>
-            Esta pagina nao existe ou foi movida. Verifique o endereco ou volte para a pagina inicial.
-          </p>
-        </div>
+      <p className="mt-3 max-w-md text-base leading-relaxed text-slate-500 dark:text-slate-400">
+        {t('errors.notFound.description')}
+      </p>
 
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          <Link
-            to="/"
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-5 transition-all hover:bg-slate-800 dark:hover:bg-slate-200"
-            style={{ fontSize: '14px', fontWeight: 600 }}
+      <div className="mt-7 h-0.5 w-10 rounded-full bg-teal-500 dark:bg-teal-400" />
+
+      <div className="mt-9 flex flex-col items-center gap-4">
+        <Link
+          to="/"
+          className="inline-flex h-12 min-w-[220px] items-center justify-center rounded-xl bg-slate-900 px-8 text-sm font-semibold text-white shadow-sm transition-all hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+        >
+          {t('errors.notFound.dashboard')}
+        </Link>
+
+        {canGoBack && (
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="text-sm font-semibold text-teal-700 transition-colors hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300"
           >
-            Voltar ao inicio
-          </Link>
-        </div>
-      </section>
+            {t('errors.notFound.back')}
+          </button>
+        )}
+      </div>
     </div>
   );
+}
+
+export function NotFoundPage() {
+  const location = useLocation();
+  const isStandalone = location.pathname === '/preview-404';
+
+  if (isStandalone) {
+    return (
+      <div
+        className="relative min-h-screen overflow-hidden bg-slate-50 dark:bg-slate-950"
+        style={{ fontFamily: 'Inter, sans-serif' }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-100 via-white to-teal-50/80 dark:from-slate-950 dark:via-slate-900 dark:to-teal-950/40" />
+        <div className="absolute -right-10 bottom-10 h-64 w-64 rounded-full bg-teal-200/30 blur-3xl dark:bg-teal-900/15" />
+        <div className="absolute -left-16 top-16 h-52 w-52 rounded-full bg-white/70 blur-3xl dark:bg-slate-800/40" />
+        <div className="relative flex min-h-screen items-center justify-center">
+          <NotFoundInner />
+        </div>
+      </div>
+    );
+  }
+
+  return <NotFoundInner />;
 }

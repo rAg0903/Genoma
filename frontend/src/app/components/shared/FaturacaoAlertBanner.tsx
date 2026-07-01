@@ -18,8 +18,8 @@ export function FaturacaoAlertBanner({ value, context = 'contacto', onGoToFatura
     <div
       className={`flex items-start gap-3 px-4 py-3 rounded-lg border ${
         isNaoFacturado
-          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
-          : 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-900 dark:text-orange-200'
+          ? 'bg-amber-50 dark:bg-amber-950/15 border-amber-200 dark:border-amber-800/35 text-amber-900 dark:text-amber-200/90'
+          : 'bg-orange-50 dark:bg-orange-950/15 border-orange-200 dark:border-orange-800/35 text-orange-900 dark:text-orange-200/90'
       }`}
       role="alert"
     >

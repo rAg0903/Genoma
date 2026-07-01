@@ -21,6 +21,8 @@ import { DefinicoesSubmodule } from '../../lib/permissions';
 import { perfisApi, Perfil } from '../../lib/api-perfis';
 import { isAdminPerfilNome, isMedicoPerfilNome } from '../../lib/perfil-utils';
 import { formatUtilizadorNome } from '../../lib/utilizadores';
+import { deleteTargetLabel } from '../../lib/confirm-delete';
+import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 import { useSearchParams } from 'react-router';
 import {
   ADMIN_ACTION_BTN_CLASS,
@@ -175,6 +177,7 @@ export function SettingsPage() {
 /* =========== UTILIZADORES =========== */
 function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const navigate = useNavigate();
+  const confirmDelete = useConfirmDelete();
   const { utilizadores, addUtilizador, updateUtilizador, deleteUtilizador } = useData();
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -246,7 +249,7 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
     }
   };
   const handleDelete = async (id: string, nome: string) => {
-    if (!confirm(`Eliminar utilizador ${nome}?`)) return;
+    if (!(await confirmDelete(deleteTargetLabel('o utilizador', nome)))) return;
     try {
       await deleteUtilizador(id);
       toast.success('Utilizador eliminado.');
@@ -368,13 +371,14 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
 /* =========== EMPRESAS =========== */
 function EmpresasTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const navigate = useNavigate();
+  const confirmDelete = useConfirmDelete();
   const { empresas, deleteEmpresa } = useData();
   const [search, setSearch] = useState('');
 
   const filtered = empresas.filter(e => e.nome.toLowerCase().includes(search.toLowerCase()));
 
   const handleDelete = async (id: string, nome: string) => {
-    if (!confirm(`Eliminar ${nome}?`)) return;
+    if (!(await confirmDelete(deleteTargetLabel('a empresa', nome)))) return;
     try {
       await deleteEmpresa(id);
       toast.success('Empresa eliminada.');
@@ -430,14 +434,21 @@ function EmpresasTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
 /* =========== TESTES =========== */
 function TestesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const navigate = useNavigate();
+  const confirmDelete = useConfirmDelete();
   const { testes, deleteTeste } = useData();
   const [search, setSearch] = useState('');
 
   const filtered = getTestesPrincipais(testes).filter(t => t.nome.toLowerCase().includes(search.toLowerCase()) || (t.descricao || '').toLowerCase().includes(search.toLowerCase()));
   const openNew = () => navigate('/definicoes/testes/novo');
   const openEdit = (t: Teste) => navigate(`/definicoes/testes/${t.id}/editar`);
-  const handleDelete = (id: string, nome: string) => {
-    if (confirm(`Eliminar teste ${nome}?`)) { deleteTeste(id); toast.success('Teste eliminado.'); }
+  const handleDelete = async (id: string, nome: string) => {
+    if (!(await confirmDelete(deleteTargetLabel('o teste', nome)))) return;
+    try {
+      await deleteTeste(id);
+      toast.success('Teste eliminado.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Falha ao eliminar teste.');
+    }
   };
 
   return (
@@ -483,6 +494,7 @@ function TestesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; ca
 
 /* =========== TIPOS DE KIT =========== */
 function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
+  const confirmDelete = useConfirmDelete();
   const { tiposKit, addTipoKit, updateTipoKit, deleteTipoKit } = useData();
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -500,8 +512,8 @@ function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
       setIsOpen(false);
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao guardar tipo de kit.'); }
   };
-  const handleDelete = (id: string, nome: string) => {
-    if (!confirm(`Eliminar tipo de kit ${nome}?`)) return;
+  const handleDelete = async (id: string, nome: string) => {
+    if (!(await confirmDelete(deleteTargetLabel('o tipo de kit', nome)))) return;
     void deleteTipoKit(id)
       .then(() => toast.success('Tipo de kit eliminado.'))
       .catch((e) => toast.error(e instanceof Error ? e.message : 'Falha ao eliminar tipo de kit.'));
@@ -565,13 +577,14 @@ function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
 
 function EntidadesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const navigate = useNavigate();
+  const confirmDelete = useConfirmDelete();
   const { entidades, deleteEntidade } = useData();
   const [search, setSearch] = useState('');
 
   const filtered = entidades.filter(e => e.nome.toLowerCase().includes(search.toLowerCase()) || (e.cidade || '').toLowerCase().includes(search.toLowerCase()));
 
   const handleDelete = async (id: string, nome: string) => {
-    if (!confirm(`Eliminar entidade ${nome}?`)) return;
+    if (!(await confirmDelete(deleteTargetLabel('a entidade', nome)))) return;
     try { await deleteEntidade(id); toast.success('Entidade eliminada.'); }
     catch (err) { toast.error(err instanceof Error ? err.message : 'Não foi possível eliminar a entidade.'); }
   };
@@ -620,6 +633,7 @@ function EntidadesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean;
 
 function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const navigate = useNavigate();
+  const confirmDelete = useConfirmDelete();
   const { laboratorios, deleteLaboratorio } = useData();
   const [search, setSearch] = useState('');
 
@@ -630,7 +644,7 @@ function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
   const finais = laboratorios.filter((l) => l.tipo === 'final' && matches(l));
 
   const handleDelete = async (id: string, nome: string) => {
-    if (!confirm(`Eliminar laboratório ${nome}?`)) return;
+    if (!(await confirmDelete(deleteTargetLabel('o laboratório', nome)))) return;
     try { await deleteLaboratorio(id); toast.success('Laboratório eliminado.'); }
     catch (err) { toast.error(err instanceof Error ? err.message : 'Não foi possível eliminar o laboratório.'); }
   };

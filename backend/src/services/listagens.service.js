@@ -19,6 +19,84 @@ const { formatCalendarDate } = require('../utils/calendar-dates');
 
 const toStr = (v) => (v === null || v === undefined ? '' : String(v));
 const norm = (v) => toStr(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+const formatMedicoDisplay = (m) => [m.titulo, m.nome].filter(Boolean).join(' ').trim() || toStr(m.nome);
+
+/** Remove prefixos Dr./Dra. da query para permitir pesquisa «Dra. Ana» → «Ana». */
+const stripMedicoTitlePrefix = (needle) =>
+  needle.replace(/^(dr|dra)\.?\s+/, '').trim();
+
+const medicoMatchesSearch = (m, needle) => {
+  if (!needle || needle.length < 2) return false;
+
+  const display = norm(formatMedicoDisplay(m));
+  const nome = norm(m.nome);
+  const titulo = norm(m.titulo || '');
+  const stripped = stripMedicoTitlePrefix(needle);
+  const queries = stripped !== needle ? [needle, stripped] : [needle];
+
+  for (const q of queries) {
+    if (!q || q.length < 2) continue;
+    if (display.includes(q)) return true;
+    if (nome.includes(q)) return true;
+    if (titulo.includes(q)) return true;
+    if (norm(m.num_ordem).includes(q)) return true;
+    if (norm(m.especialidade).includes(q)) return true;
+    if (norm(m.email).includes(q)) return true;
+  }
+
+  // «dr» / «dra» isolados — corresponder pelo título profissional
+  if (/^dr\.?$/.test(needle)) return titulo === 'dr' || titulo.startsWith('dr');
+  if (/^dra\.?$/.test(needle)) return titulo === 'dra' || titulo.startsWith('dra');
+
+  return false;
+};
+
+/** Palavras-chave que listam todos os registos de uma categoria (ex.: «medicos» → todos os médicos). */
+const SEARCH_CATEGORY_ALIASES = {
+  pacientes: 'pacientes',
+  paciente: 'pacientes',
+  contactos: 'pacientes',
+  contacto: 'pacientes',
+  medicos: 'medicos',
+  medico: 'medicos',
+  processos: 'processos',
+  processo: 'processos',
+  resultados: 'resultados',
+  resultado: 'resultados',
+  kits: 'kits',
+  kit: 'kits',
+  lotes: 'lotes',
+  lote: 'lotes',
+};
+
+const SEARCH_BROWSE_LIMIT = 50;
+const SEARCH_DEFAULT_LIMIT = 6;
+const SEARCH_CATEGORY_CANONICAL = ['pacientes', 'medicos', 'processos', 'resultados', 'kits', 'lotes'];
+
+/**
+ * Resolve pesquisa por categoria — exacta ou por prefixo (ex.: «ki» → kits, «pro» → processos).
+ * Só devolve categoria quando o prefixo identifica uma única entidade (evita «p» → ambíguo).
+ */
+const resolveSearchCategory = (needle) => {
+  if (!needle || needle.length < 2) return null;
+
+  if (SEARCH_CATEGORY_ALIASES[needle]) return SEARCH_CATEGORY_ALIASES[needle];
+
+  const matched = new Set();
+  for (const [alias, category] of Object.entries(SEARCH_CATEGORY_ALIASES)) {
+    if (alias.startsWith(needle)) matched.add(category);
+  }
+  for (const category of SEARCH_CATEGORY_CANONICAL) {
+    if (category.startsWith(needle)) matched.add(category);
+  }
+
+  if (matched.size === 1) return [...matched][0];
+  return null;
+};
+
+const sliceResults = (arr, max) => arr.slice(0, max);
+
 const toDate = (v) => {
   const formatted = formatCalendarDate(v);
   return formatted == null || formatted === '' ? '' : String(formatted);
@@ -150,6 +228,8 @@ const mapPaciente = (p) => ({
 const mapMedico = (m) => ({
   id: m.id,
   nome: m.nome || '',
+  titulo: m.titulo || '',
+  nome_completo: formatMedicoDisplay(m),
   num_ordem: m.num_ordem || '',
   especialidade: m.especialidade || '',
   email: m.email || '',
@@ -351,12 +431,12 @@ const LISTINGS = {
   medicos: {
     label: 'Medicos',
     dateField: null,
-    searchFields: ['nome', 'num_ordem', 'especialidade', 'email'],
+    searchFields: ['nome', 'titulo', 'nome_completo', 'num_ordem', 'especialidade', 'email'],
     columns: [
-      ['nome', 'Nome'], ['num_ordem', 'Nº Ordem'], ['especialidade', 'Especialidade'],
+      ['nome_completo', 'Nome'], ['num_ordem', 'Nº Ordem'], ['especialidade', 'Especialidade'],
       ['email', 'Email'], ['telefone', 'Telefone'], ['processos_total', 'Nº Processos'],
     ],
-    load: async (user) => (await listagensRepository.medicosComVolume(user.empresa_id || null)).map(mapMedico),
+    load: async () => (await listagensRepository.medicosParaPesquisa()).map(mapMedico),
   },
   kits: {
     label: 'Kits',
@@ -415,7 +495,11 @@ const getConfig = (listing) => {
 const applySearch = (rows, q, fields) => {
   const needle = norm(q);
   if (!needle) return rows;
-  return rows.filter((r) => fields.some((f) => norm(r[f]).includes(needle)));
+  const stripped = stripMedicoTitlePrefix(needle);
+  const needles = stripped !== needle ? [needle, stripped] : [needle];
+  return rows.filter((r) =>
+    needles.some((n) => n && fields.some((f) => norm(r[f]).includes(n))),
+  );
 };
 
 const applyFilters = (rows, query, cfg) => {
@@ -523,55 +607,118 @@ exports.search = async (q, user = {}) => {
   const needle = norm(q);
   if (!needle || needle.length < 2) return { grupos: [] };
 
-  const top = (arr) => arr.slice(0, 6);
+  const category = resolveSearchCategory(needle);
+  const limit = (arr, max = SEARCH_DEFAULT_LIMIT) => sliceResults(arr, max);
+  const browse = (arr) => sliceResults(arr, SEARCH_BROWSE_LIMIT);
 
-  const [processos, pacientes, medicos, kits, lotes] = await Promise.all([
+  const [processos, pacientes, medicosRaw, kits, lotes] = await Promise.all([
     LISTINGS.processos.load(user),
     LISTINGS.pacientes.load(user),
-    LISTINGS.medicos.load(user),
+    listagensRepository.medicosParaPesquisa(),
     LISTINGS.kits.load(user),
     LISTINGS.lotes.load(user),
   ]);
-
-  const matchProc = top(processos.filter((p) =>
-    norm(p.numero).includes(needle) || norm(p.paciente).includes(needle) ||
-    norm(p.medico).includes(needle) || norm(p.kit).includes(needle) || norm(p.teste).includes(needle)));
-  const resultados = top(processos.filter((p) => p.data_resultado &&
-    (norm(p.numero).includes(needle) || norm(p.paciente).includes(needle))));
-  const matchPac = top(pacientes.filter((p) => norm(p.nome).includes(needle) || norm(p.nif).includes(needle)));
-  const matchMed = top(medicos.filter((m) => norm(m.nome).includes(needle) || norm(m.num_ordem).includes(needle)));
-  const matchKit = top(kits.filter((k) => norm(k.codigo).includes(needle) || norm(k.lote).includes(needle)));
-  const matchLote = top(lotes.filter((l) => norm(l.codigo).includes(needle) || norm(l.fornecedor).includes(needle)));
+  const medicos = medicosRaw.map(mapMedico);
 
   const grupos = [];
   const pushGroup = (tipo, label, items, toResult) => {
-    if (items.length) grupos.push({ tipo, label, itens: items.map(toResult) });
+    if (items.length) {
+      grupos.push({
+        tipo,
+        label: items.length > SEARCH_DEFAULT_LIMIT ? `${label} (${items.length})` : label,
+        itens: items.map(toResult),
+      });
+    }
   };
 
-  pushGroup('processo', 'Processos', matchProc, (p) => ({
-    id: p.id, label: p.numero || 'Processo', sublabel: `${p.paciente} · ${p.estado}`,
-    target: { listing: 'processos', module: 'processos', id: p.id },
-  }));
-  pushGroup('resultado', 'Resultados', resultados, (p) => ({
-    id: p.id, label: p.numero || 'Resultado', sublabel: `${p.paciente} · ${toDate(p.data_resultado)}`,
-    target: { listing: 'resultados', module: 'processos', id: p.id },
-  }));
-  pushGroup('paciente', 'Pacientes', matchPac, (p) => ({
-    id: p.id, label: p.nome, sublabel: p.nif ? `NIF ${p.nif}` : `${p.processos_total} processos`,
-    target: { listing: 'pacientes', module: 'processos', id: p.id, paciente_id: p.id },
-  }));
-  pushGroup('medico', 'Medicos', matchMed, (m) => ({
-    id: m.id, label: m.nome, sublabel: m.especialidade || (m.num_ordem ? `Ordem ${m.num_ordem}` : ''),
-    target: { listing: 'medicos', module: 'processos', id: m.id },
-  }));
-  pushGroup('kit', 'Kits', matchKit, (k) => ({
-    id: k.id, label: k.codigo, sublabel: `${k.tipo || ''} · ${k.estado}`,
-    target: { listing: 'kits', module: 'stocks', id: k.id, trace: 'kit' },
-  }));
-  pushGroup('lote', 'Lotes', matchLote, (l) => ({
-    id: l.id, label: l.codigo, sublabel: l.fornecedor || `${l.kits_total} kits`,
-    target: { listing: 'lotes', module: 'stocks', id: l.id, trace: 'lote' },
-  }));
+  const isProcessoLaboratorio = (estado) => estado !== 'Agendado' && estado !== 'Kit Reservado';
+  const processoAtivoPorPaciente = new Map();
+  for (const p of processos) {
+    if (p.estado === 'Cancelado' || !p.paciente_id || !isProcessoLaboratorio(p.estado)) continue;
+    if (!processoAtivoPorPaciente.has(p.paciente_id)) {
+      processoAtivoPorPaciente.set(p.paciente_id, p.id);
+    }
+  }
+
+  const mappers = {
+    processo: (p) => ({
+      id: p.id, label: p.numero || 'Processo', sublabel: `${p.paciente} · ${p.estado}`,
+      target: { listing: 'processos', module: 'processos', id: p.id },
+    }),
+    resultado: (p) => ({
+      id: p.id, label: p.numero || 'Resultado', sublabel: `${p.paciente} · ${toDate(p.data_resultado)}`,
+      target: { listing: 'resultados', module: 'processos', id: p.id },
+    }),
+    paciente: (p) => {
+      const processoId = processoAtivoPorPaciente.get(p.id) || null;
+      return {
+        id: p.id,
+        label: p.nome,
+        sublabel: p.nif ? `NIF ${p.nif}` : `${p.processos_total} processos`,
+        target: {
+          listing: 'pacientes',
+          module: processoId ? 'processos' : 'contactos',
+          id: processoId || p.id,
+          paciente_id: p.id,
+          ...(processoId ? { processo_id: processoId } : {}),
+        },
+      };
+    },
+    medico: (m) => ({
+      id: m.id, label: m.nome_completo || m.nome, sublabel: m.especialidade || (m.num_ordem ? `Ordem ${m.num_ordem}` : ''),
+      target: { listing: 'medicos', module: 'processos', id: m.id },
+    }),
+    kit: (k) => ({
+      id: k.id, label: k.codigo, sublabel: `${k.tipo || ''} · ${k.estado}`,
+      target: { listing: 'kits', module: 'stocks', id: k.id, trace: 'kit' },
+    }),
+    lote: (l) => ({
+      id: l.id, label: l.codigo, sublabel: l.fornecedor || `${l.kits_total} kits`,
+      target: { listing: 'lotes', module: 'stocks', id: l.id, trace: 'lote' },
+    }),
+  };
+
+  if (category === 'pacientes') {
+    pushGroup('paciente', 'Pacientes', browse(pacientes), mappers.paciente);
+    return { grupos, category };
+  }
+  if (category === 'medicos') {
+    pushGroup('medico', 'Medicos', browse(medicos), mappers.medico);
+    return { grupos, category };
+  }
+  if (category === 'processos') {
+    pushGroup('processo', 'Processos', browse(processos), mappers.processo);
+    return { grupos, category };
+  }
+  if (category === 'resultados') {
+    pushGroup('resultado', 'Resultados', browse(processos.filter((p) => p.data_resultado)), mappers.resultado);
+    return { grupos, category };
+  }
+  if (category === 'kits') {
+    pushGroup('kit', 'Kits', browse(kits), mappers.kit);
+    return { grupos, category };
+  }
+  if (category === 'lotes') {
+    pushGroup('lote', 'Lotes', browse(lotes), mappers.lote);
+    return { grupos, category };
+  }
+
+  const matchProc = limit(processos.filter((p) =>
+    norm(p.numero).includes(needle) || norm(p.paciente).includes(needle) ||
+    norm(p.medico).includes(needle) || norm(p.kit).includes(needle) || norm(p.teste).includes(needle)));
+  const resultados = limit(processos.filter((p) => p.data_resultado &&
+    (norm(p.numero).includes(needle) || norm(p.paciente).includes(needle))));
+  const matchPac = limit(pacientes.filter((p) => norm(p.nome).includes(needle) || norm(p.nif).includes(needle)));
+  const matchMed = limit(medicos.filter((m) => medicoMatchesSearch(m, needle)));
+  const matchKit = limit(kits.filter((k) => norm(k.codigo).includes(needle) || norm(k.lote).includes(needle)));
+  const matchLote = limit(lotes.filter((l) => norm(l.codigo).includes(needle) || norm(l.fornecedor).includes(needle)));
+
+  pushGroup('processo', 'Processos', matchProc, mappers.processo);
+  pushGroup('resultado', 'Resultados', resultados, mappers.resultado);
+  pushGroup('paciente', 'Pacientes', matchPac, mappers.paciente);
+  pushGroup('medico', 'Medicos', matchMed, mappers.medico);
+  pushGroup('kit', 'Kits', matchKit, mappers.kit);
+  pushGroup('lote', 'Lotes', matchLote, mappers.lote);
 
   return { grupos };
 };

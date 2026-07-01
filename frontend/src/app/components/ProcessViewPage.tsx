@@ -1,23 +1,38 @@
-import { useNavigate, useParams } from 'react-router';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { ProcessDetail } from './ProcessDetail';
+import { ContactToProcessoNotice } from './shared/ContactToProcessoNotice';
+import { isContactToProcessoRedirect } from '../../lib/contact-processo-redirect';
+import { deleteTargetLabel } from '../../lib/confirm-delete';
+import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 
 export function ProcessViewPage() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  const confirmDelete = useConfirmDelete();
   const { processos, deleteProcesso } = useData();
   const { hasPermission } = useAuth();
   const canUpdate = hasPermission('processos', 'update');
   const canDelete = hasPermission('processos', 'delete');
+  const [showContactNotice, setShowContactNotice] = useState(() =>
+    isContactToProcessoRedirect(location.state),
+  );
+
+  useEffect(() => {
+    if (!isContactToProcessoRedirect(location.state)) return;
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   const processo = id ? processos.find((p) => p.id === id) : undefined;
 
   const handleDelete = async () => {
     if (!processo || !canDelete) return;
-    if (!confirm(`Eliminar o processo ${processo.numero}?`)) return;
+    if (!(await confirmDelete(deleteTargetLabel('o processo', processo.numero)))) return;
     try {
       await deleteProcesso(processo.id);
       toast.success('Processo eliminado.');
@@ -49,6 +64,11 @@ export function ProcessViewPage() {
       onDelete={() => { void handleDelete(); }}
       canUpdate={canUpdate}
       canDelete={canDelete}
+      topNotice={
+        showContactNotice ? (
+          <ContactToProcessoNotice onDismiss={() => setShowContactNotice(false)} />
+        ) : undefined
+      }
     />
   );
 }

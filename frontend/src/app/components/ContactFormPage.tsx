@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import {
-  Save, User, Phone, MapPin, Baby, Syringe, Receipt, StickyNote, Paperclip,
+  Save, User, MapPin, Baby, Syringe, Receipt, StickyNote, Paperclip,
   AlertTriangle, CheckCircle2, Package, X, Loader2, Ban,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { apiRequest } from '../../lib/api';
 import { getAuthToken } from '../../lib/api-processos';
+import { navigateToProcessoFromContact } from '../../lib/contact-processo-redirect';
 import { buildContactClinicalPayload, buildContactPosConversao, contactTemProcessoAtivo,
   CONTACTO_ESTADO_LABEL, findProcessoDoContacto, isProcessoLaboratorio,
 } from '../../lib/contactos';
@@ -27,15 +28,17 @@ import {
 import { extractFaturacaoFromContact, mergeFaturacaoIntoContact } from '../../lib/faturacao';
 import { filterMotivosPorContexto } from '../../lib/motivos-anulacao';
 import { ApiPaciente, mapApiPacienteToContact } from '../../lib/pacientes';
-import { Section, AnexosTab } from './ContactDetail';
+import { AnexosTab, DetailPanel, DetailSection, DetailDivider } from './ContactDetail';
 import { GestacaoFields } from './GestacaoFields';
 import { ProcessFaturacaoFields } from './shared/ProcessFaturacaoFields';
 import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
-import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
+import { FormAvatarInitials, FormField, FormInlineAlert, FormInput, FormNumberInput, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton, FormRadixSelect, FormSectionNote, FormTabContent, FormTextarea } from './shared/FormPageChrome';
+import { FormDatePicker } from './shared/FormDatePicker';
 import { AppModal, ModalAlert } from './shared/AppModal';
 import { Medico, medicosApi } from '../../lib/api-medicos';
 import { parseGestacaoRegistoInput } from '../../lib/gestacao';
 import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
+import { CONTROL, FORM } from '../../lib/design-tokens';
 
 type TabId = 'identificacao' | 'gravidez' | 'colheita' | 'faturacao' | 'notas' | 'anexos';
 
@@ -48,8 +51,7 @@ const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: 'anexos', label: 'Anexos', icon: Paperclip },
 ];
 
-const inputClass = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500';
-const labelClass = 'block mb-1.5 text-gray-600 dark:text-gray-400';
+const inputClass = CONTROL.input;
 
 const emptyForm: Omit<Contact, 'id' | 'created_at'> = {
   nome: '', data_nascimento: '', genero: 'Feminino', nif: '', telemovel: '', email: '', morada: '',
@@ -235,13 +237,12 @@ export function ContactFormPage() {
     setTab('identificacao');
   }, [id]);
 
-  // Contacto ja convertido em processo → redirecionar para Processos
+  // Contacto ja convertido em processo → redirecionar para ficha de consulta
   useEffect(() => {
     if (!id || !contactTemProcessoAtivo(id, processos)) return;
     const proc = findProcessoDoContacto(id, processos);
     if (!proc) return;
-    toast.info('Este registo ja e um processo. A redirecionar…');
-    navigate(`/processos/${proc.id}/editar`, { replace: true });
+    navigateToProcessoFromContact(navigate, proc.id, { replace: true });
   }, [id, processos, navigate]);
 
   // Carregar contacto em modo edição (uma vez por id — evita apagar campos ao refrescar a lista)
@@ -548,9 +549,9 @@ export function ContactFormPage() {
           onTabChange={setTab}
         />
 
-        <div className="max-w-3xl">
+        <FormTabContent>
           {anulacao.anulado ? (
-            <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200">
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-900 dark:text-rose-200/90">
               <Ban className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 600 }}>{t('pages.contacts.form.voidedBanner')}</p>
@@ -564,362 +565,437 @@ export function ContactFormPage() {
               onGoToFaturacao={() => setTab('faturacao')}
             />
           )}
-        </div>
+        </FormTabContent>
 
         {tab === 'identificacao' && (
-          <div className="space-y-4 max-w-3xl">
-            <Section title="Informação Pessoal" icon={User}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="sm:col-span-2 md:col-span-3">
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Nome completo <span className="text-red-500">*</span></label>
-                  <input className={inputClass} value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Nome completo do paciente" style={{ fontSize: '14px' }} />
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Dados do contacto" icon={User}>
+                <div className={FORM.fieldRow}>
+                  <FormField label="Nome completo" required width="2xl">
+                    <FormInput
+                      value={form.nome}
+                      onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                      placeholder="Nome completo do paciente"
+                    />
+                  </FormField>
+                  <FormField label="Data de nascimento" width="sm">
+                    <FormDatePicker
+                      value={form.data_nascimento}
+                      onChange={(v) => setForm({ ...form, data_nascimento: v })}
+                      placeholder="dd/mm/aaaa"
+                    />
+                  </FormField>
+                  <FormField label="Género" width="md">
+                    <FormRadixSelect
+                      value={form.genero}
+                      onChange={(v) => setForm({ ...form, genero: v })}
+                      options={[
+                        { value: 'Feminino', label: 'Feminino' },
+                        { value: 'Masculino', label: 'Masculino' },
+                      ]}
+                    />
+                  </FormField>
+                  <FormField label="NIF" width="md">
+                    <FormInput
+                      className="font-mono tabular-nums"
+                      value={form.nif}
+                      onChange={(e) => setForm({ ...form, nif: e.target.value })}
+                      placeholder="000000000"
+                    />
+                  </FormField>
+                  <FormField label="Telemóvel" required width="lg">
+                    <FormInput
+                      value={form.telemovel}
+                      onChange={(e) => setForm({ ...form, telemovel: e.target.value })}
+                      placeholder="+351 900 000 000"
+                    />
+                  </FormField>
+                  <FormField label="Email" width="xl">
+                    <FormInput
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      placeholder="email@exemplo.com"
+                    />
+                  </FormField>
+                  <FormField label="Altura (cm)" width="xs">
+                    <FormNumberInput
+                      value={form.altura}
+                      onChange={(e) => setForm({ ...form, altura: e.target.value.replace(/[^\d.,]/g, '') })}
+                      placeholder="165"
+                    />
+                  </FormField>
+                  <FormField label="Peso (kg)" width="xs">
+                    <FormNumberInput
+                      value={form.peso}
+                      onChange={(e) => setForm({ ...form, peso: e.target.value.replace(/[^\d.,]/g, '') })}
+                      placeholder="65"
+                    />
+                  </FormField>
                 </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Data de Nascimento</label>
-                  <input type="date" className={inputClass} value={form.data_nascimento} onChange={(e) => setForm({ ...form, data_nascimento: e.target.value })} style={{ fontSize: '14px' }} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Género</label>
-                  <select className={inputClass} value={form.genero} onChange={(e) => setForm({ ...form, genero: e.target.value })} style={{ fontSize: '14px' }}>
-                    <option value="Feminino">Feminino</option>
-                    <option value="Masculino">Masculino</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>NIF</label>
-                  <input className={inputClass} value={form.nif} onChange={(e) => setForm({ ...form, nif: e.target.value })} placeholder="000000000" style={{ fontSize: '14px', fontFamily: 'monospace' }} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Altura (cm)</label>
-                  <input type="number" step="0.01" className={inputClass} value={form.altura} onChange={(e) => setForm({ ...form, altura: e.target.value })} placeholder="165" style={{ fontSize: '14px' }} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Peso (kg)</label>
-                  <input type="number" step="0.01" className={inputClass} value={form.peso} onChange={(e) => setForm({ ...form, peso: e.target.value })} placeholder="65" style={{ fontSize: '14px' }} />
-                </div>
-              </div>
-            </Section>
-            <Section title="Contacto" icon={Phone}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Telemóvel <span className="text-red-500">*</span></label>
-                  <input className={inputClass} value={form.telemovel} onChange={(e) => setForm({ ...form, telemovel: e.target.value })} placeholder="+351 900 000 000" style={{ fontSize: '14px' }} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Email</label>
-                  <input type="email" className={inputClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@exemplo.com" style={{ fontSize: '14px' }} />
-                </div>
-              </div>
-            </Section>
-            <Section title="Morada" icon={MapPin}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="sm:col-span-2 md:col-span-3">
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Morada</label>
-                  <input className={inputClass} value={form.morada} onChange={(e) => setForm({ ...form, morada: e.target.value })} placeholder="Rua, número, andar" style={{ fontSize: '14px' }} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Código Postal</label>
-                  <input className={inputClass} value={form.codigo_postal} onChange={(e) => handleCodigoPostalChange(e.target.value)} onBlur={(e) => void autofillFromCp(e.target.value)} placeholder="0000-000" style={{ fontSize: '14px' }} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Cidade</label>
-                  <input className={inputClass} value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} placeholder="Cidade" style={{ fontSize: '14px' }} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Distrito</label>
-                  <input className={inputClass} value={form.distrito} onChange={(e) => setForm({ ...form, distrito: e.target.value })} placeholder="Distrito" style={{ fontSize: '14px' }} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>País</label>
-                  <input className={inputClass} value={form.pais} onChange={(e) => setForm({ ...form, pais: e.target.value })} placeholder="Portugal" style={{ fontSize: '14px' }} />
-                </div>
-              </div>
-              <p className="text-gray-400 dark:text-gray-500 mt-2" style={{ fontSize: '11px' }}>Distrito/Cidade podem ser preenchidos automaticamente a partir do Código Postal.</p>
-            </Section>
+              </DetailSection>
 
-            {savedContactId && (
-            <Section title={t('pages.contacts.form.voided')} icon={Ban}>
-              <div className="space-y-3">
-                <label className="inline-flex items-center gap-2.5 text-gray-700 dark:text-gray-300 cursor-pointer" style={{ fontSize: '14px' }}>
-                  <input
-                    type="checkbox"
-                    checked={anulacao.anulado}
-                    onChange={(e) => setAnulacao({
-                      anulado: e.target.checked,
-                      motivo_anulacao_id: e.target.checked ? anulacao.motivo_anulacao_id : '',
-                    })}
-                    disabled={!canEditFaturacao || temProcessoAtivo}
-                    className={CHECKBOX_INPUT_CLASS}
-                  />
-                  <span style={{ fontWeight: 500 }}>{t('pages.contacts.form.voided')}</span>
-                </label>
-                {temProcessoAtivo && (
-                  <p className="text-amber-600 dark:text-amber-400 text-xs">
-                    Este contacto tem um processo activo. Cancele o processo em Processos para anular aqui ou use os motivos de processo.
-                  </p>
-                )}
+              <DetailDivider />
 
-                {anulacao.anulado && (
-                  <div className="pl-6 max-w-md">
-                    <label className={labelClass} style={{ fontSize: '13px' }}>
-                      {t('pages.contacts.form.voidReason')} <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      className={inputClass}
-                      value={anulacao.motivo_anulacao_id}
-                      onChange={(e) => setAnulacao({ ...anulacao, motivo_anulacao_id: e.target.value })}
-                      disabled={!canEditFaturacao}
-                      style={{ fontSize: '14px' }}
-                    >
-                      <option value="">{t('pages.contacts.form.selectVoidReason')}</option>
-                      {motivosAtivos.map((m) => (
-                        <option key={m.id} value={m.id}>{m.nome}</option>
-                      ))}
-                    </select>
-                    {motivosAtivos.length === 0 && (
-                      <p className="text-amber-600 dark:text-amber-400 mt-1" style={{ fontSize: '11px' }}>
-                        Sem motivos configurados. Adicione em Administração → Motivos de anulação.
-                      </p>
-                    )}
-                    <p className="text-gray-500 dark:text-gray-400 mt-2" style={{ fontSize: '12px' }}>
-                      {t('pages.contacts.form.voidHint')}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </Section>
-            )}
-          </div>
+              <DetailSection title="Morada" icon={MapPin}>
+                <div className={FORM.fieldRow}>
+                  <FormField label="Morada" width="3xl">
+                    <FormInput
+                      value={form.morada}
+                      onChange={(e) => setForm({ ...form, morada: e.target.value })}
+                      placeholder="Rua, número, andar"
+                    />
+                  </FormField>
+                  <FormField label="Código postal" width="sm">
+                    <FormInput
+                      className="font-mono tabular-nums"
+                      value={form.codigo_postal}
+                      onChange={(e) => handleCodigoPostalChange(e.target.value)}
+                      onBlur={(e) => void autofillFromCp(e.target.value)}
+                      placeholder="0000-000"
+                    />
+                  </FormField>
+                  <FormField label="Cidade" width="lg">
+                    <FormInput
+                      value={form.cidade}
+                      onChange={(e) => setForm({ ...form, cidade: e.target.value })}
+                      placeholder="Cidade"
+                    />
+                  </FormField>
+                  <FormField label="Distrito" width="lg">
+                    <FormInput
+                      value={form.distrito}
+                      onChange={(e) => setForm({ ...form, distrito: e.target.value })}
+                      placeholder="Distrito"
+                    />
+                  </FormField>
+                  <FormField label="País" width="md">
+                    <FormInput
+                      value={form.pais}
+                      onChange={(e) => setForm({ ...form, pais: e.target.value })}
+                      placeholder="Portugal"
+                    />
+                  </FormField>
+                </div>
+                <p className={`${FORM.hint} mt-3`}>
+                  Distrito e cidade podem ser preenchidos automaticamente a partir do código postal.
+                </p>
+              </DetailSection>
+
+              {savedContactId && (
+                <>
+                  <DetailDivider />
+                  <DetailSection title={t('pages.contacts.form.voided')} icon={Ban}>
+                    <div className="space-y-3">
+                      <label className={`${FORM.checkboxRow} inline-flex`}>
+                        <input
+                          type="checkbox"
+                          checked={anulacao.anulado}
+                          onChange={(e) => setAnulacao({
+                            anulado: e.target.checked,
+                            motivo_anulacao_id: e.target.checked ? anulacao.motivo_anulacao_id : '',
+                          })}
+                          disabled={!canEditFaturacao || temProcessoAtivo}
+                          className={CHECKBOX_INPUT_CLASS}
+                        />
+                        <span className="font-medium">{t('pages.contacts.form.voided')}</span>
+                      </label>
+                      {temProcessoAtivo && (
+                        <p className="text-amber-600 dark:text-amber-400 text-xs">
+                          Este contacto tem um processo activo. Cancele o processo em Processos para anular aqui ou use os motivos de processo.
+                        </p>
+                      )}
+
+                      {anulacao.anulado && (
+                        <div className="max-w-md">
+                          <FormField label={t('pages.contacts.form.voidReason')} required width="full">
+                            <FormRadixSelect
+                              value={anulacao.motivo_anulacao_id}
+                              onChange={(v) => setAnulacao({ ...anulacao, motivo_anulacao_id: v })}
+                              disabled={!canEditFaturacao}
+                              placeholder={t('pages.contacts.form.selectVoidReason')}
+                              options={motivosAtivos.map((m) => ({ value: m.id, label: m.nome }))}
+                            />
+                          </FormField>
+                          {motivosAtivos.length === 0 && (
+                            <p className="text-amber-600 dark:text-amber-400 mt-1 text-xs">
+                              Sem motivos configurados. Adicione em Administração → Motivos de anulação.
+                            </p>
+                          )}
+                          <p className="text-slate-500 dark:text-slate-400 mt-2 text-xs">
+                            {t('pages.contacts.form.voidHint')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </DetailSection>
+                </>
+              )}
+            </DetailPanel>
+          </FormTabContent>
         )}
 
         {tab === 'gravidez' && (
-          <div className="space-y-4 max-w-3xl">
-            <Section title="Gravidez" icon={Baby}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Médico</label>
-                  {medicoFieldLocked ? (
-                    <input
-                      type="text"
-                      readOnly
-                      disabled
-                      className={`${inputClass} opacity-80 cursor-not-allowed bg-gray-50 dark:bg-gray-800`}
-                      value={medicoLogado?.nome || currentUser?.nome || ''}
-                      style={{ fontSize: '14px' }}
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Acompanhamento clínico" icon={User}>
+                <div className={FORM.fieldRow}>
+                  <FormField label="Médico" width="lg">
+                    {medicoFieldLocked ? (
+                      <FormInput
+                        readOnly
+                        disabled
+                        value={medicoLogado?.nome || currentUser?.nome || ''}
+                      />
+                    ) : (
+                      <FormRadixSelect
+                        value={gravidez.medico_id}
+                        onChange={(v) => setGravidez({ ...gravidez, medico_id: v, entidade_id: '' })}
+                        placeholder="Selecione o médico…"
+                        options={medicos.filter((m) => m.ativo !== false).map((m) => ({
+                          value: m.utilizador_id,
+                          label: m.nome,
+                        }))}
+                      />
+                    )}
+                  </FormField>
+                  <FormField
+                    label="Onde é seguida"
+                    width="3xl"
+                    hint={gravidez.medico_id && entidadesDoMedico.length === 0
+                      ? 'Este médico não tem entidades associadas. Configure em Administração → Médicos.'
+                      : undefined}
+                  >
+                    <FormRadixSelect
+                      value={gravidez.entidade_id}
+                      onChange={(v) => setGravidez({ ...gravidez, entidade_id: v })}
+                      disabled={!gravidez.medico_id}
+                      placeholder={
+                        gravidez.medico_id ? 'Selecione a entidade…' : 'Selecione primeiro o médico…'
+                      }
+                      options={entidadesDoMedico.map((local) => ({
+                        value: local.entidade_id,
+                        label: `${local.entidade_nome}${local.entidade_cidade ? ` — ${local.entidade_cidade}` : ''}`,
+                      }))}
                     />
-                  ) : (
-                    <select
-                      className={inputClass}
-                      value={gravidez.medico_id}
-                      onChange={(e) => setGravidez({ ...gravidez, medico_id: e.target.value, entidade_id: '' })}
-                      style={{ fontSize: '14px' }}
-                    >
-                      <option value="">Selecione...</option>
-                      {medicos.filter((m) => m.ativo !== false).map((m) => (
-                        <option key={m.utilizador_id} value={m.utilizador_id}>{m.nome}</option>
-                      ))}
-                    </select>
-                  )}
+                  </FormField>
                 </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Onde é seguida</label>
-                  <select
-                    className={`${inputClass} ${!gravidez.medico_id ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    value={gravidez.entidade_id}
-                    onChange={(e) => setGravidez({ ...gravidez, entidade_id: e.target.value })}
-                    disabled={!gravidez.medico_id}
-                    style={{ fontSize: '14px' }}
+              </DetailSection>
+
+              <DetailDivider />
+
+              <DetailSection title="Teste e pacote" icon={Package}>
+                <div className={FORM.fieldRow}>
+                  <FormField label="Teste" width="lg">
+                    <FormRadixSelect
+                      value={gravidez.teste_pai_id}
+                      onChange={(v) => setGravidez({ ...gravidez, teste_pai_id: v, teste_id: '' })}
+                      placeholder="Selecione o teste…"
+                      options={testesComSubTestes.map((t) => ({ value: t.id, label: t.nome }))}
+                    />
+                  </FormField>
+                  <FormField
+                    label={t('pages.contacts.form.pack')}
+                    width="lg"
+                    hint={t('pages.contacts.form.packHint')}
                   >
-                    <option value="">
-                      {gravidez.medico_id ? 'Selecione a entidade...' : 'Selecione primeiro o médico...'}
-                    </option>
-                    {entidadesDoMedico.map((local) => (
-                      <option key={local.entidade_id} value={local.entidade_id}>
-                        {local.entidade_nome}{local.entidade_cidade ? ` — ${local.entidade_cidade}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {gravidez.medico_id && entidadesDoMedico.length === 0 && (
-                    <p className="text-amber-600 dark:text-amber-400 mt-1" style={{ fontSize: '11px' }}>
-                      Este médico não tem entidades associadas. Configure em Administração → Médicos.
-                    </p>
-                  )}
+                    <FormRadixSelect
+                      value={gravidez.teste_id}
+                      onChange={(v) => setGravidez({ ...gravidez, teste_id: v })}
+                      disabled={!gravidez.teste_pai_id}
+                      placeholder={
+                        gravidez.teste_pai_id ? t('pages.contacts.form.selectPack') : t('pages.contacts.form.selectTestFirst')
+                      }
+                      options={subTestesDoPai.map((st) => ({ value: st.id, label: st.nome }))}
+                    />
+                  </FormField>
+                  <FormField label="Tipo de gravidez" width="md">
+                    <FormRadixSelect
+                      value={gravidez.tipo_gravidez}
+                      onChange={(v) => setGravidez({ ...gravidez, tipo_gravidez: v })}
+                      options={[
+                        { value: 'Singular', label: 'Singular' },
+                        { value: 'Gemelar', label: 'Gemelar' },
+                      ]}
+                    />
+                  </FormField>
                 </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Teste</label>
-                  <select
-                    className={inputClass}
-                    value={gravidez.teste_pai_id}
-                    onChange={(e) => setGravidez({ ...gravidez, teste_pai_id: e.target.value, teste_id: '' })}
-                    style={{ fontSize: '14px' }}
-                  >
-                    <option value="">Selecione...</option>
-                    {testesComSubTestes.map((t) => (
-                      <option key={t.id} value={t.id}>{t.nome}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>{t('pages.contacts.form.pack')}</label>
-                  <select
-                    className={`${inputClass} ${!gravidez.teste_pai_id ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    value={gravidez.teste_id}
-                    onChange={(e) => setGravidez({ ...gravidez, teste_id: e.target.value })}
-                    disabled={!gravidez.teste_pai_id}
-                    style={{ fontSize: '14px' }}
-                  >
-                    <option value="">
-                      {gravidez.teste_pai_id ? t('pages.contacts.form.selectPack') : t('pages.contacts.form.selectTestFirst')}
-                    </option>
-                    {subTestesDoPai.map((st) => (
-                      <option key={st.id} value={st.id}>{st.nome}</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {t('pages.contacts.form.packHint')}
-                  </p>
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Tipo de gravidez</label>
-                  <select className={inputClass} value={gravidez.tipo_gravidez} onChange={(e) => setGravidez({ ...gravidez, tipo_gravidez: e.target.value })} style={{ fontSize: '14px' }}>
-                    <option value="Singular">Singular</option>
-                    <option value="Gemelar">Gemelar</option>
-                  </select>
-                </div>
+              </DetailSection>
+
+              <DetailDivider />
+
+              <DetailSection title="Gestação" icon={Baby}>
                 <GestacaoFields
                   semanasRegisto={gravidez.gestacao_semanas_registo}
                   diasRegisto={gravidez.gestacao_dias_registo}
                   dataRegisto={gestacaoDataRegisto}
                   onSemanasChange={(value) => setGravidez({ ...gravidez, gestacao_semanas_registo: value })}
                   onDiasChange={(value) => setGravidez({ ...gravidez, gestacao_dias_registo: value })}
-                  labelClass={labelClass}
                   inputClass={inputClass}
                 />
+              </DetailSection>
+
+              <div className="px-5 pb-5 sm:px-6">
+                <FormSectionNote>
+                  O médico e o teste são usados uma única vez: ao associar o kit na colheita, o contacto passa a processo e deixa de aparecer em Contactos.
+                </FormSectionNote>
               </div>
-              <p className="text-gray-400 dark:text-gray-500 mt-3" style={{ fontSize: '12px' }}>
-                O Médico e o Teste são usados uma única vez: ao associar o kit na colheita, o contacto passa a processo e deixa de aparecer em Contactos.
-              </p>
-            </Section>
-          </div>
+            </DetailPanel>
+          </FormTabContent>
         )}
 
         {tab === 'colheita' && (
-          <div className="space-y-4 max-w-3xl">
-            <Section title="Local de Colheita" icon={Syringe}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Posto de Colheita <span className="text-red-500">*</span></label>
-                  <select
-                    className={`${inputClass} ${!contactoTemMoradaParaColheita ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    value={colheita.posto_id}
-                    onChange={(e) => setColheita({ ...colheita, posto_id: e.target.value })}
-                    disabled={!contactoTemMoradaParaColheita}
-                    style={{ fontSize: '14px' }}
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Agendamento" icon={Syringe}>
+                <div className={FORM.fieldRow}>
+                  <FormField
+                    label="Posto de colheita"
+                    required
+                    width="3xl"
+                    hint={
+                      !contactoTemMoradaParaColheita
+                        ? 'Indique a morada e o código postal no separador Identificação para ver postos próximos.'
+                        : contactoTemMoradaParaColheita && postosProximos.length === 0
+                          ? 'Não existem postos próximos desta morada. Configure postos em Administração → Laboratórios.'
+                          : 'Postos do mesmo distrito, cidade ou código postal próximo — do mais perto ao mais longe.'
+                    }
                   >
-                    <option value="">
-                      {!form.morada?.trim()
-                        ? 'Preencha primeiro a morada...'
-                        : !hasValidContactPostalCode(form.codigo_postal)
-                          ? 'Preencha primeiro o código postal...'
-                          : 'Selecione o posto...'}
-                    </option>
-                    {postosProximos.map(({ posto, motivo }) => (
-                      <option key={posto.id} value={posto.id}>
-                        {posto.nome}
-                        {posto.cidade ? ` — ${posto.cidade}` : ''}
-                        {posto.codigo_postal ? ` (${posto.codigo_postal})` : ''}
-                        {` · ${formatPostoProximidadeMotivo(motivo)}`}
-                      </option>
-                    ))}
-                  </select>
-                  {!contactoTemMoradaParaColheita && (
-                    <p className="text-gray-500 dark:text-gray-400 mt-1" style={{ fontSize: '11px' }}>
-                      Indique a morada e o código postal no separador Identificação para ver postos de colheita próximos.
-                    </p>
-                  )}
-                  {contactoTemMoradaParaColheita && (
-                    <p className="text-gray-500 dark:text-gray-400 mt-1" style={{ fontSize: '11px' }}>
-                      São listados postos do mesmo distrito, da mesma cidade ou com código postal próximo — ordenados do mais perto ao mais longe.
-                    </p>
-                  )}
-                  {contactoTemMoradaParaColheita && postosProximos.length === 0 && (
-                    <p className="text-amber-600 dark:text-amber-400 mt-1" style={{ fontSize: '11px' }}>
-                      Não existem postos de colheita próximos desta morada. Configure postos com código postal em Administração → Laboratórios.
-                    </p>
-                  )}
+                    <FormRadixSelect
+                      value={colheita.posto_id}
+                      onChange={(v) => setColheita({ ...colheita, posto_id: v })}
+                      disabled={!contactoTemMoradaParaColheita}
+                      placeholder={
+                        !form.morada?.trim()
+                          ? 'Preencha primeiro a morada…'
+                          : !hasValidContactPostalCode(form.codigo_postal)
+                            ? 'Preencha primeiro o código postal…'
+                            : 'Selecione o posto…'
+                      }
+                      options={postosProximos.map(({ posto, motivo }) => ({
+                        value: posto.id,
+                        label: [
+                          posto.nome,
+                          posto.cidade ? ` — ${posto.cidade}` : '',
+                          posto.codigo_postal ? ` (${posto.codigo_postal})` : '',
+                          ` · ${formatPostoProximidadeMotivo(motivo)}`,
+                        ].join(''),
+                      }))}
+                    />
+                  </FormField>
+                  <FormField label="Data prevista da colheita" required width="sm">
+                    <FormDatePicker
+                      value={colheita.data_prevista}
+                      onChange={(v) => setColheita({ ...colheita, data_prevista: v })}
+                      allowAnyDate={false}
+                      allowExistingPastDate
+                      placeholder="dd/mm/aaaa"
+                    />
+                  </FormField>
                 </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Data Prevista da Colheita <span className="text-red-500">*</span></label>
-                  <input type="date" className={inputClass} value={colheita.data_prevista} onChange={(e) => setColheita({ ...colheita, data_prevista: e.target.value })} style={{ fontSize: '14px' }} />
-                </div>
-              </div>
 
-              {/* Validação de stock */}
-              {colheita.posto_id && colheita.data_prevista && (
-                <div className="mt-3">
-                  {!gravidez.teste_id ? (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400" style={{ fontSize: '12px' }}>
-                      <AlertTriangle className="w-4 h-4" /> {t('pages.contacts.form.selectPackStock')}
-                    </div>
-                  ) : checkingStock ? (
-                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400" style={{ fontSize: '12px' }}>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> A verificar stock do posto…
-                    </div>
-                  ) : stockInfo && stockInfo.disponiveis > 0 ? (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400" style={{ fontSize: '12px' }}>
-                      <CheckCircle2 className="w-4 h-4" /> {stockInfo.disponiveis} kit(s) {kitStockLabel} disponível(eis) neste posto.
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400" style={{ fontSize: '12px' }}>
-                      <AlertTriangle className="w-4 h-4" /> Atenção: o posto {postos.find((p) => p.id === colheita.posto_id)?.nome || ''} não possui kits {kitStockLabel} para a data selecionada. O registo não é bloqueado.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Data Efetiva da Colheita</label>
-                  <input type="date" className={inputClass} value={colheita.data_efetiva} disabled={!!linked} onChange={(e) => void handleDataEfetiva(e.target.value)} style={{ fontSize: '14px' }} />
-                  <p className="text-gray-400 dark:text-gray-500 mt-1" style={{ fontSize: '11px' }}>Ao preencher, será pedida a seleção de um kit disponível do posto.</p>
-                </div>
-                {linked && (
-                  <div className="flex items-end">
-                    <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400" style={{ fontSize: '12px' }}>
-                      <Package className="w-4 h-4" /> Kit {linked.kit} associado · Processo {linked.processo} criado.
-                    </div>
+                {colheita.posto_id && colheita.data_prevista && (
+                  <div className="mt-4">
+                    {!gravidez.teste_id ? (
+                      <FormInlineAlert tone="warning">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{t('pages.contacts.form.selectPackStock')}</span>
+                      </FormInlineAlert>
+                    ) : checkingStock ? (
+                      <FormInlineAlert tone="info">
+                        <Loader2 className="w-4 h-4 shrink-0 animate-spin mt-0.5" />
+                        <span>A verificar stock do posto…</span>
+                      </FormInlineAlert>
+                    ) : stockInfo && stockInfo.disponiveis > 0 ? (
+                      <FormInlineAlert tone="success">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{stockInfo.disponiveis} kit(s) {kitStockLabel} disponível(eis) neste posto.</span>
+                      </FormInlineAlert>
+                    ) : (
+                      <FormInlineAlert tone="warning">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>
+                          Atenção: o posto {postos.find((p) => p.id === colheita.posto_id)?.nome || ''} não possui kits {kitStockLabel} para a data selecionada. O registo não é bloqueado.
+                        </span>
+                      </FormInlineAlert>
+                    )}
                   </div>
                 )}
-              </div>
-            </Section>
-          </div>
+              </DetailSection>
+
+              <DetailDivider />
+
+              <DetailSection title="Colheita efectiva" icon={Package}>
+                <div className={FORM.fieldRow}>
+                  <FormField
+                    label="Data efectiva da colheita"
+                    width="sm"
+                    hint="Ao preencher, será pedida a seleção de um kit disponível do posto."
+                  >
+                    <FormDatePicker
+                      value={colheita.data_efetiva}
+                      disabled={!!linked}
+                      onChange={(v) => void handleDataEfetiva(v)}
+                      allowAnyDate={false}
+                      allowExistingPastDate
+                      placeholder="dd/mm/aaaa"
+                    />
+                  </FormField>
+                  {linked && (
+                    <div className="w-full max-w-xl pt-6">
+                      <FormInlineAlert tone="success">
+                        <Package className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>Kit {linked.kit} associado · Processo {linked.processo} criado.</span>
+                      </FormInlineAlert>
+                    </div>
+                  )}
+                </div>
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
         )}
 
         {tab === 'faturacao' && (
-          <div className="space-y-4 max-w-3xl">
-            <Section title="Faturação" icon={Receipt}>
-              <p className="text-gray-500 dark:text-gray-400 mb-4" style={{ fontSize: '13px' }}>
-                Emita a fatura ao criar o contacto. Os dados são transferidos para o processo após a colheita.
-              </p>
-              <ProcessFaturacaoFields
-                value={contactFaturacao}
-                onChange={setContactFaturacao}
-                canUpdate={canEditFaturacao}
-              />
-            </Section>
-          </div>
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Faturação" icon={Receipt}>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
+                  Emita a fatura ao criar o contacto. Os dados são transferidos para o processo após a colheita.
+                </p>
+                <ProcessFaturacaoFields
+                  value={contactFaturacao}
+                  onChange={setContactFaturacao}
+                  canUpdate={canEditFaturacao}
+                />
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
         )}
 
         {tab === 'notas' && (
-          <div className="space-y-4 max-w-3xl">
-            <Section title="Notas" icon={StickyNote}>
-              <textarea className={inputClass} rows={6} value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Notas internas do contacto (copiadas para o processo na colheita)" style={{ fontSize: '14px' }} />
-            </Section>
-          </div>
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Notas internas" icon={StickyNote}>
+                <FormField
+                  label="Observações"
+                  width="3xl"
+                  hint="Notas internas do contacto — copiadas para o processo na colheita."
+                >
+                  <FormTextarea
+                    rows={6}
+                    value={notas}
+                    onChange={(e) => setNotas(e.target.value)}
+                    placeholder="Registe aqui informação relevante para a equipa…"
+                  />
+                </FormField>
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
         )}
 
         {tab === 'anexos' && (
-          <div className="space-y-4 max-w-3xl">
+          <FormTabContent className="space-y-4">
             {savedContactId ? (
               <AnexosTab
                 pacienteId={savedContactId}
@@ -930,11 +1006,13 @@ export function ContactFormPage() {
                 deleteAnexo={deleteAnexo}
               />
             ) : (
-              <Section title="Anexos" icon={Paperclip}>
-                <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '13px' }}>Guarde o contacto primeiro para poder adicionar anexos.</p>
-              </Section>
+              <DetailPanel>
+                <DetailSection title="Anexos" icon={Paperclip}>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Guarde o contacto primeiro para poder adicionar anexos.</p>
+                </DetailSection>
+              </DetailPanel>
             )}
-          </div>
+          </FormTabContent>
         )}
       </FormPageBody>
 

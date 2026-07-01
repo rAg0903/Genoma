@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { APP } from '../../lib/design-tokens';
 import { Outlet } from 'react-router';
+import { GlobalSearchProvider } from '../context/GlobalSearchContext';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 
@@ -7,7 +9,8 @@ export function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="h-screen flex bg-slate-100 dark:bg-slate-950 overflow-hidden" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <GlobalSearchProvider>
+    <div className={`h-screen flex overflow-hidden ${APP.root}`} style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -22,12 +25,13 @@ export function MainLayout() {
         <div className="flex-shrink-0 overflow-visible relative z-40">
           <Topbar onMenuToggle={() => setSidebarOpen(prev => !prev)} />
         </div>
-        <main className="flex-1 overflow-y-auto bg-slate-100/70 dark:bg-slate-950 relative z-0">
+        <main className={`flex-1 overflow-y-auto relative z-0 ${APP.canvas}`}>
           <div className="min-h-full px-2 md:px-3 py-3 md:py-4">
             <Outlet />
           </div>
         </main>
       </div>
     </div>
+    </GlobalSearchProvider>
   );
 }

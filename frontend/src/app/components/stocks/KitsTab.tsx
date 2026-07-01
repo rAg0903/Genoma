@@ -10,6 +10,8 @@ import { SearchField } from '../shared/PageToolbar';
 import { KIT_STATUS_STYLES } from '../../../lib/design-system';
 import { validadeEstado, VALIDADE_STYLE, formatValidadeAte } from '../../../lib/stocks';
 import { LOC_LABELS } from './StockForms';
+import { deleteTargetLabel } from '../../../lib/confirm-delete';
+import { useConfirmDelete } from '../../context/ConfirmDeleteContext';
 
 interface KitsTabProps {
   kits: Kit[];
@@ -23,10 +25,17 @@ const STATUSES = ['Disponível', 'Utilizado', 'Expirado'];
 const LOCS: Kit['localizacao'][] = ['Escritorio', 'Posto', 'Laboratorio'];
 
 export function KitsTab({ kits, canUpdate, canDelete, onEdit, onDelete }: KitsTabProps) {
+  const confirmDelete = useConfirmDelete();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [loc, setLoc] = useState('');
   const [traceKit, setTraceKit] = useState<Kit | null>(null);
+
+  const handleDeleteKit = async (k: Kit) => {
+    const label = k.codigo_barras || k.tracking || k.id;
+    if (!(await confirmDelete(deleteTargetLabel('o kit', label)))) return;
+    onDelete(k);
+  };
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -85,10 +94,10 @@ export function KitsTab({ kits, canUpdate, canDelete, onEdit, onDelete }: KitsTa
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <div className="flex items-center justify-end gap-1">
                           <button onClick={() => setTraceKit(k)} className="p-1.5 rounded-lg text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30" title="Rastrear"><Route className="w-4 h-4" /></button>
                           {canUpdate && <button onClick={() => onEdit(k)} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"><Edit className="w-4 h-4" /></button>}
-                          {canDelete && <button onClick={() => onDelete(k)} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"><Trash2 className="w-4 h-4" /></button>}
+                          {canDelete && <button onClick={() => void handleDeleteKit(k)} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"><Trash2 className="w-4 h-4" /></button>}
                         </div>
                       </td>
                     </tr>

@@ -13,11 +13,23 @@ import {
   Posto,
   Teste,
 } from '../data/types';
-import { Section } from './ContactDetail';
+import { DetailPanel, DetailSection, DetailDivider } from './ContactDetail';
 import { LaboratorioPostosPanel } from './LaboratorioPostosPanel';
-import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
+import {
+  FormAvatarInitials,
+  FormField,
+  FormInput,
+  FormPageBody,
+  FormPageHeader,
+  FormPageShell,
+  FormPrimaryButton,
+  FormSectionNote,
+  FormTabContent,
+  FormTextarea,
+} from './shared/FormPageChrome';
 import { getTestesSelecionaveis } from '../../lib/testes';
 import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
+import { FORM } from '../../lib/design-tokens';
 
 export type LocalKind = 'posto' | 'laboratorio' | 'entidade';
 
@@ -58,7 +70,6 @@ const mergeCondicoesComCatalogo = (testes: Teste[], atuais: LocalCondicaoTesteIn
 
 const inputClass =
   'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500';
-const labelClass = 'block mb-1.5 text-gray-600 dark:text-gray-400';
 
 const emptyForm = (): LocalFormState => ({
   nome: '',
@@ -440,215 +451,186 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
         )}
 
         {tab === 'identificacao' && (
-          <div className="space-y-4 max-w-4xl">
-            <Section title="Identificação" icon={User}>
-              <div className="space-y-4">
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>
-                    Nome <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    className={inputClass}
-                    value={form.nome}
-                    onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                    placeholder={config.nomePlaceholder}
-                    style={{ fontSize: '14px' }}
-                  />
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Identificação" icon={User}>
+                <div className={FORM.fieldRow}>
+                  <FormField label="Nome" required width="2xl">
+                    <FormInput
+                      value={form.nome}
+                      onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                      placeholder={config.nomePlaceholder}
+                    />
+                  </FormField>
+                  {kind === 'posto' && (
+                    <FormField label="Código" width="md">
+                      <FormInput
+                        className="font-mono tabular-nums"
+                        value={form.codigo}
+                        onChange={(e) => setForm({ ...form, codigo: e.target.value })}
+                        placeholder={config.codigoPlaceholder}
+                      />
+                    </FormField>
+                  )}
                 </div>
-                {kind === 'posto' && (
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Código</label>
-                  <input
-                    className={inputClass}
-                    value={form.codigo}
-                    onChange={(e) => setForm({ ...form, codigo: e.target.value })}
-                    placeholder={config.codigoPlaceholder}
-                    style={{ fontSize: '14px', fontFamily: 'monospace' }}
-                  />
-                </div>
+                {kind === 'laboratorio' && !isLabFinal && (
+                  <div className="mt-3">
+                    <FormSectionNote>
+                      As moradas são definidas em cada posto do laboratório (separador Postos).
+                    </FormSectionNote>
+                  </div>
                 )}
-              </div>
-            </Section>
-
-            {kind !== 'laboratorio' || isLabFinal ? (
-            <Section title="Morada" icon={MapPin}>
-              <div className="space-y-4">
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Morada</label>
-                  <input
-                    className={inputClass}
-                    value={form.morada}
-                    onChange={(e) => setForm({ ...form, morada: e.target.value })}
-                    placeholder="Endereço completo"
-                    style={{ fontSize: '14px' }}
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelClass} style={{ fontSize: '13px' }}>Código postal</label>
-                    <input
-                      className={inputClass}
-                      value={form.codigo_postal}
-                      onChange={(e) => handleCodigoPostalChange(e.target.value)}
-                      onBlur={(e) => void autofillFromCp(e.target.value)}
-                      placeholder="0000-000"
-                      style={{ fontSize: '14px' }}
-                    />
+                {kind === 'laboratorio' && isLabFinal && (
+                  <div className="mt-3">
+                    <FormSectionNote>
+                      Laboratório final: destino de kits após colheita/descarte. Não tem postos associados — associe-o a cada teste em Administração → Testes.
+                    </FormSectionNote>
                   </div>
-                  <div>
-                    <label className={labelClass} style={{ fontSize: '13px' }}>Cidade</label>
-                    <input
-                      className={inputClass}
-                      value={form.cidade}
-                      onChange={(e) => setForm({ ...form, cidade: e.target.value })}
-                      placeholder="Lisboa"
-                      style={{ fontSize: '14px' }}
+                )}
+              </DetailSection>
+
+              {(kind !== 'laboratorio' || isLabFinal) && (
+                <>
+                  <DetailDivider />
+                  <DetailSection title="Morada" icon={MapPin}>
+                    <div className={FORM.fieldRow}>
+                      <FormField label="Morada" width="3xl">
+                        <FormInput
+                          value={form.morada}
+                          onChange={(e) => setForm({ ...form, morada: e.target.value })}
+                          placeholder="Endereço completo"
+                        />
+                      </FormField>
+                      <FormField label="Código postal" width="sm">
+                        <FormInput
+                          className="font-mono tabular-nums"
+                          value={form.codigo_postal}
+                          onChange={(e) => handleCodigoPostalChange(e.target.value)}
+                          onBlur={(e) => void autofillFromCp(e.target.value)}
+                          placeholder="0000-000"
+                        />
+                      </FormField>
+                      <FormField label="Cidade" width="lg">
+                        <FormInput
+                          value={form.cidade}
+                          onChange={(e) => setForm({ ...form, cidade: e.target.value })}
+                          placeholder="Lisboa"
+                        />
+                      </FormField>
+                      <FormField label="Distrito" width="lg">
+                        <FormInput
+                          value={form.distrito}
+                          onChange={(e) => setForm({ ...form, distrito: e.target.value })}
+                          placeholder="Lisboa"
+                        />
+                      </FormField>
+                      <FormField label="País" width="md">
+                        <FormInput
+                          value={form.pais}
+                          onChange={(e) => setForm({ ...form, pais: e.target.value })}
+                          placeholder="Portugal"
+                        />
+                      </FormField>
+                    </div>
+                    <div className="mt-3">
+                      <FormSectionNote>
+                        Distrito, cidade e país podem ser preenchidos automaticamente a partir do código postal.
+                      </FormSectionNote>
+                    </div>
+                  </DetailSection>
+                </>
+              )}
+
+              <DetailDivider />
+
+              <DetailSection title="Contactos" icon={Phone}>
+                <div className={FORM.fieldRow}>
+                  <FormField label="Telefone" width="lg">
+                    <FormInput
+                      value={form.contacto}
+                      onChange={(e) => setForm({ ...form, contacto: e.target.value })}
+                      placeholder="912 345 678"
                     />
-                  </div>
-                </div>
-                <p className="text-gray-400 dark:text-gray-500 -mt-2" style={{ fontSize: '11px' }}>
-                  Distrito, cidade e país podem ser preenchidos automaticamente a partir do código postal.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelClass} style={{ fontSize: '13px' }}>Distrito</label>
-                    <input
-                      className={inputClass}
-                      value={form.distrito}
-                      onChange={(e) => setForm({ ...form, distrito: e.target.value })}
-                      placeholder="Lisboa"
-                      style={{ fontSize: '14px' }}
+                  </FormField>
+                  <FormField label="Email" width="xl">
+                    <FormInput
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      placeholder="contacto@empresa.pt"
                     />
-                  </div>
-                  <div>
-                    <label className={labelClass} style={{ fontSize: '13px' }}>País</label>
-                    <input
-                      className={inputClass}
-                      value={form.pais}
-                      onChange={(e) => setForm({ ...form, pais: e.target.value })}
-                      placeholder="Portugal"
-                      style={{ fontSize: '14px' }}
-                    />
-                  </div>
+                  </FormField>
                 </div>
-              </div>
-            </Section>
-            ) : null}
+              </DetailSection>
 
-            {kind === 'laboratorio' && !isLabFinal && (
-              <p className="text-gray-500 dark:text-gray-400 -mt-2" style={{ fontSize: '12px' }}>
-                As moradas são definidas em cada posto do laboratório (separador Postos).
-              </p>
-            )}
+              <DetailDivider />
 
-            {kind === 'laboratorio' && isLabFinal && (
-              <p className="text-gray-500 dark:text-gray-400 -mt-2" style={{ fontSize: '12px' }}>
-                Laboratório final: destino de kits após colheita/descarte. Não tem postos associados — associe-o a cada teste em Administração → Testes.
-              </p>
-            )}
-
-            <Section title="Contactos" icon={Phone}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Telefone</label>
-                  <input
-                    className={inputClass}
-                    value={form.contacto}
-                    onChange={(e) => setForm({ ...form, contacto: e.target.value })}
-                    placeholder="912 345 678"
-                    style={{ fontSize: '14px' }}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Email</label>
-                  <input
-                    type="email"
-                    className={inputClass}
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    placeholder="contacto@empresa.pt"
-                    style={{ fontSize: '14px' }}
-                  />
-                </div>
-              </div>
-            </Section>
-
-            <Section title="Contactos secundários" icon={Phone}>
-              <div className="space-y-4">
-                {form.contactos_secundarios.map((contacto, index) => (
-                  <div
-                    key={index}
-                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 space-y-3"
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Contacto {index + 1}
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className={labelClass} style={{ fontSize: '12px' }}>Nome</label>
-                        <input
-                          className={inputClass}
-                          value={contacto.nome}
-                          onChange={(e) => updateContacto(index, { nome: e.target.value })}
-                          style={{ fontSize: '14px' }}
-                        />
-                      </div>
-                      <div>
-                        <label className={labelClass} style={{ fontSize: '12px' }}>Função</label>
-                        <input
-                          className={inputClass}
-                          value={contacto.funcao}
-                          onChange={(e) => updateContacto(index, { funcao: e.target.value })}
-                          style={{ fontSize: '14px' }}
-                        />
-                      </div>
-                      <div>
-                        <label className={labelClass} style={{ fontSize: '12px' }}>Email</label>
-                        <input
-                          type="email"
-                          className={inputClass}
-                          value={contacto.email}
-                          onChange={(e) => updateContacto(index, { email: e.target.value })}
-                          style={{ fontSize: '14px' }}
-                        />
-                      </div>
-                      <div>
-                        <label className={labelClass} style={{ fontSize: '12px' }}>Telefone</label>
-                        <input
-                          className={inputClass}
-                          value={contacto.telefone}
-                          onChange={(e) => updateContacto(index, { telefone: e.target.value })}
-                          style={{ fontSize: '14px' }}
-                        />
+              <DetailSection title="Contactos secundários" icon={Phone}>
+                <div className="space-y-4">
+                  {form.contactos_secundarios.map((contacto, index) => (
+                    <div
+                      key={index}
+                      className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 space-y-3"
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Contacto {index + 1}
+                      </p>
+                      <div className={FORM.fieldRow}>
+                        <FormField label="Nome" width="lg">
+                          <FormInput
+                            value={contacto.nome}
+                            onChange={(e) => updateContacto(index, { nome: e.target.value })}
+                          />
+                        </FormField>
+                        <FormField label="Função" width="lg">
+                          <FormInput
+                            value={contacto.funcao}
+                            onChange={(e) => updateContacto(index, { funcao: e.target.value })}
+                          />
+                        </FormField>
+                        <FormField label="Email" width="lg">
+                          <FormInput
+                            type="email"
+                            value={contacto.email}
+                            onChange={(e) => updateContacto(index, { email: e.target.value })}
+                          />
+                        </FormField>
+                        <FormField label="Telefone" width="lg">
+                          <FormInput
+                            value={contacto.telefone}
+                            onChange={(e) => updateContacto(index, { telefone: e.target.value })}
+                          />
+                        </FormField>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Section>
+                  ))}
+                </div>
+              </DetailSection>
 
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={form.ativo}
-                onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
-                className={CHECKBOX_INPUT_CLASS}
-              />
-              <span className="text-gray-700 dark:text-gray-300" style={{ fontSize: '13px' }}>
-                {config.title} ativo
-              </span>
-            </label>
-          </div>
+              <div className="px-5 py-3.5 sm:px-6 sm:py-4">
+                <label className={FORM.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    checked={form.ativo}
+                    onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
+                    className={CHECKBOX_INPUT_CLASS}
+                  />
+                  <span>{config.title} ativo</span>
+                </label>
+              </div>
+            </DetailPanel>
+          </FormTabContent>
         )}
 
         {tab === 'condicoes' && (
-          <div className="max-w-4xl">
+          <FormTabContent>
             {inheritsFromLaboratorio && (
               <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
                 Condições comerciais herdadas do laboratório <strong>{parentLaboratorio?.nome}</strong>. Para alterar, edite o laboratório.
               </p>
             )}
-            <Section title="Testes" icon={FlaskConical}>
+            <DetailPanel>
+              <DetailSection title="Testes" icon={FlaskConical}>
               {testesAtivos.length === 0 ? (
                 <p className="text-sm text-slate-500">Não existem testes ativos na Administração.</p>
               ) : (
@@ -699,22 +681,26 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
                   </div>
                 </div>
               )}
-            </Section>
-          </div>
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
         )}
 
         {tab === 'notas' && (
-          <div className="max-w-3xl">
-            <Section title="Notas" icon={StickyNote}>
-              <textarea
-                className={`${inputClass} min-h-[180px]`}
-                value={form.notas}
-                onChange={(e) => setForm({ ...form, notas: e.target.value })}
-                placeholder={config.notasPlaceholder}
-                style={{ fontSize: '14px' }}
-              />
-            </Section>
-          </div>
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Notas internas" icon={StickyNote}>
+                <FormField label="Notas" width="3xl">
+                  <FormTextarea
+                    className="min-h-[180px]"
+                    value={form.notas}
+                    onChange={(e) => setForm({ ...form, notas: e.target.value })}
+                    placeholder={config.notasPlaceholder}
+                  />
+                </FormField>
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
         )}
       </FormPageBody>
     </FormPageShell>

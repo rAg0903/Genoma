@@ -17,6 +17,9 @@ import {
   AdminTableHeadCell,
 } from './definicoes/admin-tab-ui';
 import { StatusBadge } from './shared/StatusBadge';
+import { deleteTargetLabel } from '../../lib/confirm-delete';
+import { useConfirmDelete } from '../context/ConfirmDeleteContext';
+import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 
 type Props = {
   laboratorioId: string;
@@ -31,6 +34,7 @@ function AtivoBadge({ ativo }: { ativo: boolean }) {
 
 export function LaboratorioPostosPanel({ laboratorioId, canCreate, canUpdate, canDelete }: Props) {
   const navigate = useNavigate();
+  const confirmDelete = useConfirmDelete();
   const { postos, deletePosto, refreshPostos } = useData();
   const [search, setSearch] = useState('');
 
@@ -46,7 +50,7 @@ export function LaboratorioPostosPanel({ laboratorioId, canCreate, canUpdate, ca
   );
 
   const handleDelete = async (postoId: string, nome: string) => {
-    if (!confirm(`Eliminar posto ${nome}?`)) return;
+    if (!(await confirmDelete(deleteTargetLabel('o posto', nome)))) return;
     try {
       await deletePosto(postoId);
       toast.success('Posto eliminado.');

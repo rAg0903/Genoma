@@ -56,9 +56,11 @@ export function AdminTabPanel({ children }: { children: ReactNode }) {
   return <div className={ADMIN_TABLE_PANEL_CLASS}>{children}</div>;
 }
 
+export const TABLE_ROW_ACTIONS_CLASS = 'flex items-center justify-end gap-1';
+
 export function AdminRowActions({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className={TABLE_ROW_ACTIONS_CLASS}>
       {children}
     </div>
   );

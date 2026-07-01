@@ -89,7 +89,7 @@ export function ProcessTable({
                     </span>
                   </td>
                   <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-1">
                       <button onClick={() => onOpen(p)} className="p-1.5 hover:bg-teal-50 dark:hover:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-lg transition"><Eye className="w-4 h-4" /></button>
                       {canUpdate && <button onClick={() => onEdit(p)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-lg transition"><Edit className="w-4 h-4" /></button>}
                       {canDelete && <button onClick={() => onDelete(p)} className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-500 rounded-lg transition"><Trash2 className="w-4 h-4" /></button>}

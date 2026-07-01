@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { FlaskConical, Receipt, Package, Boxes, BadgeCheck } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import { useGlobalSearch } from '../../context/GlobalSearchContext';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { PageHeader } from '../shared/PageHeader';
 import { PageTabsRow } from '../shared/PageToolbar';
@@ -17,15 +18,14 @@ import { LISTINGS, LISTING_ORDER, ListingDef } from './listingConfig';
 import { ListingsSubmodule } from '../../../lib/permissions';
 import { ListingTable } from './ListingTable';
 import { ListingDetailDrawer } from './ListingDetailDrawer';
-import { GlobalSearchPalette } from './GlobalSearchPalette';
 import { ExportMenu } from './ExportMenu';
 import { AdvancedFilters, AdvancedFilterState, countActiveFilters } from './AdvancedFilters';
 
 const PAGE_SIZE = 25;
 
 export function ListingsPage() {
-  const navigate = useNavigate();
   const { t } = useLanguage();
+  const { openSearch } = useGlobalSearch();
   const { hasListingsSubmodulePermission } = useAuth();
   const { processos, kits, lotes } = useData();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -66,7 +66,6 @@ export function ListingsPage() {
   const [error, setError] = useState(false);
 
   const [selected, setSelected] = useState<ListingRow | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
 
   // Reset per-tab state when switching listing.
   useEffect(() => {
@@ -108,18 +107,6 @@ export function ListingsPage() {
     const handle = setTimeout(() => { void load(); }, search ? 250 : 0);
     return () => clearTimeout(handle);
   }, [load, search]);
-
-  // Keyboard shortcut Ctrl/Cmd+K opens global search.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   const changeTab = (key: ListingKey) => {
     const params = new URLSearchParams(searchParams);
@@ -185,7 +172,7 @@ export function ListingsPage() {
           right={(
             <button
               type="button"
-              onClick={() => setSearchOpen(true)}
+              onClick={openSearch}
               className={CONTROL.buttonSecondary}
             >
               {t('listingsPage.globalSearch')}
@@ -227,25 +214,6 @@ export function ListingsPage() {
           changeTab(key);
           if (q !== undefined) setSearch(q);
           setSelected(null);
-        }}
-      />
-
-      <GlobalSearchPalette
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onNavigate={(target) => {
-          setSearchOpen(false);
-          if (target.listing === 'pacientes' && target.paciente_id) {
-            navigate(`/contactos/${target.paciente_id}`);
-            return;
-          }
-          if (target.listing === 'medicos') {
-            navigate('/definicoes?tab=medicos');
-            return;
-          }
-          const tab = target.listing === 'processos' ? 'painel_bordo' : target.listing;
-          changeTab(tab);
-          setSearch('');
         }}
       />
     </div>

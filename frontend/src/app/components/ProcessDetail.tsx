@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import {
-  Edit, Trash2, User, Phone, MapPin, Baby, Syringe, Receipt,
+  Edit, Trash2, User, MapPin, Baby, Syringe, Receipt,
   StickyNote, Paperclip, FileText, Package, Activity,
 } from 'lucide-react';
 import { Contact, Processo } from '../data/types';
@@ -15,15 +15,15 @@ import {
   formatDataPartoPt,
 } from '../../lib/gestacao';
 import { ESTADO_LABEL } from '../../lib/processos';
-import { Section, InfoField, AnexosTab } from './ContactDetail';
+import { AnexosTab, DetailDivider, DetailPanel, DetailSection, InfoField } from './ContactDetail';
 import { ProcessResultadoTab } from './processos/ProcessResultadoTab';
 import { ProcessFaturacaoView } from './shared/ProcessFaturacaoFields';
 import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
 import { extractFaturacaoFromProcesso } from '../../lib/process-form';
 import { StatusBadge } from './shared/StatusBadge';
 import { PROCESS_STATUS_STYLES, ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
-import { CONTROL } from '../../lib/design-tokens';
-import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell } from './shared/FormPageChrome';
+import { CONTROL, FORM } from '../../lib/design-tokens';
+import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormTabContent } from './shared/FormPageChrome';
 
 interface ProcessDetailProps {
   processo: Processo;
@@ -32,6 +32,7 @@ interface ProcessDetailProps {
   onDelete: () => void;
   canUpdate?: boolean;
   canDelete?: boolean;
+  topNotice?: ReactNode;
 }
 
 type TabId = 'identificacao' | 'gravidez' | 'colheita' | 'faturacao' | 'resultados' | 'kits' | 'notas' | 'anexos';
@@ -59,6 +60,7 @@ export function ProcessDetail({
   onDelete,
   canUpdate = true,
   canDelete = true,
+  topNotice,
 }: ProcessDetailProps) {
   const { contacts, getAnexosByPaciente, addAnexo, deleteAnexo } = useData();
   const [tab, setTab] = useState<TabId>('identificacao');
@@ -98,6 +100,7 @@ export function ProcessDetail({
   return (
     <FormPageShell>
       <FormPageBody>
+        {topNotice}
         <FormPageHeader
           onBack={onBack}
           title={processo.numero}
@@ -129,136 +132,169 @@ export function ProcessDetail({
           onTabChange={setTab}
         />
 
-        <div className="space-y-4 max-w-4xl">
+        <FormTabContent>
           <FaturacaoAlertBanner
             value={extractFaturacaoFromProcesso(processo)}
             context="processo"
             onGoToFaturacao={() => setTab('faturacao')}
           />
-          {tab === 'identificacao' && (
-            <div className="space-y-4">
-              <Section title="Processo" icon={FileText}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  <InfoField label="Nº Processo" value={processo.numero} mono />
-                  <InfoField label="Data de Entrada" value={fmt(processo.data_entrada)} />
-                  <InfoField label="Estado" value={ESTADO_LABEL[processo.estado]} />
-                  <InfoField label="Paciente" value={pacienteNome} />
-                </div>
-              </Section>
-              <Section title="Informação Pessoal" icon={User}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  <InfoField label="Nome completo" value={paciente?.nome || processo.paciente_nome} />
-                  <InfoField label="Data de Nascimento" value={fmt(paciente?.data_nascimento)} />
-                  <InfoField label="Género" value={paciente?.genero || ''} />
-                  <InfoField label="NIF" value={paciente?.nif || ''} mono />
-                  <InfoField label="Altura (cm)" value={paciente?.altura || ''} />
-                  <InfoField label="Peso (kg)" value={paciente?.peso || ''} />
-                </div>
-              </Section>
-              <Section title="Contacto" icon={Phone}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <InfoField label="Telemóvel" value={paciente?.telemovel || ''} />
-                  <InfoField label="Email" value={paciente?.email || ''} />
-                </div>
-              </Section>
-              <Section title="Morada" icon={MapPin}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="sm:col-span-2 md:col-span-3">
-                    <InfoField label="Morada" value={paciente?.morada || ''} />
-                  </div>
-                  <InfoField label="Código Postal" value={paciente?.codigo_postal || ''} />
-                  <InfoField label="Cidade" value={paciente?.cidade || ''} />
-                  <InfoField label="Distrito" value={paciente?.distrito || ''} />
-                  <InfoField label="País" value={paciente?.pais || ''} />
-                </div>
-              </Section>
-            </div>
-          )}
+        </FormTabContent>
 
-          {tab === 'gravidez' && (
-            <Section title="Gravidez" icon={Baby}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <InfoField label="Médico" value={processo.medico} />
-                <InfoField label="Onde é seguida" value={processo.onde_seguida || paciente?.onde_seguida || ''} />
-                <InfoField
-                  label="Tipo de gravidez"
-                  value={tipoGravidezLabel(processo.tipo_gravidez ?? paciente?.tipo_gravidez ?? null)}
-                />
-                {(processo.gestacao_semanas_registo != null || paciente?.gestacao_semanas_registo != null) && (
+        {tab === 'identificacao' && (
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Processo" icon={FileText}>
+                <div className={FORM.fieldRow}>
+                  <InfoField label="Nº Processo" value={processo.numero} mono width="lg" />
+                  <InfoField label="Data de Entrada" value={fmt(processo.data_entrada)} width="sm" />
+                  <InfoField label="Estado" value={ESTADO_LABEL[processo.estado]} width="md" />
+                  <InfoField label="Paciente" value={pacienteNome || ''} width="2xl" />
+                </div>
+              </DetailSection>
+
+              <DetailDivider />
+
+              <DetailSection title="Dados do contacto" icon={User}>
+                <div className={FORM.fieldRow}>
+                  <InfoField label="Nome completo" value={paciente?.nome || processo.paciente_nome || ''} width="2xl" />
+                  <InfoField label="Data de Nascimento" value={fmt(paciente?.data_nascimento)} width="sm" />
+                  <InfoField label="Género" value={paciente?.genero || ''} width="md" />
+                  <InfoField label="NIF" value={paciente?.nif || ''} mono width="md" />
+                  <InfoField label="Telemóvel" value={paciente?.telemovel || ''} width="lg" />
+                  <InfoField label="Email" value={paciente?.email || ''} width="xl" />
+                  <InfoField label="Altura (cm)" value={paciente?.altura || ''} width="xs" />
+                  <InfoField label="Peso (kg)" value={paciente?.peso || ''} width="xs" />
+                </div>
+              </DetailSection>
+
+              <DetailDivider />
+
+              <DetailSection title="Morada" icon={MapPin}>
+                <div className={FORM.fieldRow}>
+                  <InfoField label="Morada" value={paciente?.morada || ''} width="3xl" />
+                  <InfoField label="Código Postal" value={paciente?.codigo_postal || ''} width="sm" />
+                  <InfoField label="Cidade" value={paciente?.cidade || ''} width="lg" />
+                  <InfoField label="Distrito" value={paciente?.distrito || ''} width="lg" />
+                  <InfoField label="País" value={paciente?.pais || ''} width="md" />
+                </div>
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
+        )}
+
+        {tab === 'gravidez' && (
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Gravidez" icon={Baby}>
+                <div className={FORM.fieldRow}>
+                  <InfoField label="Médico" value={processo.medico} width="lg" />
+                  <InfoField label="Onde é seguida" value={processo.onde_seguida || paciente?.onde_seguida || ''} width="3xl" />
                   <InfoField
-                    label="Tempo de gestação (data registo)"
-                    value={`${processo.gestacao_semanas_registo ?? paciente?.gestacao_semanas_registo ?? 0} sem · ${processo.gestacao_dias_registo ?? paciente?.gestacao_dias_registo ?? 0} dias`}
+                    label="Tipo de gravidez"
+                    value={tipoGravidezLabel(processo.tipo_gravidez ?? paciente?.tipo_gravidez ?? null)}
+                    width="md"
                   />
-                )}
-                {gravidezCalculada.gestacaoAtual && (
-                  <InfoField
-                    label="Tempo de gestação (actual)"
-                    value={`${gravidezCalculada.gestacaoAtual.semanas} sem · ${gravidezCalculada.gestacaoAtual.dias} dias`}
-                  />
-                )}
-                {gravidezCalculada.dataParto && (
-                  <InfoField label="Data prevista do parto" value={formatDataPartoPt(gravidezCalculada.dataParto)} />
-                )}
-              </div>
-            </Section>
-          )}
-
-          {tab === 'colheita' && (
-            <Section title="Colheita" icon={Syringe}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <InfoField label="Posto de Colheita" value={processo.posto} />
-                <InfoField label="Data Prevista da Colheita" value={fmt(processo.data_colheita_prevista || paciente?.data_colheita_prevista)} />
-                <InfoField label="Data Efetiva da Colheita" value={fmt(processo.data_colheita)} />
-              </div>
-            </Section>
-          )}
-
-          {tab === 'faturacao' && (
-            <Section title="Faturação" icon={Receipt}>
-              <ProcessFaturacaoView value={extractFaturacaoFromProcesso(processo)} />
-            </Section>
-          )}
-
-          {tab === 'resultados' && (
-            <div className="space-y-4">
-              <Section title="Ciclo laboratorial" icon={Activity}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  <InfoField label="Responsável de Fluxo" value={processo.responsavel_fluxo || ''} />
-                  <InfoField label="Envio Relatório" value={processo.relatorio_enviado_para || 'Nenhum'} />
-                  <InfoField label="Envio ao Laboratório" value={fmt(processo.data_envio_laboratorio)} />
-                  <InfoField label="Chegada ao Laboratório" value={fmt(processo.data_chegada_laboratorio)} />
-                  <InfoField label="Data Resultado" value={fmt(processo.data_resultado)} />
-                  <InfoField label="Data Validação" value={fmt(processo.data_validacao)} />
-                  <InfoField label="Data Envio Relatório" value={fmt(processo.data_envio_relatorio)} />
-                  <InfoField label="Fração fetal" value={processo.fracao_fetal || ''} />
-                  <InfoField label="Relatório validado" value={processo.relatorio_validado ? 'Sim' : 'Não'} />
+                  {(processo.gestacao_semanas_registo != null || paciente?.gestacao_semanas_registo != null) && (
+                    <InfoField
+                      label="Tempo de gestação (data registo)"
+                      value={`${processo.gestacao_semanas_registo ?? paciente?.gestacao_semanas_registo ?? 0} sem · ${processo.gestacao_dias_registo ?? paciente?.gestacao_dias_registo ?? 0} dias`}
+                      width="lg"
+                    />
+                  )}
+                  {gravidezCalculada.gestacaoAtual && (
+                    <InfoField
+                      label="Tempo de gestação (actual)"
+                      value={`${gravidezCalculada.gestacaoAtual.semanas} sem · ${gravidezCalculada.gestacaoAtual.dias} dias`}
+                      width="lg"
+                    />
+                  )}
+                  {gravidezCalculada.dataParto && (
+                    <InfoField label="Data prevista do parto" value={formatDataPartoPt(gravidezCalculada.dataParto)} width="sm" />
+                  )}
                 </div>
-              </Section>
-              <Section title="Resultados genéticos" icon={FileText}>
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
+        )}
+
+        {tab === 'colheita' && (
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Colheita" icon={Syringe}>
+                <div className={FORM.fieldRow}>
+                  <InfoField label="Posto de Colheita" value={processo.posto} width="3xl" />
+                  <InfoField label="Data Prevista da Colheita" value={fmt(processo.data_colheita_prevista || paciente?.data_colheita_prevista)} width="sm" />
+                  <InfoField label="Data Efetiva da Colheita" value={fmt(processo.data_colheita)} width="sm" />
+                </div>
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
+        )}
+
+        {tab === 'faturacao' && (
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Faturação" icon={Receipt}>
+                <ProcessFaturacaoView value={extractFaturacaoFromProcesso(processo)} />
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
+        )}
+
+        {tab === 'resultados' && (
+          <FormTabContent className="space-y-4">
+            <DetailPanel>
+              <DetailSection title="Ciclo laboratorial" icon={Activity}>
+                <div className={FORM.fieldRow}>
+                  <InfoField label="Responsável de Fluxo" value={processo.responsavel_fluxo || ''} width="lg" />
+                  <InfoField label="Envio Relatório" value={processo.relatorio_enviado_para || 'Nenhum'} width="md" />
+                  <InfoField label="Envio ao Laboratório" value={fmt(processo.data_envio_laboratorio)} width="sm" />
+                  <InfoField label="Chegada ao Laboratório" value={fmt(processo.data_chegada_laboratorio)} width="sm" />
+                  <InfoField label="Data Resultado" value={fmt(processo.data_resultado)} width="sm" />
+                  <InfoField label="Data Validação" value={fmt(processo.data_validacao)} width="sm" />
+                  <InfoField label="Data Envio Relatório" value={fmt(processo.data_envio_relatorio)} width="sm" />
+                  <InfoField label="Fração fetal" value={processo.fracao_fetal || ''} width="sm" />
+                  <InfoField label="Relatório validado" value={processo.relatorio_validado ? 'Sim' : 'Não'} width="md" />
+                </div>
+              </DetailSection>
+
+              <DetailDivider />
+
+              <DetailSection title="Resultados genéticos" icon={FileText}>
                 <ProcessResultadoTab processo={processo} canUpdate={false} />
-              </Section>
-            </div>
-          )}
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
+        )}
 
-          {tab === 'kits' && (
-            <Section title="Kit associado" icon={Package}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                <InfoField label="Posto" value={processo.posto} />
-                <InfoField label="Teste" value={processo.teste} />
-                <InfoField label="Médico" value={processo.medico} />
-                <InfoField label="Código de Barras do Kit" value={processo.kit_codigo || ''} mono />
-                <InfoField label="Data da Colheita" value={fmt(processo.data_colheita)} />
-              </div>
-            </Section>
-          )}
+        {tab === 'kits' && (
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Kit associado" icon={Package}>
+                <div className={FORM.fieldRow}>
+                  <InfoField label="Posto" value={processo.posto} width="lg" />
+                  <InfoField label="Teste" value={processo.teste} width="lg" />
+                  <InfoField label="Médico" value={processo.medico} width="lg" />
+                  <InfoField label="Código de Barras do Kit" value={processo.kit_codigo || ''} mono width="lg" />
+                  <InfoField label="Data da Colheita" value={fmt(processo.data_colheita)} width="sm" />
+                </div>
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
+        )}
 
-          {tab === 'notas' && (
-            <Section title="Notas" icon={StickyNote}>
-              <InfoField label="Notas internas" value={processo.observacoes || paciente?.notas_internas || ''} />
-            </Section>
-          )}
+        {tab === 'notas' && (
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Notas" icon={StickyNote}>
+                <InfoField label="Notas internas" value={processo.observacoes || paciente?.notas_internas || ''} width="3xl" />
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
+        )}
 
-          {tab === 'anexos' && processo.paciente_id && (
+        {tab === 'anexos' && processo.paciente_id && (
+          <FormTabContent className="space-y-4">
             <AnexosTab
               pacienteId={processo.paciente_id}
               canUpdate={false}
@@ -267,8 +303,8 @@ export function ProcessDetail({
               addAnexo={addAnexo}
               deleteAnexo={deleteAnexo}
             />
-          )}
-        </div>
+          </FormTabContent>
+        )}
       </FormPageBody>
     </FormPageShell>
   );

@@ -28,10 +28,13 @@ import {
   AdminTabToolbar,
   AdminTableHeadCell,
 } from './admin-tab-ui';
+import { deleteTargetLabel } from '../../../lib/confirm-delete';
+import { useConfirmDelete } from '../../context/ConfirmDeleteContext';
 
 type ViewMode = 'list' | 'edit';
 
 export function PerfisPermissoesTab() {
+  const confirmDelete = useConfirmDelete();
   const {
     stockPermissionsSyncStatus,
     refreshStockPermissionsFromBackend,
@@ -110,7 +113,7 @@ export function PerfisPermissoesTab() {
 
   const handleDelete = async (perfil: Perfil) => {
     if (isAdminPerfilNome(perfil.nome)) return;
-    if (!confirm(`Eliminar o perfil "${perfil.nome}"?`)) return;
+    if (!(await confirmDelete(deleteTargetLabel('o perfil', perfil.nome)))) return;
     try {
       await perfisApi.delete(perfil.id);
       removePermissionsForPerfil(perfil.id);

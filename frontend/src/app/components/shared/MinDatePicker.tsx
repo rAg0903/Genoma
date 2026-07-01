@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { pt } from 'date-fns/locale';
 import { isSameMonth, startOfMonth } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
+import type { CaptionProps } from 'react-day-picker';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { formatCalendarDatePt, isoToLocalDate, normalizeCalendarDate, todayLocal } from '../../../lib/dates';
 import { cn } from '../ui/utils';
+import { CalendarCaptionNav } from './CalendarCaptionNav';
 
 type MinDatePickerProps = {
   value: string;
@@ -17,6 +19,11 @@ type MinDatePickerProps = {
   allowAnyDate?: boolean;
   className?: string;
   placeholder?: string;
+  disabled?: boolean;
+  /** Ano mínimo no selector (por defeito: 1920 se allowAnyDate, senão ano actual). */
+  fromYear?: number;
+  /** Ano máximo no selector (por defeito: ano actual se allowAnyDate, senão +5 anos). */
+  toYear?: number;
 };
 
 export function MinDatePicker({
@@ -27,8 +34,30 @@ export function MinDatePicker({
   allowAnyDate = false,
   className,
   placeholder = 'Selecionar data',
+  disabled = false,
+  fromYear: fromYearProp,
+  toYear: toYearProp,
 }: MinDatePickerProps) {
   const [open, setOpen] = useState(false);
+  const currentYear = new Date().getFullYear();
+
+  const pickerFromYear = fromYearProp ?? (allowAnyDate ? 1920 : currentYear);
+  const pickerToYear = toYearProp ?? (allowAnyDate ? currentYear : currentYear + 5);
+  const pickerFromDate = useMemo(() => new Date(pickerFromYear, 0, 1), [pickerFromYear]);
+  const pickerToDate = useMemo(() => new Date(pickerToYear, 11, 31), [pickerToYear]);
+
+  const CaptionNav = useMemo(
+    () => (props: CaptionProps) => (
+      <CalendarCaptionNav
+        {...props}
+        fromYear={pickerFromYear}
+        toYear={pickerToYear}
+        fromDate={pickerFromDate}
+        toDate={pickerToDate}
+      />
+    ),
+    [pickerFromYear, pickerToYear, pickerFromDate, pickerToDate],
+  );
 
   const todayMin = useMemo(() => isoToLocalDate(minDate) ?? isoToLocalDate(todayLocal())!, [minDate]);
   const todayMinIso = useMemo(() => normalizeCalendarDate(todayMin), [todayMin]);
@@ -93,23 +122,31 @@ export function MinDatePicker({
     setOpen(false);
   };
 
+  const handleClear = () => {
+    onChange('');
+    setOpen(false);
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(next) => !disabled && setOpen(next)}>
       <PopoverTrigger asChild>
         <button
           type="button"
+          disabled={disabled}
           className={cn(
-            'flex w-full items-center justify-between gap-2 text-left',
-            !value && 'text-slate-400',
+            'flex w-full items-center justify-between gap-2 text-left tabular-nums',
+            !value && 'text-slate-400 dark:text-slate-500',
+            value && 'text-slate-900 dark:text-slate-100',
+            disabled && 'opacity-70 cursor-not-allowed',
             className,
           )}
         >
-          <span>{displayLabel}</span>
-          <CalendarIcon className="h-4 w-4 shrink-0 opacity-50" />
+          <span className="truncate">{displayLabel}</span>
+          <CalendarIcon className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="z-[60] w-auto border-slate-200 bg-white p-0 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+        className="z-[100] w-auto border border-slate-200 bg-white p-0 shadow-lg dark:border-[#334155] dark:bg-[#1f2a3d]"
         align="start"
       >
         <Calendar
@@ -122,22 +159,19 @@ export function MinDatePicker({
           selected={selected}
           onSelect={handleSelect}
           disabled={isDateDisabled}
+          fromDate={pickerFromDate}
+          toDate={pickerToDate}
           fromMonth={navFromMonth}
           weekStartsOn={1}
           defaultMonth={startOfMonth(valueDate ?? todayMin)}
           captionLayout="buttons"
+          components={{ Caption: CaptionNav }}
           showOutsideDays
           classNames={{
-            months: 'p-3',
+            months: 'p-3 pt-2',
             month: 'space-y-3',
             table: 'w-[252px] border-collapse',
-            caption: 'relative flex items-center justify-center px-8',
-            caption_label: 'text-sm font-semibold capitalize text-slate-800 dark:text-slate-100',
-            nav: 'flex items-center',
-            nav_button:
-              'inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-transparent text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800',
-            nav_button_previous: 'absolute left-0',
-            nav_button_next: 'absolute right-0',
+            caption: 'relative mb-1 px-0',
             head_row: 'flex w-full',
             head_cell:
               'w-9 shrink-0 text-center text-[0.75rem] font-medium text-slate-500 dark:text-slate-400',
@@ -147,17 +181,24 @@ export function MinDatePicker({
             day_outside:
               'text-slate-400 opacity-60 hover:text-slate-500 dark:text-slate-500 aria-selected:bg-teal-600 aria-selected:text-white',
             day_selected:
-              'bg-teal-600 text-white hover:bg-teal-600 hover:text-white focus:bg-teal-600 focus:text-white',
-            day_today: 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100',
+              'bg-teal-600 text-white hover:bg-teal-600 hover:text-white focus:bg-teal-600 focus:text-white dark:bg-teal-600',
+            day_today: 'bg-slate-100 text-slate-900 ring-1 ring-teal-500/30 dark:bg-[#151f30] dark:text-slate-100',
             day_disabled: 'pointer-events-none text-slate-400 opacity-40 dark:text-slate-500',
             day_hidden: 'invisible',
           }}
         />
-        <div className="flex justify-end border-t border-slate-200 px-3 py-2 dark:border-slate-700">
+        <div className="flex items-center justify-between gap-2 border-t border-slate-200 px-3 py-2 dark:border-[#334155]">
+          <button
+            type="button"
+            onClick={handleClear}
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-[#151f30]"
+          >
+            Limpar
+          </button>
           <button
             type="button"
             onClick={handleCancel}
-            className="rounded-md px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#151f30]"
           >
             Cancelar
           </button>

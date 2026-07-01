@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Edit, Trash2, Phone, MapPin, User, FileText, Baby, Syringe, Receipt, StickyNote, Paperclip, Plus, Download, Ban } from 'lucide-react';
+import { deleteTargetLabel } from '../../lib/confirm-delete';
+import { useConfirmDelete } from '../context/ConfirmDeleteContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { toast } from 'sonner';
 import { Contact, Anexo, Processo } from '../data/types';
 import { useData } from '../context/DataContext';
@@ -8,12 +11,11 @@ import { formatCalendarDatePt } from '../../lib/dates';
 import { extractFaturacaoFromContact, resolveFaturacao } from '../../lib/faturacao';
 import { calcularDataPartoPrevista, calcularGestacaoAtual, formatDataPartoPt } from '../../lib/gestacao';
 import { resolveTesteSelecionavelLabel } from '../../lib/testes';
-import { useLanguage } from '../../i18n/LanguageContext';
 import { ProcessFaturacaoView } from './shared/ProcessFaturacaoFields';
 import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
 import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
-import { CONTROL } from '../../lib/design-tokens';
-import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
+import { DETAIL, CONTROL, FORM, FormFieldWidth } from '../../lib/design-tokens';
+import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton, FormTabContent } from './shared/FormPageChrome';
 
 interface ContactDetailProps {
   contact: Contact;
@@ -24,13 +26,20 @@ interface ContactDetailProps {
   canDelete?: boolean;
 }
 
-const calculateAge = (birthDate: string) => {
-  const today = new Date();
+const calculateAge = (birthDate?: string): number | null => {
+  if (!birthDate) return null;
   const birth = new Date(birthDate);
+  if (Number.isNaN(birth.getTime())) return null;
+  const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();
   if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  return age;
+  return age >= 0 ? age : null;
+};
+
+const formatAgeLabel = (birthDate?: string) => {
+  const age = calculateAge(birthDate);
+  return age !== null ? `${age} anos` : null;
 };
 
 const estadoBadge = (estado: string) => {
@@ -80,7 +89,9 @@ export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = t
           onBack={onBack}
           title={contact.nome}
           subtitle={[
-            `${calculateAge(contact.data_nascimento)} anos · ${contact.genero} · NIF: ${contact.nif || '—'}`,
+            formatAgeLabel(contact.data_nascimento),
+            contact.genero,
+            `NIF: ${contact.nif || '—'}`,
             (() => {
               const estado = getContactoPipelineEstado(contact);
               return estado ? CONTACTO_PIPELINE_LABEL[estado] : '';
@@ -117,9 +128,9 @@ export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = t
           onTabChange={setTab}
         />
 
-        <div className="max-w-3xl">
+        <FormTabContent>
           {isContactoCancelado(contact) ? (
-            <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200">
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-900 dark:text-rose-200/90">
               <Ban className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 600 }}>{t('pages.contacts.form.voidedBanner')}</p>
@@ -133,7 +144,7 @@ export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = t
           ) : (
             <FaturacaoAlertBanner value={faturacao} context="contacto" onGoToFaturacao={() => setTab('faturacao')} />
           )}
-        </div>
+        </FormTabContent>
         {tab === 'identificacao' && (
           <IdentificacaoTab contact={contact} motivoAnulacaoNome={motivoAnulacaoNome} />
         )}
@@ -158,67 +169,114 @@ export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = t
 
 export function Section({ title, icon: Icon, children }: { title: string; icon: typeof User; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Icon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        <h2 className="text-gray-700 dark:text-gray-300" style={{ fontSize: '14px', fontWeight: 600 }}>{title}</h2>
+    <div className={DETAIL.card}>
+      <div className={DETAIL.sectionTitle}>
+        <span className={DETAIL.sectionIconBadge}>
+          <Icon className={DETAIL.sectionIcon} />
+        </span>
+        <span>{title}</span>
       </div>
       {children}
     </div>
   );
 }
 
-export function InfoField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+export function DetailPanel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <div className={`${DETAIL.panel} ${className}`}>{children}</div>;
+}
+
+export function DetailSection({ title, icon: Icon, children }: { title: string; icon: typeof User; children: React.ReactNode }) {
   return (
-    <div>
-      <div className="text-gray-400 dark:text-gray-500" style={{ fontSize: '11px', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
-      <div className="text-gray-900 dark:text-gray-100" style={{ fontSize: '14px', fontFamily: mono ? 'monospace' : undefined }}>{value || '—'}</div>
+    <div className={DETAIL.section}>
+      <div className={DETAIL.sectionTitle}>
+        <span className={DETAIL.sectionIconBadge}>
+          <Icon className={DETAIL.sectionIcon} />
+        </span>
+        <span>{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+export function DetailDivider() {
+  return <div className={DETAIL.divider} role="separator" />;
+}
+
+export function InfoField({
+  label,
+  value,
+  mono,
+  width,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  width?: FormFieldWidth;
+}) {
+  const empty = !value || value === '—';
+  return (
+    <div className={width ? FORM.fieldWidth[width] : undefined}>
+      <div className={DETAIL.label}>{label}</div>
+      <div
+        className={[DETAIL.value, empty ? DETAIL.valueEmpty : ''].join(' ')}
+        style={{ fontFamily: mono ? 'monospace' : undefined }}
+      >
+        {value || '—'}
+      </div>
     </div>
   );
 }
 
 function IdentificacaoTab({ contact, motivoAnulacaoNome }: { contact: Contact; motivoAnulacaoNome: string }) {
   const { t } = useLanguage();
+  const ageLabel = formatAgeLabel(contact.data_nascimento);
+
   return (
-    <div className="space-y-4 max-w-3xl">
-      <Section title="Informação Pessoal" icon={User}>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <InfoField label="Nome completo" value={contact.nome} />
-          <InfoField label="Data de Nascimento" value={formatDate(contact.data_nascimento)} />
-          <InfoField label="Idade" value={`${calculateAge(contact.data_nascimento)} anos`} />
-          <InfoField label="Género" value={contact.genero} />
-          <InfoField label="NIF" value={contact.nif} mono />
-          <InfoField label="Altura" value={contact.altura ? `${contact.altura} cm` : ''} />
-          <InfoField label="Peso" value={contact.peso ? `${contact.peso} kg` : ''} />
-        </div>
-      </Section>
-      <Section title="Contacto" icon={Phone}>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <InfoField label="Telemóvel" value={contact.telemovel} />
-          <InfoField label="Email" value={contact.email} />
-        </div>
-      </Section>
-      <Section title="Morada" icon={MapPin}>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className="col-span-2 md:col-span-3"><InfoField label="Morada" value={contact.morada} /></div>
-          <InfoField label="Código Postal" value={contact.codigo_postal} />
-          <InfoField label="Cidade" value={contact.cidade} />
-          <InfoField label="Distrito" value={contact.distrito} />
-          <InfoField label="País" value={contact.pais} />
-        </div>
-      </Section>
-      {isContactoCancelado(contact) && (
-        <Section title={t('pages.contacts.form.voided')} icon={Ban}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InfoField label={t('pages.contacts.form.voided')} value="Sim" />
-            <InfoField label={t('pages.contacts.form.voidReason')} value={motivoAnulacaoNome} />
-            {contact.data_anulacao && (
-              <InfoField label="Data de anulação" value={formatDate(contact.data_anulacao)} />
-            )}
+    <FormTabContent>
+      <DetailPanel>
+        <DetailSection title="Dados do contacto" icon={User}>
+          <div className={FORM.fieldRow}>
+            <InfoField label="Nome completo" value={contact.nome} width="2xl" />
+            <InfoField label="Data de nascimento" value={formatDate(contact.data_nascimento)} width="sm" />
+            <InfoField label="Idade" value={ageLabel || ''} width="xs" />
+            <InfoField label="Género" value={contact.genero} width="md" />
+            <InfoField label="NIF" value={contact.nif} mono width="md" />
+            <InfoField label="Telemóvel" value={contact.telemovel} width="lg" />
+            <InfoField label="Email" value={contact.email} width="xl" />
+            <InfoField label="Altura" value={contact.altura ? `${contact.altura} cm` : ''} width="xs" />
+            <InfoField label="Peso" value={contact.peso ? `${contact.peso} kg` : ''} width="xs" />
           </div>
-        </Section>
+        </DetailSection>
+
+        <DetailDivider />
+
+        <DetailSection title="Morada" icon={MapPin}>
+          <div className={FORM.fieldRow}>
+            <InfoField label="Morada" value={contact.morada} width="3xl" />
+            <InfoField label="Código postal" value={contact.codigo_postal} width="sm" />
+            <InfoField label="Cidade" value={contact.cidade} width="lg" />
+            <InfoField label="Distrito" value={contact.distrito} width="lg" />
+            <InfoField label="País" value={contact.pais} width="md" />
+          </div>
+        </DetailSection>
+
+      {isContactoCancelado(contact) && (
+        <>
+          <DetailDivider />
+          <DetailSection title={t('pages.contacts.form.voided')} icon={Ban}>
+            <div className={FORM.fieldRow}>
+              <InfoField label={t('pages.contacts.form.voided')} value="Sim" width="sm" />
+              <InfoField label={t('pages.contacts.form.voidReason')} value={motivoAnulacaoNome} width="2xl" />
+              {contact.data_anulacao && (
+                <InfoField label="Data de anulação" value={formatDate(contact.data_anulacao)} width="sm" />
+              )}
+            </div>
+          </DetailSection>
+        </>
       )}
-    </div>
+      </DetailPanel>
+    </FormTabContent>
   );
 }
 
@@ -245,106 +303,130 @@ function GravidezTab({ contact, testeNome, processos }: { contact: Contact; test
     : null;
 
   return (
-    <Section title="Gravidez" icon={Baby}>
-      {hasContactData ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-          <InfoField label={t('pages.contacts.form.pack')} value={testeNome} />
-          <InfoField label="Tipo de gravidez" value={contact.tipo_gravidez === 'gemelar' ? 'Gemelar' : contact.tipo_gravidez === 'singular' ? 'Singular' : ''} />
-          <InfoField label="Onde é seguida" value={contact.onde_seguida || ''} />
-          {contact.gestacao_semanas_registo != null && (
-            <InfoField
-              label="Tempo de gestação (data registo)"
-              value={`${contact.gestacao_semanas_registo} semanas · ${contact.gestacao_dias_registo ?? 0} dias`}
-            />
-          )}
-          {gestacaoAtual && (
-            <InfoField
-              label="Tempo de gestação (actual)"
-              value={`${gestacaoAtual.semanas} semanas · ${gestacaoAtual.dias} dias`}
-            />
-          )}
-          {dataParto && (
-            <InfoField label="Data prevista do parto" value={formatDataPartoPt(dataParto)} />
-          )}
-        </div>
-      ) : (
-        <p className="text-gray-400 dark:text-gray-500 mb-4" style={{ fontSize: '13px' }}>Sem dados de gravidez registados.</p>
-      )}
-      {processos.length > 0 && (
-        <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-700">
-          <p className="text-gray-500 dark:text-gray-400" style={{ fontSize: '12px' }}>Processos após colheita:</p>
-          {processos.map((p) => (
-            <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <span className="text-gray-900 dark:text-gray-100" style={{ fontSize: '13px', fontWeight: 500 }}>{p.numero} · {p.teste}</span>
-              <span className="text-gray-400 dark:text-gray-500" style={{ fontSize: '12px' }}>{formatDate(p.data_colheita)}</span>
+    <FormTabContent>
+      <DetailPanel>
+        <DetailSection title="Gravidez" icon={Baby}>
+          {hasContactData ? (
+            <div className={FORM.fieldRow}>
+              <InfoField label={t('pages.contacts.form.pack')} value={testeNome} width="lg" />
+              <InfoField label="Tipo de gravidez" value={contact.tipo_gravidez === 'gemelar' ? 'Gemelar' : contact.tipo_gravidez === 'singular' ? 'Singular' : ''} width="md" />
+              <InfoField label="Onde é seguida" value={contact.onde_seguida || ''} width="2xl" />
+              {contact.gestacao_semanas_registo != null && (
+                <InfoField
+                  label="Tempo de gestação (registo)"
+                  value={`${contact.gestacao_semanas_registo} sem · ${contact.gestacao_dias_registo ?? 0} dias`}
+                  width="lg"
+                />
+              )}
+              {gestacaoAtual && (
+                <InfoField
+                  label="Tempo de gestação (actual)"
+                  value={`${gestacaoAtual.semanas} sem · ${gestacaoAtual.dias} dias`}
+                  width="lg"
+                />
+              )}
+              {dataParto && (
+                <InfoField label="Data prevista do parto" value={formatDataPartoPt(dataParto)} width="sm" />
+              )}
             </div>
-          ))}
-        </div>
-      )}
-    </Section>
+          ) : (
+            <p className="text-sm text-slate-500 dark:text-slate-400">Sem dados de gravidez registados.</p>
+          )}
+          {processos.length > 0 && (
+            <>
+              <DetailDivider />
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Processos após colheita</p>
+                {processos.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between rounded-lg border border-slate-200/80 bg-slate-50/70 px-3 py-2.5 dark:border-[#3d4f6a]/45 dark:bg-[#151f30]/50">
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{p.numero} · {p.teste}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">{formatDate(p.data_colheita)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </DetailSection>
+      </DetailPanel>
+    </FormTabContent>
   );
 }
 
 function ColheitaTab({ contact, postoNome, processos, estadoBadge }: { contact: Contact; postoNome: string; processos: { id: string; numero: string; kit_codigo: string; estado: string; data_colheita?: string }[]; estadoBadge: (e: string) => string }) {
   const hasAgendamento = !!(contact.posto_colheita_id || contact.data_colheita_prevista);
   return (
-    <Section title="Colheita" icon={Syringe}>
-      {hasAgendamento && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-          <InfoField label="Posto de colheita" value={postoNome} />
-          <InfoField label="Data prevista" value={formatDate(contact.data_colheita_prevista)} />
-        </div>
-      )}
-      {processos.length === 0 ? (
-        <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '13px' }}>
-          {hasAgendamento ? 'Processo criado após data efetiva e seleção do kit.' : 'Sem colheita agendada nem processos.'}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {processos.map((p) => (
-            <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <div>
-                <div className="text-gray-900 dark:text-gray-100" style={{ fontSize: '13px', fontWeight: 500 }}>{p.numero}</div>
-                <div className="text-gray-400 dark:text-gray-500" style={{ fontSize: '12px' }}>{p.kit_codigo ? `Kit ${p.kit_codigo}` : 'Sem kit associado'} · Colheita: {formatDate(p.data_colheita)}</div>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${estadoBadge(p.estado)}`}>{p.estado}</span>
+    <FormTabContent>
+      <DetailPanel>
+        <DetailSection title="Colheita" icon={Syringe}>
+          {hasAgendamento && (
+            <div className={`${FORM.fieldRow} mb-4`}>
+              <InfoField label="Posto de colheita" value={postoNome} width="2xl" />
+              <InfoField label="Data prevista" value={formatDate(contact.data_colheita_prevista)} width="sm" />
             </div>
-          ))}
-        </div>
-      )}
-    </Section>
+          )}
+          {processos.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {hasAgendamento ? 'Processo criado após data efetiva e seleção do kit.' : 'Sem colheita agendada nem processos.'}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {processos.map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-lg border border-slate-200/80 bg-slate-50/70 px-3 py-2.5 dark:border-[#3d4f6a]/45 dark:bg-[#151f30]/50">
+                  <div>
+                    <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{p.numero}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">{p.kit_codigo ? `Kit ${p.kit_codigo}` : 'Sem kit associado'} · Colheita: {formatDate(p.data_colheita)}</div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${estadoBadge(p.estado)}`}>{p.estado}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </DetailSection>
+      </DetailPanel>
+    </FormTabContent>
   );
 }
 
 function FaturacaoTab({ faturacao }: { faturacao: ReturnType<typeof extractFaturacaoFromContact> }) {
   return (
-    <Section title="Faturação" icon={Receipt}>
-      <ProcessFaturacaoView value={faturacao} />
-    </Section>
+    <FormTabContent>
+      <DetailPanel>
+        <DetailSection title="Faturação" icon={Receipt}>
+          <ProcessFaturacaoView value={faturacao} />
+        </DetailSection>
+      </DetailPanel>
+    </FormTabContent>
   );
 }
 
 function NotasTab({ contact, processos }: { contact: Contact; processos: { id: string; numero: string; observacoes?: string }[] }) {
   const comNotas = processos.filter((p) => p.observacoes && p.observacoes.trim());
   return (
-    <Section title="Notas" icon={StickyNote}>
-      {contact.notas_internas?.trim() ? (
-        <p className="text-gray-600 dark:text-gray-300 mb-4" style={{ fontSize: '13px' }}>{contact.notas_internas}</p>
-      ) : (
-        <p className="text-gray-400 dark:text-gray-500 mb-4" style={{ fontSize: '13px' }}>Sem notas no contacto.</p>
-      )}
-      {comNotas.length > 0 && (
-        <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-700">
-          <p className="text-gray-500 dark:text-gray-400" style={{ fontSize: '12px' }}>Notas nos processos:</p>
-          {comNotas.map((p) => (
-            <div key={p.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <div className="text-gray-900 dark:text-gray-100" style={{ fontSize: '13px', fontWeight: 500 }}>{p.numero}</div>
-              <p className="text-gray-600 dark:text-gray-300 mt-1" style={{ fontSize: '13px' }}>{p.observacoes}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </Section>
+    <FormTabContent>
+      <DetailPanel>
+        <DetailSection title="Notas" icon={StickyNote}>
+          {contact.notas_internas?.trim() ? (
+            <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200">{contact.notas_internas}</p>
+          ) : (
+            <p className="text-sm text-slate-500 dark:text-slate-400">Sem notas no contacto.</p>
+          )}
+          {comNotas.length > 0 && (
+            <>
+              <DetailDivider />
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Notas nos processos</p>
+                {comNotas.map((p) => (
+                  <div key={p.id} className="rounded-lg border border-slate-200/80 bg-slate-50/70 px-3 py-2.5 dark:border-[#3d4f6a]/45 dark:bg-[#151f30]/50">
+                    <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{p.numero}</div>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{p.observacoes}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </DetailSection>
+      </DetailPanel>
+    </FormTabContent>
   );
 }
 
@@ -358,6 +440,7 @@ export function AnexosTab({
   addAnexo: (data: { paciente_id?: string; tipo: Anexo['tipo']; titulo: string; descricao?: string; url?: string }) => Promise<void>;
   deleteAnexo: (id: string) => Promise<void>;
 }) {
+  const confirmDelete = useConfirmDelete();
   const [anexos, setAnexos] = useState<Anexo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -383,16 +466,18 @@ export function AnexosTab({
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao adicionar anexo.'); }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Remover este anexo?')) return;
+  const handleDelete = async (id: string, titulo: string) => {
+    if (!(await confirmDelete(deleteTargetLabel('o anexo', titulo)))) return;
     try { await deleteAnexo(id); toast.success('Anexo removido.'); await reload(); }
     catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao remover.'); }
   };
 
-  const input = 'w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100';
+  const input = `${CONTROL.input} text-sm`;
 
   return (
-    <Section title="Anexos" icon={Paperclip}>
+    <FormTabContent>
+      <DetailPanel>
+        <DetailSection title="Anexos" icon={Paperclip}>
       {canUpdate && (
         <div className="mb-4">
           {!showForm ? (
@@ -400,7 +485,7 @@ export function AnexosTab({
               <Plus className="w-3.5 h-3.5" /> Adicionar anexo
             </button>
           ) : (
-            <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-700/40 rounded-lg">
+            <div className="space-y-3 p-4 bg-gray-50 dark:bg-slate-800/25 rounded-lg">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <select className={input} value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as Anexo['tipo'] })}>
                   <option value="Documento">Documento</option>
@@ -430,7 +515,7 @@ export function AnexosTab({
       ) : (
         <div className="space-y-2">
           {anexos.map((a) => (
-            <div key={a.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div key={a.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800/30 rounded-lg">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200">{a.tipo}</span>
@@ -441,12 +526,14 @@ export function AnexosTab({
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 {a.url && <a href={a.url} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20" title="Abrir"><Download className="w-4 h-4" /></a>}
-                {canDelete && <button onClick={() => void handleDelete(a.id)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" title="Remover"><Trash2 className="w-4 h-4" /></button>}
+                {canDelete && <button onClick={() => void handleDelete(a.id, a.titulo)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" title="Remover"><Trash2 className="w-4 h-4" /></button>}
               </div>
             </div>
           ))}
         </div>
       )}
-    </Section>
+        </DetailSection>
+      </DetailPanel>
+    </FormTabContent>
   );
 }

@@ -18,6 +18,8 @@ import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
 import {
   CONTACTO_PAGE_ESTADOS, CONTACTO_PIPELINE_LABEL, filterContactosPreProcesso, getContactoPipelineEstado,
 } from '../../lib/contactos';
+import { deleteTargetLabel } from '../../lib/confirm-delete';
+import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 import { formatCalendarDatePt } from '../../lib/dates';
 import { KpiCard } from './dashboard/KpiCard';
 import { formatNumber, LAYOUT, PAGE, PANEL, CONTROL } from '../../lib/design-tokens';
@@ -43,6 +45,7 @@ export function ContactsPage() {
   const { contacts, deleteContact, processos } = useData();
   const { hasPermission } = useAuth();
   const { t } = useLanguage();
+  const confirmDelete = useConfirmDelete();
   const navigate = useNavigate();
   const canCreate = hasPermission('contactos', 'create');
   const canUpdate = hasPermission('contactos', 'update');
@@ -85,18 +88,17 @@ export function ContactsPage() {
   const resetPage = () => setCurrentPage(1);
 
   const handleDelete = async (id: string, nome: string) => {
-    if (confirm(`Tem a certeza que deseja eliminar ${nome}?`)) {
-      try {
-        await deleteContact(id);
-        toast.success('Contacto eliminado.');
-        if (viewMode === 'detail' && selectedContact?.id === id) {
-          setViewMode('list');
-          setSelectedContact(null);
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Falha ao eliminar contacto.';
-        toast.error(message);
+    if (!(await confirmDelete(deleteTargetLabel('o contacto', nome)))) return;
+    try {
+      await deleteContact(id);
+      toast.success('Contacto eliminado.');
+      if (viewMode === 'detail' && selectedContact?.id === id) {
+        setViewMode('list');
+        setSelectedContact(null);
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao eliminar contacto.';
+      toast.error(message);
     }
   };
 
@@ -196,7 +198,7 @@ export function ContactsPage() {
       header: 'Acoes',
       align: 'right' as const,
       render: (contact: Contact) => (
-        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center justify-end gap-1">
           <button onClick={() => openDetail(contact)} className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors" title="Ver detalhes"><Eye className="w-4 h-4" /></button>
           {canUpdate && <button onClick={() => openEdit(contact)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg transition-colors" title="Editar"><Edit className="w-4 h-4" /></button>}
           {canDelete && <button onClick={() => handleDelete(contact.id, contact.nome)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 rounded-lg transition-colors" title="Eliminar"><Trash2 className="w-4 h-4" /></button>}

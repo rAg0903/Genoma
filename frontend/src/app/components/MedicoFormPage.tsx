@@ -4,8 +4,20 @@ import { Save, User, Phone, MapPin, StickyNote, FileText, Receipt, Loader2, Plus
 import { toast } from 'sonner';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { Section } from './ContactDetail';
-import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton } from './shared/FormPageChrome';
+import { DetailPanel, DetailSection, DetailDivider } from './ContactDetail';
+import {
+  FormAvatarInitials,
+  FormField,
+  FormInput,
+  FormNumberInput,
+  FormPageBody,
+  FormPageHeader,
+  FormPageShell,
+  FormPrimaryButton,
+  FormRadixSelect,
+  FormTabContent,
+  FormTextarea,
+} from './shared/FormPageChrome';
 import {
   MedicoCondicaoTesteInput,
   MedicoContactoSecundario,
@@ -16,6 +28,7 @@ import {
 import { Teste } from '../data/types';
 import { getTestesSelecionaveis, getTestesSelecionaveisComLabel } from '../../lib/testes';
 import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
+import { FORM } from '../../lib/design-tokens';
 
 type TabId = 'identificacao' | 'condicoes' | 'relatorios' | 'notas';
 
@@ -25,9 +38,6 @@ const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: 'relatorios', label: 'Relatórios', icon: FileText },
   { id: 'notas', label: 'Notas', icon: StickyNote },
 ];
-
-const inputClass = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500';
-const labelClass = 'block mb-1.5 text-gray-600 dark:text-gray-400';
 
 const emptyContacto = (): MedicoContactoSecundario => ({ nome: '', funcao: '', email: '', telefone: '' });
 
@@ -43,7 +53,7 @@ const emptyForm = (): MedicoPayload => ({
   criterio_busca_postos: 'nome',
   notas: '',
   ativo: true,
-  especialidade: null,
+  especialidade: '',
   contactos_secundarios: [emptyContacto(), emptyContacto(), emptyContacto()],
   locais_trabalho: [],
   condicoes_testes: [],
@@ -76,6 +86,13 @@ export function MedicoFormPage() {
   const [saving, setSaving] = useState(false);
 
   const entidadesAtivas = useMemo(() => entidades.filter((e) => e.ativo !== false), [entidades]);
+  const entidadeOptions = useMemo(
+    () => entidadesAtivas.map((e) => ({
+      value: e.id,
+      label: `${e.nome}${e.cidade ? ` — ${e.cidade}` : ''}`,
+    })),
+    [entidadesAtivas],
+  );
   const testesAtivos = useMemo(
     () => [...getTestesSelecionaveis(testes)].sort((a, b) => a.nome.localeCompare(b.nome, 'pt')),
     [testes],
@@ -123,7 +140,7 @@ export function MedicoFormPage() {
           criterio_busca_postos: m.criterio_busca_postos || 'nome',
           notas: m.notas || '',
           ativo: m.ativo !== false,
-          especialidade: m.especialidade,
+          especialidade: m.especialidade || '',
           contactos_secundarios: contactos.slice(0, 3),
           locais_trabalho: (m.locais_trabalho || []).map((l) => ({ entidade_id: l.entidade_id })),
           condicoes_testes: testesAtivos.length > 0
@@ -238,200 +255,243 @@ export function MedicoFormPage() {
         />
 
         {tab === 'identificacao' && (
-          <div className="space-y-4 max-w-4xl">
-            <Section title="Identificação" icon={User}>
-              <div className="space-y-4">
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Nome <span className="text-red-500">*</span></label>
-                  <input className={inputClass} value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} style={{ fontSize: '14px' }} />
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Identificação" icon={User}>
+                <div className={FORM.fieldRow}>
+                  <FormField label="Nome" required width="2xl">
+                    <FormInput
+                      value={form.nome}
+                      onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                    />
+                  </FormField>
+                  <FormField label="Título" width="sm">
+                    <FormInput
+                      value={form.titulo || ''}
+                      onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+                      placeholder="Dr., Dra., Prof."
+                    />
+                  </FormField>
+                  <FormField label="Género" width="md">
+                    <FormRadixSelect
+                      value={form.genero || 'Feminino'}
+                      onChange={(v) => setForm({ ...form, genero: v })}
+                      options={[
+                        { value: 'Feminino', label: 'Feminino' },
+                        { value: 'Masculino', label: 'Masculino' },
+                      ]}
+                    />
+                  </FormField>
+                  <FormField label="Nº Cédula" width="md">
+                    <FormInput
+                      className="font-mono tabular-nums"
+                      value={form.num_ordem || ''}
+                      onChange={(e) => setForm({ ...form, num_ordem: e.target.value })}
+                    />
+                  </FormField>
+                  <FormField label="Especialidade" width="xl">
+                    <FormInput
+                      value={form.especialidade || ''}
+                      onChange={(e) => setForm({ ...form, especialidade: e.target.value })}
+                      placeholder="Ex.: Obstetrícia, Medicina Materno-Fetal"
+                    />
+                  </FormField>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelClass} style={{ fontSize: '13px' }}>Título</label>
-                    <input className={inputClass} value={form.titulo || ''} onChange={(e) => setForm({ ...form, titulo: e.target.value })} placeholder="Dr., Dra., Prof." style={{ fontSize: '14px' }} />
-                  </div>
-                  <div>
-                    <label className={labelClass} style={{ fontSize: '13px' }}>Género</label>
-                    <select className={inputClass} value={form.genero || 'Feminino'} onChange={(e) => setForm({ ...form, genero: e.target.value })} style={{ fontSize: '14px' }}>
-                      <option value="Feminino">Feminino</option>
-                      <option value="Masculino">Masculino</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Nº Cédula</label>
-                  <input className={inputClass} value={form.num_ordem || ''} onChange={(e) => setForm({ ...form, num_ordem: e.target.value })} style={{ fontSize: '14px', fontFamily: 'monospace' }} />
-                </div>
-              </div>
-            </Section>
+              </DetailSection>
 
-            <Section title="Contactos" icon={Phone}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Telefone (fixo)</label>
-                  <input className={inputClass} value={form.telefone_fixo || ''} onChange={(e) => setForm({ ...form, telefone_fixo: e.target.value })} style={{ fontSize: '14px' }} />
-                </div>
-                <div>
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Telefone (móvel)</label>
-                  <input className={inputClass} value={form.telefone_movel || ''} onChange={(e) => setForm({ ...form, telefone_movel: e.target.value })} style={{ fontSize: '14px' }} />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className={labelClass} style={{ fontSize: '13px' }}>Email <span className="text-red-500">*</span></label>
-                  <input type="email" className={inputClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ fontSize: '14px' }} />
-                </div>
-              </div>
-            </Section>
+              <DetailDivider />
 
-            <Section title="Contactos secundários" icon={Phone}>
-              <div className="space-y-4">
-                {form.contactos_secundarios.map((c, index) => (
-                  <div key={index} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contacto {index + 1}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className={labelClass} style={{ fontSize: '12px' }}>Nome</label>
-                        <input className={inputClass} value={c.nome} onChange={(e) => updateContacto(index, { nome: e.target.value })} style={{ fontSize: '14px' }} />
-                      </div>
-                      <div>
-                        <label className={labelClass} style={{ fontSize: '12px' }}>Função</label>
-                        <input className={inputClass} value={c.funcao} onChange={(e) => updateContacto(index, { funcao: e.target.value })} style={{ fontSize: '14px' }} />
-                      </div>
-                      <div>
-                        <label className={labelClass} style={{ fontSize: '12px' }}>Email</label>
-                        <input type="email" className={inputClass} value={c.email} onChange={(e) => updateContacto(index, { email: e.target.value })} style={{ fontSize: '14px' }} />
-                      </div>
-                      <div>
-                        <label className={labelClass} style={{ fontSize: '12px' }}>Telefone</label>
-                        <input className={inputClass} value={c.telefone} onChange={(e) => updateContacto(index, { telefone: e.target.value })} style={{ fontSize: '14px' }} />
+              <DetailSection title="Contactos" icon={Phone}>
+                <div className={FORM.fieldRow}>
+                  <FormField label="Telefone (fixo)" width="lg">
+                    <FormInput
+                      value={form.telefone_fixo || ''}
+                      onChange={(e) => setForm({ ...form, telefone_fixo: e.target.value })}
+                    />
+                  </FormField>
+                  <FormField label="Telefone (móvel)" width="lg">
+                    <FormInput
+                      value={form.telefone_movel || ''}
+                      onChange={(e) => setForm({ ...form, telefone_movel: e.target.value })}
+                    />
+                  </FormField>
+                  <FormField label="Email" required width="xl">
+                    <FormInput
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    />
+                  </FormField>
+                </div>
+              </DetailSection>
+
+              <DetailDivider />
+
+              <DetailSection title="Contactos secundários" icon={Phone}>
+                <div className="space-y-4">
+                  {form.contactos_secundarios.map((c, index) => (
+                    <div key={index} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Contacto {index + 1}</p>
+                      <div className={FORM.fieldRow}>
+                        <FormField label="Nome" width="lg">
+                          <FormInput
+                            value={c.nome}
+                            onChange={(e) => updateContacto(index, { nome: e.target.value })}
+                          />
+                        </FormField>
+                        <FormField label="Função" width="lg">
+                          <FormInput
+                            value={c.funcao}
+                            onChange={(e) => updateContacto(index, { funcao: e.target.value })}
+                          />
+                        </FormField>
+                        <FormField label="Email" width="lg">
+                          <FormInput
+                            type="email"
+                            value={c.email}
+                            onChange={(e) => updateContacto(index, { email: e.target.value })}
+                          />
+                        </FormField>
+                        <FormField label="Telefone" width="md">
+                          <FormInput
+                            value={c.telefone}
+                            onChange={(e) => updateContacto(index, { telefone: e.target.value })}
+                          />
+                        </FormField>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Section>
-
-            <Section title="Locais de trabalho" icon={MapPin}>
-              <div className="space-y-4">
-                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                  <div className="grid grid-cols-[auto_1fr_auto] gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                    <span />
-                    <span>Entidade</span>
-                    <span />
-                  </div>
-                  {form.locais_trabalho.length === 0 ? (
-                    <div className="px-4 py-6 text-center text-sm text-slate-400">Sem locais de trabalho. Adicione uma entidade.</div>
-                  ) : (
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {form.locais_trabalho.map((local, index) => (
-                        <div key={`${local.entidade_id}-${index}`} className="grid grid-cols-[auto_1fr_auto] gap-2 items-center px-3 py-2.5">
-                          <ChevronRight className="w-4 h-4 text-sky-500 shrink-0" />
-                          <select
-                            className={inputClass}
-                            value={local.entidade_id}
-                            onChange={(e) => updateLocal(index, e.target.value)}
-                            style={{ fontSize: '14px' }}
-                          >
-                            {entidadesAtivas.map((e) => (
-                              <option key={e.id} value={e.id}>{e.nome}{e.cidade ? ` — ${e.cidade}` : ''}</option>
-                            ))}
-                          </select>
-                          <button type="button" onClick={() => removeLocal(index)} className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  ))}
                 </div>
+              </DetailSection>
 
-                <button type="button" onClick={addLocal} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition">
-                  <Plus className="w-4 h-4" /> Adicionar local de trabalho
-                </button>
+              <DetailDivider />
+
+              <DetailSection title="Locais de trabalho" icon={MapPin}>
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="grid grid-cols-[auto_1fr_auto] gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                      <span />
+                      <span>Entidade</span>
+                      <span />
+                    </div>
+                    {form.locais_trabalho.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-slate-400">Sem locais de trabalho. Adicione uma entidade.</div>
+                    ) : (
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {form.locais_trabalho.map((local, index) => (
+                          <div key={`${local.entidade_id}-${index}`} className="grid grid-cols-[auto_1fr_auto] gap-2 items-center px-3 py-2.5">
+                            <ChevronRight className="w-4 h-4 text-sky-500 shrink-0" />
+                            <FormRadixSelect
+                              value={local.entidade_id}
+                              onChange={(v) => updateLocal(index, v)}
+                              options={entidadeOptions}
+                            />
+                            <button type="button" onClick={() => removeLocal(index)} className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <button type="button" onClick={addLocal} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition">
+                    <Plus className="w-4 h-4" /> Adicionar local de trabalho
+                  </button>
+                </div>
+              </DetailSection>
+
+              <div className="px-5 py-3.5 sm:px-6 sm:py-4">
+                <label className={FORM.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    checked={form.ativo !== false}
+                    onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
+                    className={CHECKBOX_INPUT_CLASS}
+                  />
+                  <span>Médico ativo</span>
+                </label>
               </div>
-            </Section>
-
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={form.ativo !== false} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} className={CHECKBOX_INPUT_CLASS} />
-              <span className="text-gray-700 dark:text-gray-300" style={{ fontSize: '13px' }}>Médico ativo</span>
-            </label>
-          </div>
+            </DetailPanel>
+          </FormTabContent>
         )}
 
         {tab === 'notas' && (
-          <div className="max-w-3xl">
-            <Section title="Notas" icon={StickyNote}>
-              <textarea
-                className={`${inputClass} min-h-[180px]`}
-                value={form.notas || ''}
-                onChange={(e) => setForm({ ...form, notas: e.target.value })}
-                placeholder="Notas internas sobre o médico…"
-                style={{ fontSize: '14px' }}
-              />
-            </Section>
-          </div>
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Notas" icon={StickyNote}>
+                <FormField label="Notas internas" width="3xl">
+                  <FormTextarea
+                    className="min-h-[180px]"
+                    value={form.notas || ''}
+                    onChange={(e) => setForm({ ...form, notas: e.target.value })}
+                    placeholder="Notas internas sobre o médico…"
+                  />
+                </FormField>
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
         )}
 
         {tab === 'condicoes' && (
-          <div className="max-w-4xl">
-            <Section title="Testes" icon={FlaskConical}>
-              {testesAtivos.length === 0 ? (
-                <p className="text-sm text-slate-500">Não existem testes ativos na Administração.</p>
-              ) : (
-                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                  <div className="grid grid-cols-[1fr_9rem_9rem] gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                    <span>Nome</span>
-                    <span className="text-right">Comissão</span>
-                    <span className="text-right">Prazo de pagamento</span>
-                  </div>
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[28rem] overflow-y-auto">
-                    {form.condicoes_testes.map((c) => {
-                      const teste = testesPorId.get(c.teste_id);
-                      if (!teste) return null;
-                      return (
-                        <div key={c.teste_id} className="grid grid-cols-[1fr_9rem_9rem] gap-2 items-center px-3 py-2.5">
-                          <span className="text-sm text-slate-800 dark:text-slate-100 pr-2">
-                            {testesLabelPorId.get(c.teste_id) ?? teste.nome}
-                          </span>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              className={`${inputClass} pr-7 text-right tabular-nums`}
-                              value={c.comissao}
-                              onChange={(e) => updateCondicao(c.teste_id, { comissao: e.target.value })}
-                              placeholder="0"
-                              style={{ fontSize: '13px' }}
-                            />
-                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">€</span>
+          <FormTabContent>
+            <DetailPanel>
+              <DetailSection title="Testes" icon={FlaskConical}>
+                {testesAtivos.length === 0 ? (
+                  <p className="text-sm text-slate-500">Não existem testes ativos na Administração.</p>
+                ) : (
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="grid grid-cols-[1fr_9rem_9rem] gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                      <span>Nome</span>
+                      <span className="text-right">Comissão</span>
+                      <span className="text-right">Prazo de pagamento</span>
+                    </div>
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[28rem] overflow-y-auto">
+                      {form.condicoes_testes.map((c) => {
+                        const teste = testesPorId.get(c.teste_id);
+                        if (!teste) return null;
+                        return (
+                          <div key={c.teste_id} className="grid grid-cols-[1fr_9rem_9rem] gap-2 items-center px-3 py-2.5">
+                            <span className="text-sm text-slate-800 dark:text-slate-100 pr-2">
+                              {testesLabelPorId.get(c.teste_id) ?? teste.nome}
+                            </span>
+                            <div className="relative">
+                              <FormNumberInput
+                                inputMode="decimal"
+                                className="pr-7 text-right tabular-nums"
+                                value={c.comissao}
+                                onChange={(e) => updateCondicao(c.teste_id, { comissao: e.target.value })}
+                                placeholder="0"
+                              />
+                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">€</span>
+                            </div>
+                            <div className="relative">
+                              <FormNumberInput
+                                inputMode="numeric"
+                                className="pr-10 text-right tabular-nums"
+                                value={c.prazo_pagamento_dias}
+                                onChange={(e) => updateCondicao(c.teste_id, { prazo_pagamento_dias: e.target.value })}
+                                placeholder="0"
+                              />
+                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">dias</span>
+                            </div>
                           </div>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              className={`${inputClass} pr-10 text-right tabular-nums`}
-                              value={c.prazo_pagamento_dias}
-                              onChange={(e) => updateCondicao(c.teste_id, { prazo_pagamento_dias: e.target.value })}
-                              placeholder="0"
-                              style={{ fontSize: '13px' }}
-                            />
-                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">dias</span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
-            </Section>
-          </div>
+                )}
+              </DetailSection>
+            </DetailPanel>
+          </FormTabContent>
         )}
 
         {tab === 'relatorios' && (
-          <div className="max-w-3xl rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center text-slate-500 dark:text-slate-400 text-sm">
-            Esta secção ficará disponível numa fase posterior.
-          </div>
+          <FormTabContent>
+            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center text-slate-500 dark:text-slate-400 text-sm">
+              Esta secção ficará disponível numa fase posterior.
+            </div>
+          </FormTabContent>
         )}
       </FormPageBody>
     </FormPageShell>

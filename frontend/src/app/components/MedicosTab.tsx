@@ -10,6 +10,9 @@ import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
 
 import { Medico, medicosApi } from '../../lib/api-medicos';
 
+import { deleteTargetLabel } from '../../lib/confirm-delete';
+import { useConfirmDelete } from '../context/ConfirmDeleteContext';
+
 import { StatusBadge } from './shared/StatusBadge';
 
 import {
@@ -41,6 +44,7 @@ import {
 export function MedicosTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
 
   const navigate = useNavigate();
+  const confirmDelete = useConfirmDelete();
 
   const [search, setSearch] = useState('');
 
@@ -82,7 +86,7 @@ export function MedicosTab({ canCreate, canUpdate, canDelete }: { canCreate: boo
 
     const q = search.toLowerCase();
 
-    return !q || [m.nome, m.titulo, m.email, m.num_ordem, m.telefone_movel].some((v) => (v || '').toLowerCase().includes(q));
+    return !q || [m.nome, m.titulo, m.especialidade, m.email, m.num_ordem, m.telefone_movel].some((v) => (v || '').toLowerCase().includes(q));
 
   });
 
@@ -92,7 +96,7 @@ export function MedicosTab({ canCreate, canUpdate, canDelete }: { canCreate: boo
 
     const label = [m.titulo, m.nome].filter(Boolean).join(' ');
 
-    if (!confirm(`Eliminar médico ${label}?`)) return;
+    if (!(await confirmDelete(deleteTargetLabel('o médico', label)))) return;
 
     try {
 
@@ -170,7 +174,7 @@ export function MedicosTab({ canCreate, canUpdate, canDelete }: { canCreate: boo
 
                 <tr>
 
-                  {['Nome', 'Cédula', 'Email', 'Telemóvel', 'Entidades', 'Estado', 'Ações'].map((h) => (
+                  {['Nome', 'Especialidade', 'Cédula', 'Email', 'Telemóvel', 'Entidades', 'Estado', 'Ações'].map((h) => (
 
                     <AdminTableHeadCell key={h} align={h === 'Ações' ? 'right' : 'left'}>
 
@@ -195,6 +199,8 @@ export function MedicosTab({ canCreate, canUpdate, canDelete }: { canCreate: boo
                       {[m.titulo, m.nome].filter(Boolean).join(' ')}
 
                     </td>
+
+                    <td className="px-4 py-3 text-[13px] text-slate-600 dark:text-slate-300">{m.especialidade || '—'}</td>
 
                     <td className="px-4 py-3 font-mono text-xs text-slate-700 dark:text-slate-300">{m.num_ordem || '—'}</td>
 

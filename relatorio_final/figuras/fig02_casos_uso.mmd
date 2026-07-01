@@ -1,0 +1,37 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#f8fafc', 'primaryTextColor': '#0f172a', 'primaryBorderColor': '#0d9488', 'lineColor': '#64748b', 'fontFamily': 'Segoe UI, Arial, sans-serif'}}}%%
+flowchart TB
+    subgraph Actors["Actores"]
+        direction TB
+        OP((Operador))
+        MED((Médico<br/>Prescritor))
+        CLIN((Responsável<br/>Clínico))
+        FIN((Gestor<br/>Financeiro))
+        ADM((Administrador))
+        DIR((Director<br/>Lab.))
+    end
+
+    subgraph System["Sistema CRM Genoma"]
+        direction TB
+        UC01["UC01 Autenticar"]
+        UC02["UC02 Gerir contactos"]
+        UC03["UC03 Registar lote/kits"]
+        UC04["UC04 Agendar colheita"]
+        UC05["UC05 Gerir processo"]
+        UC06["UC06 Registar resultados"]
+        UC07["UC07 Validar resultado"]
+        UC08["UC08 Gerar relatório PDF"]
+        UC09["UC09 Emitir fatura"]
+        UC10["UC10 Rastreabilidade"]
+        UC11["UC11 Exportar listagens"]
+        UC12["UC12 Administrar sistema"]
+        UC13["UC13 Painel médico"]
+    end
+
+    OP --- UC02 & UC03 & UC04 & UC05 & UC06 & UC11
+    MED --- UC02 & UC05 & UC13
+    CLIN --- UC07 & UC08
+    FIN --- UC09
+    ADM --- UC01 & UC12
+    DIR --- UC10
+    UC04 -.->|include| UC03
+    UC05 -.->|include| UC01

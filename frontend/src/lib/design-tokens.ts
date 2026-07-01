@@ -72,45 +72,79 @@ export const CARD = {
 } as const;
 
 export const SURFACE = {
-  // Cartao padrao
+  // Cartao padrao (elevado sobre o shell da pagina)
   card:
-    'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl',
+    'bg-white dark:bg-[#1f2a3d] border border-slate-200 dark:border-[#334155]/65 rounded-xl',
   // Cartao com leve elevacao
   cardElevated:
-    'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm',
+    'bg-white dark:bg-[#1f2a3d] border border-slate-200 dark:border-[#334155]/65 rounded-xl shadow-sm dark:shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]',
   // Cartao interativo (hover)
   cardInteractive:
-    'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl transition-all hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-[0_10px_30px_-18px_rgba(13,148,136,0.45)]',
+    'bg-white dark:bg-[#1f2a3d] border border-slate-200 dark:border-[#334155]/65 rounded-xl transition-all hover:border-teal-300 dark:hover:border-teal-600/50 hover:shadow-[0_10px_30px_-18px_rgba(13,148,136,0.45)]',
   // Fundo da area de trabalho
-  canvas: 'bg-slate-50 dark:bg-slate-950',
+  canvas: 'bg-slate-50 dark:bg-[#0a1018]',
+} as const;
+
+/**
+ * Hierarquia da app shell — espelha o light mode com tons distintos mas harmoniosos.
+ * Light: sidebar branca · topbar slate-50 · canvas slate-100 · shell slate-50 · cards brancos.
+ * Dark:  canvas #0a1018 · sidebar #131b29 · topbar #161f30 · shell #1a2336 · cards #1f2a3d.
+ */
+export const APP = {
+  root: 'bg-slate-100 dark:bg-[#0a1018]',
+  sidebar:
+    'bg-white dark:bg-[#131b29] text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-[#243044]',
+  sidebarSectionBorder: 'border-slate-200/80 dark:border-[#243044]',
+  topbar:
+    'bg-slate-50/95 dark:bg-[#161f30]/95 backdrop-blur border-b border-slate-200 dark:border-[#243044]',
+  canvas: 'bg-slate-100/70 dark:bg-[#0a1018]',
 } as const;
 
 /** Contentor e corpo de pagina (alinhado com o Painel). */
 export const PAGE = {
   shell:
-    'flex flex-col min-h-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden',
+    'flex flex-col min-h-full bg-slate-50 dark:bg-[#1a2336] border border-slate-200 dark:border-[#2d3a50] rounded-2xl overflow-hidden',
   body: `flex flex-col flex-1 ${LAYOUT.pagePadding} ${LAYOUT.sectionGap}`,
   title: 'text-slate-900 dark:text-slate-100 text-2xl font-semibold tracking-tight',
   subtitle: 'text-slate-500 dark:text-slate-400 text-[13px] mt-1',
 } as const;
 
+/** Ficha de contacto / processo — painel unico com subseccoes leves. */
+export const DETAIL = {
+  panel:
+    'rounded-xl border border-slate-200/80 bg-white shadow-sm dark:bg-[#1f2a3d] dark:border-[#3d4f6a]/50 dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset] overflow-hidden',
+  section: 'px-5 py-3.5 sm:px-6 sm:py-4',
+  sectionTitle:
+    'flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-600 dark:text-slate-200 mb-3',
+  sectionIconBadge:
+    'flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-teal-500/10 ring-1 ring-teal-500/15 dark:bg-teal-400/12 dark:ring-teal-400/25',
+  sectionIcon: 'h-3.5 w-3.5 text-teal-600 dark:text-teal-400 shrink-0',
+  divider: 'border-t border-slate-200/80 dark:border-[#3d4f6a]/45',
+  label: 'text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400',
+  value: 'text-sm font-medium text-slate-800 dark:text-slate-100 mt-0.5',
+  valueEmpty: 'text-slate-400 dark:text-slate-500 font-normal',
+  grid: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4',
+  /** Cartao isolado (tabs com uma unica seccao). */
+  card: 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark:bg-[#1f2a3d] dark:border-[#3d4f6a]/50 dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset] p-5 sm:p-6',
+} as const;
+
 /** Tabs deslizantes (cápsula #0f172b + texto branco). */
 export const TAB = {
-  track: 'relative inline-flex gap-0.5 p-1 rounded-xl bg-slate-100/80 dark:bg-slate-800/50',
+  track: 'relative inline-flex gap-0.5 p-1 rounded-xl bg-slate-100/80 dark:bg-[#151f30]',
   indicator:
-    'pointer-events-none absolute top-1 bottom-1 rounded-lg bg-[#0f172b] dark:bg-slate-100 shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
-  active: 'font-semibold text-white dark:text-[#0f172b]',
+    'pointer-events-none absolute top-1 bottom-1 rounded-lg bg-[#0f172b] dark:bg-teal-700/85 shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+  active: 'font-semibold text-white dark:text-white',
   inactive: 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
-  activeIcon: 'text-white dark:text-[#0f172b]',
+  activeIcon: 'text-white dark:text-teal-50',
   inactiveIcon: 'text-slate-400 dark:text-slate-500',
-  activeCount: 'bg-white/20 dark:bg-slate-900/15 text-white dark:text-[#0f172b]',
+  activeCount: 'bg-white/20 dark:bg-white/15 text-white dark:text-white',
 } as const;
 
 /** Painéis de listagem / tabelas */
 export const PANEL = {
   table:
-    'bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden',
-  tableHead: 'bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800',
+    'bg-white dark:bg-[#1f2a3d] rounded-xl border border-slate-200 dark:border-[#334155]/65 overflow-hidden',
+  tableHead: 'bg-slate-50 dark:bg-[#151f30] border-b border-slate-200 dark:border-[#334155]/55',
 } as const;
 
 // ----------------------------------------------------------------------------
@@ -151,7 +185,7 @@ export const KPI_TONES: Record<KpiTone, { iconBg: string; icon: string; ring: st
   warning: { iconBg: 'bg-amber-100 dark:bg-amber-900/30', icon: 'text-amber-600 dark:text-amber-400', ring: 'group-hover:border-amber-300 dark:group-hover:border-amber-700' },
   danger: { iconBg: 'bg-rose-100 dark:bg-rose-900/30', icon: 'text-rose-600 dark:text-rose-400', ring: 'group-hover:border-rose-300 dark:group-hover:border-rose-700' },
   violet: { iconBg: 'bg-violet-100 dark:bg-violet-900/30', icon: 'text-violet-600 dark:text-violet-400', ring: 'group-hover:border-violet-300 dark:group-hover:border-violet-700' },
-  neutral: { iconBg: 'bg-slate-100 dark:bg-slate-800', icon: 'text-slate-600 dark:text-slate-300', ring: 'group-hover:border-slate-300 dark:group-hover:border-slate-600' },
+  neutral: { iconBg: 'bg-slate-100 dark:bg-[#151f30]', icon: 'text-slate-600 dark:text-slate-300', ring: 'group-hover:border-slate-300 dark:group-hover:border-[#334155]' },
 };
 
 // Paleta para os estados do processo (alinhada com a maquina de estados)
@@ -180,40 +214,80 @@ export const CALENDAR_LOAD_COLORS: Record<string, string> = {
 // ----------------------------------------------------------------------------
 export const CONTROL = {
   input:
-    'w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition',
+    'h-9 w-full px-3 text-sm rounded-lg border border-slate-200 dark:border-[#3d4f6a]/55 bg-white dark:bg-[#182338]/95 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm shadow-slate-900/[0.03] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] transition-[border-color,box-shadow] duration-150 hover:border-slate-300 dark:hover:border-teal-600/35 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/70 disabled:opacity-60 disabled:cursor-not-allowed',
+  select:
+    'appearance-none bg-[length:1rem] bg-[right_0.6rem_center] bg-no-repeat pr-9 [background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2364748b%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E")] dark:[background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%2394a3b8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E")]',
+  textarea:
+    'min-h-[5.5rem] w-full px-3 py-2.5 text-sm leading-relaxed rounded-lg border border-slate-200 dark:border-[#3d4f6a]/55 bg-white dark:bg-[#182338]/95 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-sm shadow-slate-900/[0.03] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset] transition-[border-color,box-shadow] duration-150 hover:border-slate-300 dark:hover:border-teal-600/35 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/70 resize-y',
+  numberInput:
+    'tabular-nums [appearance:textfield] [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0',
   buttonPrimary:
     'inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 active:bg-teal-800 transition disabled:opacity-50',
   buttonGhost:
     'inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition',
   buttonSecondary:
-    'inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition',
+    'inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-[#334155]/70 bg-white dark:bg-[#1f2a3d] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#243044] transition',
   searchInput:
-    'w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition',
+    'w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-[#334155]/70 bg-white dark:bg-[#1f2a3d] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition',
   segment:
-    'relative inline-flex gap-0.5 p-1 rounded-xl bg-slate-100/80 dark:bg-slate-800/50',
+    'relative inline-flex gap-0.5 p-1 rounded-xl bg-slate-100/80 dark:bg-[#151f30]',
   segmentItem:
     'relative z-10 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors duration-200',
   segmentItemActive:
-    'font-semibold text-white dark:text-[#0f172b]',
+    'font-semibold text-white dark:text-white',
   segmentIndicator:
-    'pointer-events-none absolute top-1 bottom-1 rounded-lg bg-[#0f172b] dark:bg-slate-100 shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+    'pointer-events-none absolute top-1 bottom-1 rounded-lg bg-[#0f172b] dark:bg-teal-700/85 shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
   segmentItemIdle:
     'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
 } as const;
 
 /** Campos de formulário (páginas e modais). */
 export const FORM = {
-  label: 'block mb-1.5 text-[13px] font-medium text-slate-600 dark:text-slate-400',
-  hint: 'mt-1 text-xs text-slate-500 dark:text-slate-400',
+  label: 'block text-xs font-medium text-slate-700 dark:text-slate-300',
+  hint: 'mt-1.5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400',
   stack: 'space-y-4',
   alertInfo:
     'rounded-lg border border-sky-200 dark:border-sky-900/40 bg-sky-50 dark:bg-sky-950/30 px-3 py-2 text-xs leading-relaxed text-sky-800 dark:text-sky-300',
   alertWarning:
     'rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs leading-relaxed text-amber-800 dark:text-amber-300',
   checkboxRow:
-    'flex items-start gap-2.5 text-[13px] leading-snug text-slate-700 dark:text-slate-200 cursor-pointer select-none [&_input[type=checkbox]]:mt-0.5',
+    'flex items-start gap-2.5 text-[13px] font-medium leading-snug text-slate-700 dark:text-slate-200 cursor-pointer select-none [&_input[type=checkbox]]:mt-0.5',
   checkbox:
     'w-4 h-4 rounded border-slate-300 dark:border-slate-600 accent-teal-600 focus:ring-teal-500/40',
+  /** Linha de campos com larguras fixas — não estica inputs. */
+  fieldRow: 'flex flex-wrap items-start gap-x-4 gap-y-4',
+  /** Larguras fixas por tipo de dado (enterprise forms). */
+  fieldWidth: {
+    xs: 'w-[6.5rem] max-w-full shrink-0',
+    sm: 'w-[9.25rem] max-w-full shrink-0',
+    md: 'w-[11.5rem] max-w-full shrink-0',
+    lg: 'w-[14rem] max-w-full shrink-0',
+    xl: 'w-[18rem] max-w-full shrink-0',
+    '2xl': 'w-[22rem] max-w-full shrink-0',
+    '3xl': 'w-[28rem] max-w-full shrink-0',
+    full: 'w-full max-w-md',
+  },
+  /** @deprecated Preferir fieldRow + fieldWidth para formulários pro. */
+  grid:
+    'flex flex-wrap items-start gap-x-4 gap-y-4',
+  tabContent: 'w-full min-w-0',
+  /** Bloco de métricas agrupadas (ex.: semanas/dias de gestação). */
+  metricGroup:
+    'rounded-lg border border-slate-200/80 dark:border-[#334155]/55 bg-slate-50/60 dark:bg-[#151f30]/50 p-4',
+  /** Nota informativa no rodapé de uma secção. */
+  sectionNote:
+    'mt-4 rounded-lg border border-slate-200/70 dark:border-teal-900/25 bg-slate-50/70 dark:bg-teal-950/15 px-4 py-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300',
+  /** Campo só leitura / calculado. */
+  readOnlyInput:
+    'bg-slate-50 dark:bg-[#151f30]/60 text-slate-600 dark:text-slate-400 cursor-default focus:ring-0',
+  /** Input desactivado. */
+  disabledInput:
+    'opacity-70 cursor-not-allowed bg-slate-50 dark:bg-[#151f30]/40',
+  /** Dropdown Radix alinhado ao CRM. */
+  selectContent:
+    'z-[100] overflow-hidden rounded-lg border border-slate-200 dark:border-[#334155] bg-white dark:bg-[#1f2a3d] text-slate-900 dark:text-slate-200 shadow-lg',
+  selectItem:
+    'rounded-md py-2 pl-2.5 pr-8 text-sm cursor-pointer outline-none focus:bg-teal-50 dark:focus:bg-teal-900/25 data-[highlighted]:bg-teal-50 dark:data-[highlighted]:bg-teal-900/25',
 } as const;
 
 // Helpers de formatacao
@@ -222,3 +296,5 @@ export const formatEUR = (value: number) =>
 
 export const formatNumber = (value: number) =>
   new Intl.NumberFormat('pt-PT').format(value || 0);
+
+export type FormFieldWidth = keyof typeof FORM.fieldWidth;

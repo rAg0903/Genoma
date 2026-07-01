@@ -58,6 +58,7 @@ export interface SearchResultItem {
     module: string;
     id: string;
     paciente_id?: string;
+    processo_id?: string;
     trace?: 'kit' | 'lote' | 'processo';
   };
 }
