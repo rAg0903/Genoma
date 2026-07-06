@@ -3,8 +3,12 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { MainLayout } from './components/MainLayout';
 import { LoginPage } from './components/LoginPage';
 import { useAuth } from './context/AuthContext';
+import { ConfirmDeleteProvider } from './context/ConfirmDeleteContext';
+import { ConfirmActionProvider } from './context/ConfirmActionContext';
+import { GlobalSearchProvider } from './context/GlobalSearchContext';
 import { PermissionModule } from '../lib/permissions';
 import { AccessDeniedState } from './components/shared/AccessDeniedState';
+import { PageLoadingSkeleton } from './components/shared/PageSkeletons';
 import { getAuthToken } from '../lib/auth-session';
 
 const DashboardPage = lazy(() => import('./components/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -27,6 +31,7 @@ const SubTesteFormPage = lazy(() => import('./components/SubTesteFormPage').then
 const ProfilePage = lazy(() => import('./components/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const NotificationsPage = lazy(() => import('./components/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
+const ColheitasDoDiaPage = lazy(() => import('./components/ColheitasDoDiaPage').then((m) => ({ default: m.ColheitasDoDiaPage })));
 const NotFoundPage = lazy(() => import('./components/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 const SHOW_404_PREVIEW = false;
@@ -50,10 +55,8 @@ function ProtectedRoute({ module, children }: { module: PermissionModule; childr
 
 function RouteLoading() {
   return (
-    <div className="p-6" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-        <p className="text-gray-500 dark:text-gray-400" style={{ fontSize: '14px' }}>A carregar modulo...</p>
-      </div>
+    <div className="p-4 md:p-6" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <PageLoadingSkeleton />
     </div>
   );
 }
@@ -100,7 +103,13 @@ function GuestOnly({ children }: { children: ReactNode }) {
 function ProtectedLayout() {
   return (
     <RequireAuth>
-      <MainLayout />
+      <GlobalSearchProvider>
+        <ConfirmDeleteProvider>
+          <ConfirmActionProvider>
+            <MainLayout />
+          </ConfirmActionProvider>
+        </ConfirmDeleteProvider>
+      </GlobalSearchProvider>
     </RequireAuth>
   );
 }
@@ -155,6 +164,18 @@ export const router = createBrowserRouter([
         Component: () => withSuspense(
           <ProtectedRoute module="contactos">
             <ContactFormPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'agendamentos',
+        Component: () => <Navigate to="/colheitas-hoje" replace />,
+      },
+      {
+        path: 'colheitas-hoje',
+        Component: () => withSuspense(
+          <ProtectedRoute module="contactos">
+            <ColheitasDoDiaPage />
           </ProtectedRoute>
         ),
       },

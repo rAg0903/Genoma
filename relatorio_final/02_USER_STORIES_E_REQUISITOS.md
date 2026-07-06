@@ -281,14 +281,13 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | RF-013 | Dashboard com KPIs e alertas operacionais (scoped por médico) | Média | US-005, US-013 | Implementado |
 | RF-014 | Listagens com pesquisa, filtros e exportação multi-formato | Média | US-012 | Implementado |
 | RF-015 | Gestão de catálogo de testes genómicos (metadados ADN fetal) | Média | US-007 | Implementado |
-| RF-016 | Motivos de anulação configuráveis | Média | US-005 | Parcial* |
+| RF-016 | Motivos de anulação configuráveis | Média | US-005 | Implementado |
 | RF-017 | Notificações in-app e automáticas e-mail/SMS | Baixa | US-009 | Parcial** |
 | RF-018 | Integração com software de faturação certificado | Baixa | US-010 | Pendente |
 | RF-019 | Importação de dados históricos | Baixa | — | Pendente |
 | RF-020 | Isolamento de dados e painel dedicado ao perfil Médico | Alta | US-013 | Implementado |
 
-\* Tabela `motivos_anulacao` criada; ligação ao ecrã de cancelamento de processos pendente.  
-\** Centro de notificações in-app implementado (categorias, preferências, alertas faturação); envio e-mail/SMS por configurar.
+\** Centro de notificações in-app implementado (categorias, preferências, alertas faturação); envio e-mail/SMS por configurar. Os motivos de anulação (`motivos_anulacao`) foram integrados no ecrã de cancelamento de processos (campos `motivo_anulacao_id` e `data_anulacao` em `processos`).
 
 ---
 
@@ -338,7 +337,7 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | ID | Requisito | Implementação |
 |---|---|---|
 | RNF-023 | Arquitectura em camadas (Routes → Controllers → Services → Repositories) | `backend/ARCHITECTURE.md` |
-| RNF-024 | Migrações versionadas (59 ficheiros) | `backend/src/migrations/` |
+| RNF-024 | Migrações versionadas (63 ficheiros) | `backend/src/migrations/` |
 | RNF-025 | Documentação API (OpenAPI/Swagger) | `swagger.json` + `swagger-ui-express` |
 | RNF-026 | Tratamento centralizado de erros | `error.middleware.js` |
 | RNF-027 | Prepared statements (prevenção SQL Injection) | `mysql2` parameterized queries |

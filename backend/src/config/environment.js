@@ -29,7 +29,7 @@ module.exports = {
   // JWT
   JWT: {
     secret: process.env.JWT_SECRET || 'default_secret_key_change_in_production',
-    expiration: process.env.JWT_EXPIRE || '7d'
+    expiration: process.env.JWT_EXPIRE || '8h'
   },
 
   // CORS
@@ -49,5 +49,21 @@ module.exports = {
   LOG: {
     level: process.env.LOG_LEVEL || 'info',
     dir: process.env.LOG_DIR || './logs'
+  },
+
+  // Documentação API (desactivada em produção por defeito)
+  SWAGGER_ENABLED: process.env.SWAGGER_ENABLED === 'true'
+    || (process.env.SWAGGER_ENABLED !== 'false' && (process.env.NODE_ENV || 'development') !== 'production'),
+
+  // Backups
+  BACKUP: {
+    dir: process.env.BACKUP_DIR || './database/backups',
+    retentionDays: parseInt(process.env.BACKUP_RETENTION_DAYS, 10) || 30
+  },
+
+  // Auto-descarte de kits
+  KIT_AUTO_DESCARTE: {
+    enabled: process.env.KIT_AUTO_DESCARTE_ENABLED !== 'false',
+    startupMs: parseInt(process.env.KIT_AUTO_DESCARTE_STARTUP_MS, 10) || 30_000
   }
 };

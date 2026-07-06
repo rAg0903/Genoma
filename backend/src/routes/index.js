@@ -10,9 +10,7 @@ const testesRoutes = require('./testes.routes');
 const itensRoutes = require('./itens_pesquisa.routes');
 const medicosRoutes = require('./medicos.routes');
 const composicaoRoutes = require('./teste_composicao.routes');
-const pedidosRoutes = require('./pedidos_exames.routes');
 const processosRoutes = require('./processos.routes');
-const resultadosRoutes = require('./resultados_detalhados.routes');
 const stocksRoutes = require('./stocks.routes');
 const agendamentosRoutes = require('./colheitas.routes');
 const requisicoesRoutes = require('./requisicoes.routes');
@@ -28,7 +26,6 @@ const tiposKitRoutes = require('./tipos_kit.routes');
 const motivosAnulacaoRoutes = require('./motivos_anulacao.routes');
 const notificacoesRoutes = require('./notificacoes.routes');
 const codigoPostalRoutes = require('./codigo-postal.routes');
-const deprecationMiddleware = require('../middleware/deprecation.middleware');
 
 router.use('/auth', authRoutes);
 router.use('/perfis', perfisRoutes);
@@ -55,10 +52,5 @@ router.use('/tipos-kit', tiposKitRoutes);
 router.use('/motivos-anulacao', motivosAnulacaoRoutes);
 router.use('/notificacoes', notificacoesRoutes);
 router.use('/codigo-postal', codigoPostalRoutes);
-
-// Rotas legadas (dominio unificado em `processos`). Mantidas apenas para
-// compatibilidade retroativa.
-router.use('/pedidos', deprecationMiddleware({ successor: '/api/processos' }), pedidosRoutes);
-router.use('/resultados', deprecationMiddleware({ successor: '/api/processos' }), resultadosRoutes);
 
 module.exports = router;

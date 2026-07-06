@@ -2,12 +2,21 @@ import { Processo } from '../app/data/types';
 
 export type EstadoProcesso = Processo['estado'];
 
+export type ProcessTimelineStepState = 'done' | 'current' | 'upcoming' | 'cancelled';
+
+export interface ProcessTimelineStep {
+  id: string;
+  label: string;
+  date?: string | null;
+  state: ProcessTimelineStepState;
+}
+
 /** Código do kit no processo (numero_processo costuma ser o código do kit na conversão contacto→processo). */
 export const resolveProcessoKitCodigo = (
   p: Pick<Processo, 'kit_codigo' | 'numero'>,
 ): string => (p.kit_codigo?.trim() || p.numero?.trim() || '');
 
-/** Pipeline visivel na pagina Processos (apos colheita com kit). */
+/** Estados visíveis no pipeline da página Processos (agrupados por coluna). */
 export const PROCESS_PIPELINE_ESTADOS: EstadoProcesso[] = [
   'Colheita Realizada',
   'Enviado Laboratorio',
@@ -17,17 +26,16 @@ export const PROCESS_PIPELINE_ESTADOS: EstadoProcesso[] = [
   'Faturado',
 ];
 
-/** Colunas do kanban — agrupa estados equivalentes numa unica etapa visual. */
+/** Colunas do kanban — colheita integrada na etapa de envio ao laboratório. */
 export const PROCESS_PIPELINE_COLUMNS: {
   key: string;
   label: string;
   estados: EstadoProcesso[];
 }[] = [
-  { key: 'Colheita Realizada', label: 'Colheita Realizada', estados: ['Colheita Realizada'] },
   {
     key: 'lab_analise',
     label: 'Enviado ao Laboratório p/ Análise',
-    estados: ['Enviado Laboratorio', 'Em Analise'],
+    estados: ['Colheita Realizada', 'Enviado Laboratorio', 'Em Analise'],
   },
   { key: 'Resultado Disponivel', label: 'Resultado Disponivel', estados: ['Resultado Disponivel'] },
   { key: 'Validado', label: 'Validado', estados: ['Validado'] },
@@ -76,8 +84,100 @@ export const processoMatchesEstadoFilter = (estado: EstadoProcesso, filterKey: s
 export const PIPELINE_ESTADOS: EstadoProcesso[] = [
   'Agendado',
   'Kit Reservado',
-  ...PROCESS_PIPELINE_ESTADOS,
+  'Colheita Realizada',
+  'Enviado Laboratorio',
+  'Em Analise',
+  'Resultado Disponivel',
+  'Validado',
+  'Faturado',
 ];
+
+/** Passos unificados do workflow (sem repetir «Enviado ao Laboratório»). */
+const WORKFLOW_STEP_DEFS: { id: string; label: string; getDate: (p: Processo) => string | null | undefined }[] = [
+  { id: 'agendado', label: 'Agendado', getDate: (p) => p.data_entrada },
+  { id: 'kit', label: 'Kit Reservado', getDate: () => undefined },
+  { id: 'colheita', label: 'Colheita Realizada', getDate: (p) => p.data_colheita },
+  { id: 'lab', label: 'Enviado ao Laboratório p/ Análise', getDate: (p) => p.data_envio_laboratorio || p.data_chegada_laboratorio },
+  { id: 'resultado', label: 'Resultado Disponivel', getDate: (p) => p.data_resultado },
+  { id: 'validado', label: 'Validado', getDate: (p) => p.data_validacao },
+  { id: 'faturado', label: 'Faturado', getDate: (p) => p.fatura_data_emissao },
+];
+
+/** Índice do passo actual no workflow (Colheita Realizada conta como etapa de laboratório no pipeline). */
+const WORKFLOW_STEP_INDEX: Record<EstadoProcesso, number> = {
+  Agendado: 0,
+  'Kit Reservado': 1,
+  'Colheita Realizada': 3,
+  'Enviado Laboratorio': 3,
+  'Em Analise': 3,
+  'Resultado Disponivel': 4,
+  Validado: 5,
+  Faturado: 6,
+  Cancelado: -1,
+};
+
+export const buildProcessWorkflowSteps = (p: Processo): ProcessTimelineStep[] => {
+  if (p.estado === 'Cancelado') {
+    return WORKFLOW_STEP_DEFS.map((step) => ({
+      id: step.id,
+      label: step.label,
+      date: step.getDate(p),
+      state: 'cancelled',
+    }));
+  }
+  const currentIdx = WORKFLOW_STEP_INDEX[p.estado] ?? 0;
+  return WORKFLOW_STEP_DEFS.map((step, i) => ({
+    id: step.id,
+    label: step.label,
+    date: step.getDate(p),
+    state: i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'upcoming',
+  }));
+};
+
+const HISTORICO_EVENT_DEFS: { id: string; label: string; getDate: (p: Processo) => string | null | undefined }[] = [
+  { id: 'entrada', label: 'Entrada / agendamento', getDate: (p) => p.data_entrada },
+  { id: 'colheita', label: 'Colheita realizada', getDate: (p) => p.data_colheita },
+  { id: 'envio_lab', label: 'Envio ao laboratório p/ análise', getDate: (p) => p.data_envio_laboratorio },
+  {
+    id: 'chegada_lab',
+    label: 'Chegada ao laboratório',
+    getDate: (p) => {
+      const chegada = p.data_chegada_laboratorio;
+      if (!chegada) return undefined;
+      if (p.data_envio_laboratorio && chegada === p.data_envio_laboratorio) return undefined;
+      return chegada;
+    },
+  },
+  { id: 'resultado', label: 'Resultado disponível', getDate: (p) => p.data_resultado },
+  { id: 'validacao', label: 'Validação clínica', getDate: (p) => p.data_validacao },
+  { id: 'relatorio', label: 'Envio de relatório', getDate: (p) => p.data_envio_relatorio },
+  {
+    id: 'fatura',
+    label: 'Fatura emitida',
+    getDate: (p) => (p.fatura_emitida && p.fatura_data_emissao ? p.fatura_data_emissao : undefined),
+  },
+  { id: 'pagamento', label: 'Pagamento', getDate: (p) => p.pagamento_data },
+];
+
+/** Histórico cronológico — só eventos com data registada, sem repetições. */
+export const buildProcessHistoricoSteps = (p: Processo): ProcessTimelineStep[] => {
+  const events = HISTORICO_EVENT_DEFS
+    .map((event) => ({
+      id: event.id,
+      label: event.label,
+      date: event.getDate(p),
+    }))
+    .filter((event): event is { id: string; label: string; date: string } => !!event.date)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  if (events.length === 0) return [];
+
+  const cancelled = p.estado === 'Cancelado';
+  return events.map((event, i) => ({
+    ...event,
+    state: cancelled ? 'cancelled' : i === events.length - 1 ? 'current' : 'done',
+  }));
+};
 
 export const TODOS_ESTADOS: EstadoProcesso[] = [...PIPELINE_ESTADOS, 'Cancelado'];
 

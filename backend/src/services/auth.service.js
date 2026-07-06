@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const environment = require('../config/environment');
 const userRepository = require('../repositories/utilizadores.repository');
 
 const RESET_TOKEN_TTL_MINUTES = 30;
@@ -35,8 +36,8 @@ exports.login = async ({ email, password }) => {
             id: user.id,
             role: user.perfil_id
         },
-        process.env.JWT_SECRET,
-        { expiresIn: '8h' }
+        environment.JWT.secret,
+        { expiresIn: environment.JWT.expiration }
     );
 
     return token;

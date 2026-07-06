@@ -28,7 +28,7 @@ Lote → Kit → Agendamento → Colheita → Processo → Resultado → Relató
 | **Gestão de amostras** | Registo de lotes e kits rastreáveis por código de barras, com controlo de stock e movimentos entre locais |
 | **Triagem e workflow** | Pipeline clínico com estados validados (Agendado → Colheita → Análise → Validação → Faturação) |
 | **Sequenciação e resultados** | Registo de resultados genéticos por cromossoma, upload de PDFs e validação clínica |
-| **Agendamentos** | Calendário de colheitas com reserva automática de kits |
+| **Colheitas do dia** | Calendário operacional para postos e tablet; registo de colheita na ficha do contacto (reserva de kit via API `/agendamentos`) |
 | **Faturação** | Emissão de faturas com numeração, descontos e referências multibanco |
 | **Rastreabilidade** | Cadeia completa lote ↔ kit ↔ processo ↔ resultado, em ambos os sentidos |
 | **Listagens e exportação** | Consultas avançadas com exportação para Excel, CSV e PDF |

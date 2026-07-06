@@ -210,7 +210,7 @@ Continua válido e **não foi alterado** nesta fase (salvo o que está explicita
 
 - Módulo de Processos (pipeline, validações de estado, datas).
 - Listagens e exportações.
-- Agendamentos (calendário).
+- **Colheitas hoje** (`/colheitas-hoje`) — calendário operacional e lista do dia para postos/tablet; `/agendamentos` redirecciona para esta vista.
 - Motivos de anulação na Administração (ligação ao cancelamento de processos ainda pendente).
 - Notificações (canais reais por configurar).
 - Perguntas ao cliente na Parte 2 do documento anterior.

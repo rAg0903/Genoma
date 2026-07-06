@@ -1,10 +1,14 @@
 import { ReactNode, useEffect } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { X } from 'lucide-react';
+import { DRAWER, MODAL } from '../../../lib/design-tokens';
+import { SlidingTabItem, SlidingTabs } from './SlidingTabs';
 
 export interface DrawerTab<T extends string> {
   id: T;
   label: string;
   badge?: number | string;
+  icon?: LucideIcon;
 }
 
 interface DetailDrawerProps<T extends string> {
@@ -17,18 +21,26 @@ interface DetailDrawerProps<T extends string> {
   activeTab?: T;
   onTabChange?: (id: T) => void;
   footer?: ReactNode;
-  width?: 'md' | 'lg' | 'xl';
+  width?: 'md' | 'lg' | 'xl' | '2xl' | 'compact';
+  /** Tabs sem animação suave (drawers) */
+  instantTabs?: boolean;
   children: ReactNode;
 }
 
-const WIDTHS = { md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-3xl' };
+const WIDTHS = {
+  md: 'max-w-md',
+  compact: 'max-w-xl',
+  lg: 'max-w-2xl',
+  xl: 'max-w-3xl',
+  '2xl': 'max-w-4xl',
+};
 
 /**
- * Drawer lateral (slide-over) com cabecalho, abas opcionais, corpo com scroll
+ * Drawer lateral (slide-over) com cabecalho, abas deslizantes, corpo com scroll
  * e rodape fixo. Mantem o contexto da lista por baixo.
  */
 export function DetailDrawer<T extends string>({
-  open, onClose, title, subtitle, headerExtra, tabs, activeTab, onTabChange, footer, width = 'lg', children,
+  open, onClose, title, subtitle, headerExtra, tabs, activeTab, onTabChange, footer, width = 'lg', instantTabs = false, children,
 }: DetailDrawerProps<T>) {
   useEffect(() => {
     if (!open) return;
@@ -39,50 +51,46 @@ export function DetailDrawer<T extends string>({
 
   if (!open) return null;
 
+  const slidingTabs: SlidingTabItem<T>[] | undefined = tabs?.map((t) => ({
+    id: t.id,
+    label: t.label,
+    icon: t.icon,
+    count: typeof t.badge === 'number' ? t.badge : undefined,
+  }));
+
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] animate-in fade-in" onClick={onClose} />
-      <div className={`absolute right-0 top-0 h-full w-full ${WIDTHS[width]} bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800`}>
-        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+      <div className="absolute inset-0 bg-slate-900/45 backdrop-blur-[2px] animate-in fade-in" onClick={onClose} />
+      <div className={`absolute right-0 top-0 h-full w-full ${WIDTHS[width]} ${DRAWER.shell}`}>
+        <div className={`flex items-start justify-between gap-3 ${DRAWER.header}`}>
           <div className="min-w-0 flex-1">
-            <div className="text-slate-900 dark:text-slate-100 text-base font-semibold tracking-tight truncate">{title}</div>
-            {subtitle && <div className="text-slate-400 dark:text-slate-500 text-xs mt-0.5">{subtitle}</div>}
+            <div className="truncate text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</div>
+            {subtitle && <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {headerExtra}
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition">
-              <X className="w-4 h-4" />
+            <button type="button" onClick={onClose} className={MODAL.closeBtn} aria-label="Fechar">
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {tabs && tabs.length > 0 && (
-          <div className="flex items-center gap-1 px-3 border-b border-slate-100 dark:border-slate-800 overflow-x-auto">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => onTabChange?.(t.id)}
-                className={`relative px-3 py-2.5 text-sm font-medium whitespace-nowrap transition ${
-                  activeTab === t.id
-                    ? 'text-teal-600 dark:text-teal-400'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-              >
-                <span className="flex items-center gap-1.5">
-                  {t.label}
-                  {t.badge !== undefined && (
-                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500">{t.badge}</span>
-                  )}
-                </span>
-                {activeTab === t.id && <span className="absolute left-2 right-2 -bottom-px h-0.5 bg-teal-500 rounded-full" />}
-              </button>
-            ))}
+        {slidingTabs && slidingTabs.length > 0 && activeTab !== undefined && onTabChange && (
+          <div className={DRAWER.tabs}>
+            <SlidingTabs
+              items={slidingTabs}
+              active={activeTab}
+              onChange={onTabChange}
+              size="sm"
+              instant={instantTabs}
+              ariaLabel="Secções do detalhe"
+            />
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-5 py-5">{children}</div>
+        <div className={DRAWER.body}>{children}</div>
 
-        {footer && <div className="border-t border-slate-100 dark:border-slate-800 px-5 py-3 bg-slate-50 dark:bg-slate-900/50">{footer}</div>}
+        {footer && <div className={DRAWER.footer}>{footer}</div>}
       </div>
     </div>
   );

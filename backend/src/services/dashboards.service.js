@@ -141,6 +141,35 @@ exports.getLaboratorial = async (medicoUtilizadorId = null) => {
   };
 };
 
+exports.getSLA = async (medicoUtilizadorId = null) => {
+  const [atrasados, colheitasPosto, semFatura] = await Promise.all([
+    dashboardsRepository.processosEmAnaliseAtrasados(15, medicoUtilizadorId),
+    dashboardsRepository.colheitasPorPosto(7, medicoUtilizadorId),
+    dashboardsRepository.processosValidadosSemFatura(7, medicoUtilizadorId),
+  ]);
+
+  const alertas = [];
+  if (atrasados.length > 0) {
+    alertas.push({
+      nivel: 'critico',
+      mensagem: `${atrasados.length} processo(s) em analise com SLA ultrapassado.`,
+    });
+  }
+  if (semFatura.length > 0) {
+    alertas.push({
+      nivel: 'aviso',
+      mensagem: `${semFatura.length} processo(s) validado(s) ha mais de 7 dias sem fatura.`,
+    });
+  }
+
+  return {
+    processos_sla_ultrapassado: atrasados,
+    colheitas_por_posto_proximos_7_dias: colheitasPosto,
+    processos_validados_sem_fatura: semFatura,
+    alertas,
+  };
+};
+
 exports.getExecutivo = async (medicoUtilizadorId = null) => {
   const [contadores, mix, porMes] = await Promise.all([
     dashboardsRepository.contadoresExecutivos(medicoUtilizadorId),

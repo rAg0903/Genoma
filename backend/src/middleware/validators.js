@@ -88,6 +88,7 @@ const utilizadorUpdateValidator = [
 const pacienteValidator = [
   nomeValidator,
   body('data_nascimento')
+    .optional({ nullable: true })
     .isISO8601()
     .withMessage('Data de nascimento inválida'),
   body('genero')

@@ -48,7 +48,7 @@ function buildInsert(tableName, columns, rows) {
   return `INSERT INTO \`${tableName}\` (${colList}) VALUES\n${values};\n`;
 }
 
-async function exportDatabase() {
+async function exportDatabase(outputFile = process.env.BACKUP_OUTPUT_FILE || OUTPUT_FILE) {
   const dbPassword = process.env.DB_PASSWORD || '';
   const config = {
     host: process.env.DB_HOST || 'localhost',
@@ -122,11 +122,11 @@ async function exportDatabase() {
     lines.push('SET FOREIGN_KEY_CHECKS = 1;');
     lines.push('-- Fim da exportação');
 
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-    fs.writeFileSync(OUTPUT_FILE, lines.join('\n'), 'utf8');
+    fs.mkdirSync(path.dirname(outputFile), { recursive: true });
+    fs.writeFileSync(outputFile, lines.join('\n'), 'utf8');
 
-    const sizeKb = Math.round(fs.statSync(OUTPUT_FILE).size / 1024);
-    console.log(`Exportação concluída: ${OUTPUT_FILE}`);
+    const sizeKb = Math.round(fs.statSync(outputFile).size / 1024);
+    console.log(`Exportação concluída: ${outputFile}`);
     console.log(`Tabelas: ${tableNames.length} | Tamanho: ~${sizeKb} KB`);
   } finally {
     if (connection) await connection.end();

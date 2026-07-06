@@ -1,4 +1,6 @@
 const { validationResult } = require('express-validator');
+const logger = require('../config/logger');
+const { captureException } = require('../config/sentry');
 
 /**
  * Middleware para lidar com erros de validação
@@ -10,10 +12,10 @@ const validationMiddleware = (req, res, next) => {
     return res.status(400).json({
       success: false,
       message: 'Erros de validação',
-      errors: errors.array().map(err => ({
-        field: err.param,
-        message: err.msg
-      }))
+    errors: errors.array().map(err => ({
+      field: err.path ?? err.param ?? err.location,
+      message: err.msg
+    }))
     });
   }
   next();
@@ -24,14 +26,18 @@ const validationMiddleware = (req, res, next) => {
  * Deve ser o último middleware a ser registado no app
  */
 const errorHandler = (err, req, res, next) => {
-  // Log do erro para monitoramento
-  console.error('❌ Erro:', {
-    timestamp: new Date().toISOString(),
+  captureException(err, {
     method: req.method,
     path: req.path,
-    message: err.message,
-    stack: err.stack
+    userId: req.user?.id,
   });
+
+  const log = req.log || logger;
+  log.error({
+    err,
+    method: req.method,
+    path: req.path,
+  }, err.message || 'Erro interno');
 
   // Defina status code baseado no tipo de erro
   let statusCode = err.statusCode || 500;

@@ -3,20 +3,14 @@ const router = express.Router();
 
 const testesController = require('../controllers/testes.controller');
 const authMiddleware = require('../middleware/auth.middleware');
+const { requireAdmin } = require('../middleware/authorization.middleware');
+const { testeValidator, testeUpdateValidator, idValidator } = require('../middleware/validators');
+const { validationMiddleware } = require('../middleware/error.middleware');
 
-// GET /api/testes - Listar todos os testes
 router.get('/', authMiddleware, testesController.list);
-
-// GET /api/testes/:id - Obter um teste específico
-router.get('/:id', authMiddleware, testesController.getById);
-
-// POST /api/testes - Criar um novo teste
-router.post('/', authMiddleware, testesController.create);
-
-// PUT /api/testes/:id - Atualizar um teste
-router.put('/:id', authMiddleware, testesController.update);
-
-// DELETE /api/testes/:id - Deletar um teste
-router.delete('/:id', authMiddleware, testesController.delete);
+router.get('/:id', authMiddleware, idValidator, validationMiddleware, testesController.getById);
+router.post('/', authMiddleware, requireAdmin, testeValidator, validationMiddleware, testesController.create);
+router.put('/:id', authMiddleware, requireAdmin, [idValidator, ...testeUpdateValidator], validationMiddleware, testesController.update);
+router.delete('/:id', authMiddleware, requireAdmin, idValidator, validationMiddleware, testesController.delete);
 
 module.exports = router;

@@ -174,25 +174,23 @@
 
 ### 6.3.2. Cronograma (Gantt)
 
-[INSERIR DIAGRAMA DE GANTT AQUI]
+O projecto foi organizado em quatro sprints (metodologia ágil/Scrum) entre o final de Março e meados de Julho de 2026:
 
 ```
-Sugestão de estrutura para o Gantt:
-
-Jan 2026 ████ Levantamento de requisitos
-Fev 2026 ████████ Modelação BD + Arquitectura
-Mar 2026 ████████████ Backend core + Auth
-Abr 2026 ████████████████ Frontend + Módulos base
-Mai 2026 ████████████████████ Processos + Stocks + Listagens
-Jun 2026 ████████████████████████ Testes + Documentação PFC
+Mar 2026 (fim) ████ Sprint 1 — UI/UX, requisitos e base do frontend
+Abr 2026       ████████ Sprint 2 — Modelação de dados, migrações e API/Auth
+Mai 2026       ████████████████ Sprint 3 — Módulos core (Contactos, Stock, Processos, Relatórios, Admin)
+Jun–Jul 2026   ████████████████████████ Sprint 4 — Integração, fecho de Processos, auto-descartes, validação e entrega
 ```
+
+Data-limite de entrega: 16/17 de Julho de 2026. Apresentação oficial: 21 de Julho de 2026.
 
 ### 6.3.3. Marcos (Milestones)
 
 | Marco | Data | Entregável |
 |---|---|---|
 | M1 — Requisitos validados | [INSERIR] | Documento de requisitos (Cap. 2) |
-| M2 — Schema de BD estável | [INSERIR] | Migrações 000–046 aplicadas |
+| M2 — Schema de BD estável | Maio 2026 | Migrações 000–063 aplicadas |
 | M3 — API funcional | [INSERIR] | Swagger docs + endpoints testados |
 | M4 — MVP operacional | [INSERIR] | Fluxo contacto → faturação |
 | M5 — Validação cliente | [INSERIR] | Sessão de demonstração Genoma |
@@ -202,8 +200,11 @@ Jun 2026 ███████████████████████�
 
 | Recurso | Papel | Alocação |
 |---|---|---|
-| [INSERIR NOME] | Desenvolvedor / Autor do PFC | [INSERIR %] |
-| [INSERIR NOME] | Orientador académico | Supervisão |
+| Rafael Fernandes Males (a22212343) | Frontend, UI/UX, base de dados e migrações | Tempo integral |
+| Alberto Macieira (a22301601) | Stock/Inventário e motor de Relatórios; co-autor da BD | Tempo integral |
+| Alexandre e Daniel | Requisitos de Contactos e fecho do módulo de Processos | Parcial |
+| Estagiário Genoma | Extracção e limpeza de dados legados | Pontual |
+| Ana Paula | Orientadora académica | Supervisão |
 | Equipa Genoma | Cliente / Stakeholder | Validação e feedback |
 
 ---

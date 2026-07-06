@@ -8,10 +8,13 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const swaggerUi = require('swagger-ui-express');
+const pinoHttp = require('pino-http');
 
 // Importações customizadas
 const environment = require('./config/environment');
+const logger = require('./config/logger');
 const swaggerDocument = require('./swagger.json');
+const pool = require('./config/database');
 const { errorHandler } = require('./middleware/error.middleware');
 const routes = require('./routes');
 const notificationsService = require('./services/notifications.service');
@@ -28,13 +31,10 @@ notificationsService.registerListeners();
 // 1. MIDDLEWARES DE SEGURANÇA
 // ============================================
 
-// Helmet - Define headers de segurança HTTP
 app.use(helmet());
 
-// CORS - Aceita requisições de origins configuradas
 app.use(cors(environment.CORS));
 
-// Rate Limiting - Proteção contra abuso (desativado em desenvolvimento)
 app.use(rateLimit({
   ...environment.RATE_LIMIT,
   standardHeaders: true,
@@ -50,71 +50,92 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ============================================
-// 3. MIDDLEWARE DE LOGGING (Desenvolvimento)
+// 3. LOGGING ESTRUTURADO
 // ============================================
 
-if (environment.isDevelopment) {
-  app.use((req, res, next) => {
-    const start = Date.now();
-    res.on('finish', () => {
-      const duration = Date.now() - start;
-      const status =
-        res.statusCode >= 400 ? '❌'
-        : res.statusCode < 300 || res.statusCode === 304 ? '✅'
-        : '⚠️';
-      console.log(
-        `${status} [${req.method}] ${req.path} - ${res.statusCode} (${duration}ms)`
-      );
-    });
-    next();
-  });
-}
+app.use(pinoHttp({
+  logger,
+  autoLogging: {
+    ignore: (req) => req.url === '/health' || req.url === '/health/live',
+  },
+  customLogLevel(req, res, err) {
+    if (err || res.statusCode >= 500) return 'error';
+    if (res.statusCode >= 400) return 'warn';
+    return 'info';
+  },
+}));
 
 // ============================================
 // 4. ROTAS DE SAÚDE E INFORMAÇÃO
 // ============================================
 
-// Health Check - Para monitoramento
-app.get('/health', (req, res) => {
+app.get('/health/live', (req, res) => {
   res.json({
     success: true,
-    message: 'API está operacional',
+    status: 'alive',
     timestamp: new Date().toISOString(),
-    environment: environment.NODE_ENV
   });
 });
 
-// Root Endpoint - Informações da API
+app.get('/health', async (req, res) => {
+  const payload = {
+    success: true,
+    status: 'ok',
+    message: 'API está operacional',
+    timestamp: new Date().toISOString(),
+    environment: environment.NODE_ENV,
+    version: process.env.APP_VERSION || '1.0.0',
+    checks: {
+      database: 'unknown',
+    },
+  };
+
+  try {
+    await pool.query('SELECT 1');
+    payload.checks.database = 'up';
+    res.json(payload);
+  } catch (error) {
+    payload.success = false;
+    payload.status = 'degraded';
+    payload.message = 'API online mas base de dados indisponível';
+    payload.checks.database = 'down';
+    req.log.error({ err: error }, 'Health check — base de dados indisponível');
+    res.status(503).json(payload);
+  }
+});
+
 app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'API Genoma - Sistema de Laboratório Genómico',
-    version: '1.0.0',
+    version: process.env.APP_VERSION || '1.0.0',
     environment: environment.NODE_ENV,
     endpoints: {
       health: '/health',
-      docs: '/api-docs',
-      api: '/api'
-    }
+      docs: environment.SWAGGER_ENABLED ? '/api-docs' : null,
+      api: '/api',
+    },
   });
 });
 
 // ============================================
-// 5. DOCUMENTAÇÃO SWAGGER
+// 5. DOCUMENTAÇÃO SWAGGER (parcial — só se activada)
 // ============================================
 
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerDocument, {
-  swaggerOptions: {
-    url: '/api-docs.json',
-    displayOperationId: true
-  }
-}));
+if (environment.SWAGGER_ENABLED) {
+  app.use('/api-docs', swaggerUi.serve);
+  app.get('/api-docs', swaggerUi.setup(swaggerDocument, {
+    swaggerOptions: {
+      url: '/api-docs.json',
+      displayOperationId: true,
+    },
+  }));
 
-app.get('/api-docs.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerDocument);
-});
+  app.get('/api-docs.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerDocument);
+  });
+}
 
 // ============================================
 // 6. ROTAS DA API
@@ -135,7 +156,7 @@ app.use((req, res) => {
     success: false,
     message: 'Rota não encontrada',
     path: req.path,
-    method: req.method
+    method: req.method,
   });
 });
 
@@ -143,7 +164,6 @@ app.use((req, res) => {
 // 8. MIDDLEWARE DE TRATAMENTO GLOBAL DE ERROS
 // ============================================
 
-// Deve ser o último middleware registado
 app.use(errorHandler);
 
 module.exports = app;

@@ -64,6 +64,46 @@ const en: TranslationTree = {
     confirm: 'Delete',
     cancel: 'Cancel',
   },
+  ux: {
+    dataQuality: {
+      title: 'Incomplete data',
+      missingPosto: 'Collection site is missing.',
+      missingColheitaDate: 'Collection date is not recorded.',
+      missingLabSend: 'Process in analysis without lab send date.',
+    },
+    confirmAction: {
+      confirm: 'Confirm',
+      transitionTitle: 'Confirm state change',
+      transitionMessage: 'Move process {numero} to «{estado}»?',
+      bulkTransitionMessage: 'Move {count} process(es) to «{estado}»?',
+      cancelAgendamentoTitle: 'Cancel appointment',
+      cancelAgendamentoMessage: 'Cancel appointment for {nome}?',
+    },
+    workQueue: {
+      medicoTitle: 'My work queue',
+      medicoSubtitle: 'Results and collections needing your attention',
+      adminTitle: 'Operations queue',
+      adminSubtitle: 'Stock, validations and delays',
+      empty: 'No pending tasks.',
+      validateResult: 'Validate result',
+      collectionToday: 'Scheduled collection',
+      lowStock: 'Low kit stock',
+      pendingValidation: 'Results to validate',
+      overdue: 'Overdue processes',
+    },
+    colheitasHoje: {
+      title: "Today's collections",
+      subtitle: 'Simplified view for sites and tablet',
+      empty: 'No collections scheduled for today.',
+      emptyHint: 'Create an appointment from the contact record, on the Collection tab.',
+      registar: 'Record collection',
+      resumoHoje: 'Today',
+      totalAgendamentos: 'appointment(s)',
+      agendamentoCount: 'appointment(s)',
+      pendentes: '{count} to record',
+    },
+    languageEnDisabled: 'English temporarily unavailable — coming soon.',
+  },
   faturacao: {
     alert: {
       titleNotInvoiced: 'Billing pending',
@@ -101,6 +141,8 @@ const en: TranslationTree = {
   nav: {
     dashboard: 'Dashboard',
     contacts: 'Contacts',
+    agendamentos: 'Appointments',
+    colheitasHoje: "Today's collections",
     processes: 'Processes',
     stocks: 'Stock',
     listings: 'Reports',
@@ -698,7 +740,8 @@ const en: TranslationTree = {
     processes: {
       title: 'Processes',
       subtitle: 'Clinical-laboratory pipeline — from collection to billing',
-      searchPlaceholder: 'Search by no., patient, doctor, kit or test...',
+      searchPlaceholder: 'Search by no., NIF, patient, doctor, kit or test...',
+      deleted: 'Process {numero} deleted.',
       kpi: {
         activeProcesses: 'Active processes',
         oldProcesses: 'Past processes',

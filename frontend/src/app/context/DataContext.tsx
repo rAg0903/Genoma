@@ -1056,6 +1056,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         kit_codigo: kitCodigo || null,
         data_colheita: data.data_colheita || null,
         data_colheita_prevista: data.data_colheita_prevista || null,
+        data_envio_laboratorio: data.data_envio_laboratorio || null,
         tipo_gravidez: data.tipo_gravidez || null,
         origem_conceicao: data.origem_conceicao || null,
         quer_saber_sexo: !!data.quer_saber_sexo,

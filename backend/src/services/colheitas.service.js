@@ -32,6 +32,7 @@ const mapAgendamento = (row) => ({
   numero_processo: row.numero_processo || '',
   processo_status: row.processo_status || '',
   paciente_nome: row.paciente_nome || '',
+  paciente_id: row.paciente_id || null,
   posto_id: row.posto_id,
   posto_nome: row.posto_nome || '',
   kit_codigo: row.kit_codigo || '',

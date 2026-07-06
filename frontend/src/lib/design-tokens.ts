@@ -158,6 +158,32 @@ export const MODAL = {
     'p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-[#243044] transition-colors shrink-0',
 } as const;
 
+/** Drawer lateral (detalhe de processo, listagens, stocks). */
+export const DRAWER = {
+  shell:
+    'bg-white dark:bg-[#1a2336] border-l border-slate-200 dark:border-[#2d3a50] shadow-2xl flex flex-col',
+  header:
+    'px-5 py-4 border-b border-slate-200/80 dark:border-[#2d3a50] bg-slate-50/90 dark:bg-[#161f30]/95 backdrop-blur-sm shrink-0',
+  tabs: 'px-4 py-3 border-b border-slate-200/80 dark:border-[#2d3a50] bg-white dark:bg-[#1a2336] shrink-0',
+  body: 'flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 bg-slate-100/60 dark:bg-[#0f1520]/40',
+  footer:
+    'border-t border-slate-200/80 dark:border-[#2d3a50] px-5 py-3 bg-white/90 dark:bg-[#161f30]/90 shrink-0',
+  panel:
+    'rounded-xl border border-slate-200/80 bg-white shadow-sm dark:bg-[#1f2a3d] dark:border-[#3d4f6a]/50 dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset] overflow-hidden',
+  panelBody: 'px-4 py-3.5 sm:px-5 sm:py-4',
+  sectionTitle:
+    'flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-slate-600 dark:text-slate-300',
+  sectionIcon:
+    'flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-teal-500/10 ring-1 ring-teal-500/15 dark:bg-teal-400/12 dark:ring-teal-400/25',
+  sectionIconGlyph: 'h-3.5 w-3.5 text-teal-600 dark:text-teal-400',
+  fieldLabel: 'text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500',
+  fieldValue: 'text-sm font-medium text-slate-800 dark:text-slate-100 mt-0.5',
+  actionCard:
+    'group w-full flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-3.5 text-left shadow-sm transition-all hover:border-teal-300 hover:shadow-[0_8px_24px_-16px_rgba(13,148,136,0.45)] dark:border-[#3d4f6a]/50 dark:bg-[#1f2a3d] dark:hover:border-teal-600/50',
+  statusBanner:
+    'rounded-xl border border-slate-200/80 bg-white px-4 py-3.5 shadow-sm dark:border-[#3d4f6a]/50 dark:bg-[#1f2a3d] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset]',
+} as const;
+
 // ----------------------------------------------------------------------------
 // 4. ESTADOS / SEMANTICA  (badges, alertas)
 // ----------------------------------------------------------------------------

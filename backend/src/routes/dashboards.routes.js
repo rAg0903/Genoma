@@ -8,5 +8,6 @@ router.get('/operacional', authMiddleware, dashboardsController.operacional);
 router.get('/financeiro', authMiddleware, dashboardsController.financeiro);
 router.get('/laboratorial', authMiddleware, dashboardsController.laboratorial);
 router.get('/executivo', authMiddleware, dashboardsController.executivo);
+router.get('/sla', authMiddleware, dashboardsController.sla);
 
 module.exports = router;

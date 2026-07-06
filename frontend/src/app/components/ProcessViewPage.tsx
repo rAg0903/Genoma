@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
-import { toast } from 'sonner';
+import { PAGE } from '../../lib/design-tokens';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { ProcessDetail } from './ProcessDetail';
 import { ContactToProcessoNotice } from './shared/ContactToProcessoNotice';
 import { isContactToProcessoRedirect } from '../../lib/contact-processo-redirect';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
+import { notifyError, notifySuccess } from '../../lib/toast';
 
 export function ProcessViewPage() {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
   const { processos, deleteProcesso } = useData();
   const { hasPermission } = useAuth();
   const canUpdate = hasPermission('processos', 'update');
@@ -35,20 +38,20 @@ export function ProcessViewPage() {
     if (!(await confirmDelete(deleteTargetLabel('o processo', processo.numero)))) return;
     try {
       await deleteProcesso(processo.id);
-      toast.success('Processo eliminado.');
+      notifySuccess(t('pages.processes.deleted', { numero: processo.numero }));
       navigate('/processos');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Falha ao eliminar.');
+      notifyError(e, t('common.operationFailed'));
     }
   };
 
   if (!id || !processo) {
     return (
-      <div className="flex flex-col min-h-full bg-gray-50 dark:bg-gray-900 p-6" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <button onClick={() => navigate('/processos')} className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4">
+      <div className={`flex flex-col min-h-full ${PAGE.shell} p-6`} style={{ fontFamily: 'Inter, sans-serif' }}>
+        <button onClick={() => navigate('/processos')} className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-4">
           <ArrowLeft className="w-4 h-4" /> Voltar aos processos
         </button>
-        <p className="text-gray-500 dark:text-gray-400">Processo não encontrado.</p>
+        <p className="text-slate-500 dark:text-slate-400">Processo não encontrado.</p>
       </div>
     );
   }

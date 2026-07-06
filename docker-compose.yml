@@ -1,0 +1,72 @@
+# Stack completo Genoma CRM — MariaDB + API + frontend (nginx)
+# Uso: docker compose up -d --build
+
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: genoma-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MARIADB_DATABASE: ${DB_NAME:-genoma}
+      MARIADB_USER: ${DB_USER:-genoma}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-genoma123}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: genoma-backend
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-genoma}
+      DB_PASSWORD: ${DB_PASSWORD:-genoma123}
+      DB_NAME: ${DB_NAME:-genoma}
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no .env}
+      JWT_EXPIRE: ${JWT_EXPIRE:-8h}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_DIR: /app/logs
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      KIT_AUTO_DESCARTE_ENABLED: ${KIT_AUTO_DESCARTE_ENABLED:-true}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    volumes:
+      - backend_logs:/app/logs
+      - backend_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: genoma-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+
+volumes:
+  mariadb_data:
+  backend_logs:
+  backend_uploads:

@@ -1,10 +1,10 @@
 # Relatório Final de Curso — CRM Genoma
 
-**Instituição:** ISLA — [Curso de Engenharia Informática]  
-**Autor:** [Rafael Fernandes Males]  
-**Orientador:** [Ana Paula]  
-**Ano Lectivo:** [25/26]  
-**Data:** Junho de 2026
+**Instituição:** ISLA — Engenharia Informática  
+**Autores:** Rafael Fernandes Males (a22212343) e Alberto Macieira (a22301601)  
+**Orientador:** Ana Paula  
+**Ano Lectivo:** 2025/2026  
+**Data:** Julho de 2026
 
 ---
 
@@ -16,7 +16,8 @@ Esta pasta contém a estrutura modular do Relatório de Projeto Final de Curso (
 
 | Ficheiro | Conteúdo |
 |---|---|
-| [LEI_Relatorio_a22212343.md](./LEI_Relatorio_a22212343.md) | **Relatório final completo — CRM Genoma (Rafael Males, a22212343)** |
+| [LEI_Relatorio_a22212343_a22301601.md](./LEI_Relatorio_a22212343_a22301601.md) | **Relatório final unificado — CRM Genoma (Rafael Males a22212343 + Alberto Macieira a22301601)** |
+| [LEI_Relatorio_a22212343.md](./LEI_Relatorio_a22212343.md) | Versão individual anterior (histórico técnico — mantida intacta) |
 
 ## Índice de Capítulos
 

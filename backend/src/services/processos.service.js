@@ -486,6 +486,15 @@ exports.create = async (data, user) => {
     numero_processo: numeroProcesso,
   });
 
+  if (statusProcesso === 'Em Analise' && !processo.data_envio_laboratorio) {
+    const hoje = formatCalendarDate(new Date());
+    await processosRepository.update(processo.id, {
+      data_envio_laboratorio: workflowData.data_envio_laboratorio || workflowData.data_colheita || hoje,
+    });
+  }
+
+  const created = await processosRepository.findById(processo.id);
+
   await syncInformacaoClinica(processo.id, clinicoSnapshot);
 
   const colheitasService = require('./colheitas.service');
@@ -521,7 +530,7 @@ exports.create = async (data, user) => {
     });
   }
 
-  return attachProcessoResponse(processo);
+  return attachProcessoResponse(created || processo);
 };
 
 exports.update = async (id, data, user) => {

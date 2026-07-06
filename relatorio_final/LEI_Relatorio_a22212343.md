@@ -687,7 +687,7 @@ A arquitectura adopta o padrão **Three-Tier Architecture / API-Based**, promove
 
 #### 3.3.1. Sequência — Agendamento com Reserva de Kit
 
-**Descrição textual:** O operador selecciona data, posto e paciente no calendário (`AgendamentosPage`). O frontend envia `POST /api/agendamentos`. O `colheitas.service.js` invoca o repositório que, numa transacção: (1) selecciona kit `Disponivel` compatível; (2) insere registo em `processos` com `status_id = 'Kit Reservado'`; (3) actualiza `kits.status = 'Reservado'`; (4) insere em `colheitas`; (5) regista em `logs_auditoria`. Resposta JSON devolve processo e colheita. Frontend actualiza calendário e pipeline.
+**Descrição textual:** O operador consulta o calendário em **`ColheitasDoDiaPage`** (`/colheitas-hoje`) ou agenda a partir da ficha do contacto (separador Colheita). O frontend envia `POST /api/agendamentos` quando aplicável. O `colheitas.service.js` invoca o repositório que, numa transacção: (1) selecciona kit `Disponivel` compatível; (2) insere registo em `processos` com `status_id = 'Kit Reservado'`; (3) actualiza `kits.status = 'Reservado'`; (4) insere em `colheitas`; (5) regista em `logs_auditoria`. O registo da colheita efectiva faz-se na ficha do contacto. Resposta JSON devolve processo e colheita. Frontend actualiza calendário e pipeline.
 
 ![Figura 4 — Diagrama de Sequência — Agendamento com reserva de kit](figuras/fig04_sequencia_agendamento.png)
 

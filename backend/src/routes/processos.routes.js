@@ -5,13 +5,14 @@ const processosController = require('../controllers/processos.controller');
 const resultadosController = require('../controllers/resultados.controller');
 const faturacaoController = require('../controllers/faturacao.controller');
 const authMiddleware = require('../middleware/auth.middleware');
+const { requireAdmin } = require('../middleware/authorization.middleware');
 
 router.get('/', authMiddleware, processosController.list);
 router.get('/paciente/:pacienteId', authMiddleware, processosController.listByPaciente);
 router.get('/:id', authMiddleware, processosController.getById);
 router.post('/', authMiddleware, processosController.create);
 router.put('/:id', authMiddleware, processosController.update);
-router.delete('/:id', authMiddleware, processosController.delete);
+router.delete('/:id', authMiddleware, requireAdmin, processosController.delete);
 
 // Resultados (modelo "tudo OK por defeito") e validacao clinica
 router.get('/:id/resultados', authMiddleware, resultadosController.getResultados);
@@ -28,5 +29,6 @@ router.post('/:id/relatorio/enviar', authMiddleware, resultadosController.enviar
 router.get('/:id/faturacao', authMiddleware, faturacaoController.get);
 router.post('/:id/faturacao', authMiddleware, faturacaoController.emitir);
 router.post('/:id/faturacao/pagamento', authMiddleware, faturacaoController.registarPagamento);
+router.get('/:id/fatura/pdf', authMiddleware, faturacaoController.downloadPdf);
 
 module.exports = router;

@@ -1,106 +1,90 @@
 /**
  * Ponto de entrada da aplicação
- * Responsável por:
- * 1. Carregar e validar variáveis de ambiente
- * 2. Inicializar a aplicação Express
- * 3. Iniciar o servidor HTTP
  */
 
-// Carregar variáveis de ambiente ANTES de qualquer outra coisa
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-// Validar variáveis de ambiente necessárias
+const logger = require('./src/config/logger');
+const { initSentry, captureException } = require('./src/config/sentry');
+const environment = require('./src/config/environment');
+
+initSentry();
+
 const requiredEnvVars = [
   'DB_HOST',
   'DB_USER',
   'DB_PASSWORD',
   'DB_NAME',
-  'JWT_SECRET'
+  'JWT_SECRET',
 ];
 
-const missingEnvVars = requiredEnvVars.filter(env => !process.env[env]);
+const missingEnvVars = requiredEnvVars.filter((env) => !process.env[env]);
 if (missingEnvVars.length > 0) {
-  console.error(
-    '❌ Erro: Variáveis de ambiente faltando:',
-    missingEnvVars.join(', ')
-  );
-  console.error('📝 Crie um arquivo .env baseado em .env.example');
+  logger.fatal({ missing: missingEnvVars }, 'Variáveis de ambiente obrigatórias em falta');
   process.exit(1);
 }
 
-// Importar app após carregar .env
+if (environment.isProduction && environment.JWT.secret === 'default_secret_key_change_in_production') {
+  logger.warn('JWT_SECRET parece ser o valor por defeito — altere em produção');
+}
+
 const app = require('./src/app');
 
-// Porta do servidor
-const PORT = process.env.PORT || 3000;
-const NODE_ENV = process.env.NODE_ENV || 'development';
-const DB_HOST = process.env.DB_HOST || 'localhost';
-const DB_PORT = process.env.DB_PORT || 3306;
-const DB_NAME = process.env.DB_NAME || 'genoma';
+const PORT = environment.PORT;
+const DB_HOST = environment.DATABASE.host;
+const DB_PORT = environment.DATABASE.port;
+const DB_NAME = environment.DATABASE.database;
 
-// Iniciar servidor
 const server = app.listen(PORT, () => {
-  console.log(`
-╔════════════════════════════════════════════════════════════╗
-║        🧬 API Genoma - Sistema de Laboratório Genómico    ║
-╠════════════════════════════════════════════════════════════╣
-║ Status:    ✅ Online e operacional                        ║
-║ Porta:     🔌 ${PORT}                                           ║
-║ Ambiente:  🌍 ${NODE_ENV}                                       ║
-║ DB:        🗄️  ${DB_HOST}:${DB_PORT}/${DB_NAME}                    ║
-║ Hora:      ⏰ ${new Date().toLocaleString('pt-PT')}                  ║
-╠════════════════════════════════════════════════════════════╣
-║ Documentação da API:                                       ║
-║   📖 http://localhost:${PORT}/api-docs                         ║
-║                                                            ║
-║ Health Check:                                              ║
-║   ❤️  http://localhost:${PORT}/health                          ║
-║                                                            ║
-║ API Base URL:                                              ║
-║   🔗 http://localhost:${PORT}/api                              ║
-╚════════════════════════════════════════════════════════════╝
-  `);
+  logger.info({
+    port: PORT,
+    env: environment.NODE_ENV,
+    database: `${DB_HOST}:${DB_PORT}/${DB_NAME}`,
+    swagger: environment.SWAGGER_ENABLED,
+    rateLimit: !environment.isDevelopment,
+    kitAutoDescarte: environment.KIT_AUTO_DESCARTE.enabled,
+  }, 'API Genoma online');
 });
 
 const kitAutoDescarte = require('./src/services/kit-auto-descarte.service');
-kitAutoDescarte.scheduleAutoDescartes();
+if (environment.KIT_AUTO_DESCARTE.enabled) {
+  kitAutoDescarte.scheduleAutoDescartes();
+} else {
+  logger.warn('KIT_AUTO_DESCARTE_ENABLED=false — auto-descarte desactivado');
+}
 
-// Tratamento de erro de inicialização
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`❌ Erro: Porta ${PORT} já está em uso`);
+    logger.fatal({ port: PORT }, 'Porta já em uso');
   } else {
-    console.error('❌ Erro ao iniciar servidor:', err.message);
+    logger.fatal({ err }, 'Erro ao iniciar servidor');
   }
   process.exit(1);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('\n⏹️  Recebido SIGTERM, encerrando gracefully...');
+function shutdown(signal) {
+  logger.info({ signal }, 'Encerramento graceful');
   server.close(() => {
-    console.log('✅ Servidor encerrado');
+    logger.info('Servidor encerrado');
     process.exit(0);
   });
-});
+}
 
-process.on('SIGINT', () => {
-  console.log('\n⏹️  Recebido SIGINT, encerrando gracefully...');
-  server.close(() => {
-    console.log('✅ Servidor encerrado');
-    process.exit(0);
-  });
-});
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
-// Tratamento de exceções não capturadas
 process.on('uncaughtException', (err) => {
-  console.error('❌ Exceção não capturada:', err);
+  captureException(err, { type: 'uncaughtException' });
+  logger.fatal({ err }, 'Excepção não capturada');
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Promise rejection não tratada:', reason);
+process.on('unhandledRejection', (reason) => {
+  captureException(reason instanceof Error ? reason : new Error(String(reason)), {
+    type: 'unhandledRejection',
+  });
+  logger.error({ err: reason }, 'Promise rejection não tratada');
 });
 
 module.exports = server;

@@ -25,7 +25,8 @@ import { DashboardPeriod } from './DashboardToolbar';
 import { EmptyState } from '../shared/EmptyState';
 import { useDashboardData } from './useDashboardData';
 import { RefreshCw } from 'lucide-react';
-import { formatUtilizadorGreeting } from '../../../lib/utilizadores';
+import { processoMatchesMedico } from '../../../lib/process-data-quality';
+import { WorkQueuePanel, WorkQueueItem } from '../shared/WorkQueuePanel';
 
 interface OperacionalData {
   kpis: {
@@ -139,17 +140,49 @@ export function MedicoDashboard() {
     return meses;
   }, [processos, localeTag]);
 
+  const myProcessos = useMemo(
+    () => processos.filter((p) => processoMatchesMedico(p, currentUser?.nome)),
+    [processos, currentUser?.nome],
+  );
+
   const porValidar = useMemo(
-    () => processos.filter(isResultadoPorValidar),
-    [processos],
+    () => myProcessos.filter(isResultadoPorValidar),
+    [myProcessos],
   );
 
   const colheitasAgendadas = useMemo(() => {
     const matchPeriod = period === 'hoje' ? isHoje : isEstaSemana;
-    return processos
+    return myProcessos
       .filter((p) => isAtivo(p) && matchPeriod(colheitaDate(p)))
       .sort((a, b) => (colheitaDate(a) || '').localeCompare(colheitaDate(b) || ''));
-  }, [processos, period]);
+  }, [myProcessos, period]);
+
+  const workQueueItems = useMemo(() => {
+    const items: WorkQueueItem[] = [];
+    porValidar.slice(0, 8).forEach((p) => {
+      items.push({
+        id: `v-${p.id}`,
+        title: p.paciente_nome,
+        subtitle: t('ux.workQueue.validateResult'),
+        badge: p.numero,
+        tone: 'violet',
+        icon: FlaskConical,
+        onClick: () => navigate(`/processos/${p.id}`),
+      });
+    });
+    colheitasAgendadas.slice(0, 8).forEach((p) => {
+      items.push({
+        id: `c-${p.id}`,
+        title: p.paciente_nome,
+        subtitle: t('ux.workQueue.collectionToday'),
+        badge: formatCalendarDatePt(colheitaDate(p)),
+        tone: 'info',
+        icon: CalendarClock,
+        onClick: () => navigate(`/processos/${p.id}`),
+      });
+    });
+    return items;
+  }, [colheitasAgendadas, navigate, porValidar, t]);
 
   const recentProcessos = useMemo(
     () => [...processos].sort((a, b) => (b.data_entrada || '').localeCompare(a.data_entrada || '')).slice(0, 5),
@@ -350,64 +383,13 @@ export function MedicoDashboard() {
               )}
             </ChartCard>
 
-            <div className={`${SURFACE.cardElevated} flex flex-col overflow-hidden`}>
-              <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="text-slate-900 dark:text-slate-100 text-[15px] font-semibold">
-                  {t('dashboard.medico.priorityTitle')}
-                </h3>
-                <p className="text-slate-400 text-xs mt-0.5">{t('dashboard.medico.prioritySub')}</p>
-              </div>
-              <div className="flex-1 divide-y divide-slate-50 dark:divide-slate-800 overflow-y-auto max-h-[280px]">
-                {porValidar.length === 0 && colheitasAgendadas.length === 0 ? (
-                  <p className="px-5 py-8 text-center text-xs text-slate-400">{t('dashboard.medico.noPriority')}</p>
-                ) : (
-                  <>
-                    {porValidar.map((p) => (
-                      <button
-                        key={`v-${p.id}`}
-                        type="button"
-                        onClick={() => navigate(`/processos/${p.id}`)}
-                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-violet-50 dark:hover:bg-violet-900/10 transition-colors text-left"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center flex-shrink-0">
-                          <FlaskConical className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[13px] font-medium text-slate-900 dark:text-slate-100 truncate">
-                            {p.paciente_nome}
-                          </div>
-                          <div className="text-[11px] text-violet-600 dark:text-violet-400 font-medium">
-                            {t('dashboard.medico.validateResult')}
-                          </div>
-                        </div>
-                        <span className="text-[11px] text-slate-400 flex-shrink-0">{p.numero}</span>
-                      </button>
-                    ))}
-                    {colheitasAgendadas.map((p) => (
-                      <button
-                        key={`c-${p.id}`}
-                        type="button"
-                        onClick={() => navigate(`/processos/${p.id}`)}
-                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center flex-shrink-0">
-                          <CalendarClock className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[13px] font-medium text-slate-900 dark:text-slate-100 truncate">
-                            {p.paciente_nome}
-                          </div>
-                          <div className="text-[11px] text-slate-400 truncate">{p.posto || p.teste}</div>
-                        </div>
-                        <span className="text-[11px] text-slate-500 flex-shrink-0">
-                          {formatCalendarDatePt(colheitaDate(p))}
-                        </span>
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-            </div>
+            <WorkQueuePanel
+              className="lg:col-span-1"
+              title={t('ux.workQueue.medicoTitle')}
+              subtitle={t('ux.workQueue.medicoSubtitle')}
+              items={workQueueItems}
+              emptyMessage={t('ux.workQueue.empty')}
+            />
           </div>
 
           <ChartCard

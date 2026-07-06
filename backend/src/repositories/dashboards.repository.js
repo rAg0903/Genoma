@@ -148,6 +148,69 @@ exports.totalContactos = (medicoUtilizadorId = null) => {
   return queryOne(`SELECT COUNT(*) AS total FROM pacientes WHERE ativo = TRUE`);
 };
 
+// ---------- SLA detalhado ----------
+
+/** Processos em 'Em Analise' há mais de N dias sem resultado. */
+exports.processosEmAnaliseAtrasados = (diasSla = 15, medicoId = null) => {
+  const base = `
+    SELECT pr.id, pr.numero, pr.status_id AS estado,
+           p.nome AS paciente_nome,
+           t.nome AS teste_nome,
+           pr.data_chegada_laboratorio,
+           DATEDIFF(CURDATE(), pr.data_chegada_laboratorio) AS dias_em_analise,
+           COALESCE(t.tempo_resposta_dias, ?) AS sla_dias
+    FROM processos pr
+    LEFT JOIN pacientes p ON p.id = pr.paciente_id
+    LEFT JOIN testes t ON t.id = pr.teste_id
+    WHERE pr.status_id IN ('Enviado Laboratorio','Em Analise')
+      AND pr.data_resultado IS NULL
+      AND pr.data_chegada_laboratorio IS NOT NULL
+      AND DATEDIFF(CURDATE(), pr.data_chegada_laboratorio) > COALESCE(t.tempo_resposta_dias, ?)
+  `;
+  if (medicoId) {
+    return queryAll(base + ' AND pr.medico_id = ? ORDER BY dias_em_analise DESC LIMIT 20', [diasSla, diasSla, medicoId]);
+  }
+  return queryAll(base + ' ORDER BY dias_em_analise DESC LIMIT 20', [diasSla, diasSla]);
+};
+
+/** Colheitas agendadas nos próximos N dias, com posto. */
+exports.colheitasPorPosto = (diasAhead = 7, medicoId = null) => {
+  const base = `
+    SELECT DATE(c.data_prevista) AS dia,
+           po.nome AS posto_nome,
+           po.id AS posto_id,
+           COUNT(*) AS total
+    FROM colheitas c
+    LEFT JOIN processos pr ON pr.id = c.processo_id
+    LEFT JOIN postos po ON po.id = pr.posto_id
+    WHERE c.data_prevista BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
+      AND pr.status_id NOT IN ('Cancelado','Faturado')
+  `;
+  if (medicoId) {
+    return queryAll(base + ' AND pr.medico_id = ? GROUP BY dia, posto_id ORDER BY dia, posto_nome', [diasAhead, medicoId]);
+  }
+  return queryAll(base + ' GROUP BY dia, posto_id ORDER BY dia, posto_nome', [diasAhead]);
+};
+
+/** Processos Validados há mais de N dias sem fatura emitida. */
+exports.processosValidadosSemFatura = (dias = 7, medicoId = null) => {
+  const base = `
+    SELECT pr.id, pr.numero, pr.data_validacao,
+           DATEDIFF(CURDATE(), pr.data_validacao) AS dias_por_faturar,
+           p.nome AS paciente_nome
+    FROM processos pr
+    LEFT JOIN pacientes p ON p.id = pr.paciente_id
+    WHERE pr.status_id = 'Validado'
+      AND (pr.fatura_emitida = 0 OR pr.fatura_emitida IS NULL)
+      AND pr.data_validacao IS NOT NULL
+      AND DATEDIFF(CURDATE(), pr.data_validacao) > ?
+  `;
+  if (medicoId) {
+    return queryAll(base + ' AND pr.medico_id = ? ORDER BY dias_por_faturar DESC LIMIT 20', [dias, medicoId]);
+  }
+  return queryAll(base + ' ORDER BY dias_por_faturar DESC LIMIT 20', [dias]);
+};
+
 // ---------- Financeiro ----------
 exports.contadoresFinanceiros = (medicoUtilizadorId = null) => {
   if (medicoUtilizadorId) {

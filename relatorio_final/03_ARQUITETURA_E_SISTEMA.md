@@ -71,6 +71,7 @@ frontend/src/
 │       │   ├── MedicoDashboard.tsx   # Painel dedicado ao perfil Médico
 │       │   └── useDashboardData.ts
 │       ├── ContactsPage.tsx
+│       ├── ColheitasDoDiaPage.tsx   # /colheitas-hoje — calendário + lista do dia (postos)
 │       ├── ProcessesPage.tsx
 │       ├── StocksPage.tsx
 │       ├── listagens/
@@ -160,7 +161,7 @@ server.js
 |---|---|---|
 | Autenticação | `/api/auth` | Login, recuperação de password |
 | Processos | `/api/processos` | Workflow clínico-laboratorial |
-| Agendamentos | `/api/agendamentos` | Calendário de colheitas |
+| Agendamentos | `/api/agendamentos` | Calendário de colheitas (UI operacional: `/colheitas-hoje`) |
 | Stocks | `/api/stocks` | Lotes, kits, movimentos |
 | Listagens | `/api/listagens` | Consultas e exportações |
 | Rastreio | `/api/trace` | Cadeia lote-kit-processo |
@@ -210,7 +211,7 @@ A tabela `processos` é a **entidade agregadora** do domínio operacional, relac
 
 ### 3.4.3. Migrações
 
-O schema evolui de forma controlada através de ficheiros numerados em `backend/src/migrations/` (000–046+), executados via `npm run migrate`.
+O schema evolui de forma controlada através de 63 ficheiros numerados em `backend/src/migrations/` (`000` a `063`), executados via `npm run migrate`.
 
 ---
 

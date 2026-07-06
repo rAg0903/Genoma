@@ -9,6 +9,9 @@ type FormDatePickerProps = {
   disabled?: boolean;
   allowAnyDate?: boolean;
   minDate?: string;
+  maxDate?: string;
+  fromYear?: number;
+  toYear?: number;
   allowExistingPastDate?: boolean;
 };
 
@@ -20,6 +23,9 @@ export function FormDatePicker({
   disabled = false,
   allowAnyDate = true,
   minDate,
+  maxDate,
+  fromYear,
+  toYear,
   allowExistingPastDate = false,
 }: FormDatePickerProps) {
   return (
@@ -28,6 +34,9 @@ export function FormDatePicker({
       onChange={onChange}
       allowAnyDate={allowAnyDate}
       minDate={minDate}
+      maxDate={maxDate}
+      fromYear={fromYear}
+      toYear={toYear}
       allowExistingPastDate={allowExistingPastDate}
       disabled={disabled}
       placeholder={placeholder}

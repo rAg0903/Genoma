@@ -21,7 +21,6 @@ interface ProcessPipelineProps {
 }
 
 const COLUMN_COLORS: Record<string, string> = {
-  'Colheita Realizada': PROCESS_STATE_COLORS['Colheita Realizada'],
   lab_analise: '#6366f1',
   'Resultado Disponivel': PROCESS_STATE_COLORS['Resultado Disponivel'],
   Validado: PROCESS_STATE_COLORS.Validado,

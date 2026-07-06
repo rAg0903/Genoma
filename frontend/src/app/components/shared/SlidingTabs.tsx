@@ -20,12 +20,14 @@ type SlidingTabsProps<T extends string> = {
   className?: string;
   /** Tabs compactas só com ícone (ex.: pipeline / tabela) */
   iconOnly?: boolean;
+  /** Sem scroll/animação suave — útil em drawers com muitas tabs */
+  instant?: boolean;
 };
 
 type Indicator = { left: number; width: number };
 type ScrollEdges = { left: boolean; right: boolean };
 
-function useSlidingIndicator<T extends string>(active: T | '') {
+function useSlidingIndicator<T extends string>(active: T | '', instant = false) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef(new Map<T, HTMLButtonElement>());
@@ -89,9 +91,9 @@ function useSlidingIndicator<T extends string>(active: T | '') {
       return;
     }
     const btn = tabRefs.current.get(active as T);
-    btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    btn?.scrollIntoView({ behavior: instant ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });
     requestAnimationFrame(updateIndicator);
-  }, [active, updateIndicator]);
+  }, [active, instant, updateIndicator]);
 
   const setTabRef = useCallback((id: T, el: HTMLButtonElement | null) => {
     if (el) tabRefs.current.set(id, el);
@@ -120,15 +122,20 @@ export function SlidingTabs<T extends string>({
   size = 'md',
   className = '',
   iconOnly = false,
+  instant = false,
 }: SlidingTabsProps<T>) {
   const { scrollRef, trackRef, indicator, scrollEdges, setTabRef, handleWheel } =
-    useSlidingIndicator(active);
+    useSlidingIndicator(active, instant);
 
   const btnPad = iconOnly
     ? 'p-2'
     : size === 'sm'
-      ? 'px-3 py-1.5 text-xs'
+      ? 'px-2.5 py-1.5 text-xs'
       : 'px-3.5 md:px-4 py-2 text-[13px]';
+
+  const indicatorClass = instant
+    ? `${TAB.indicator} duration-100`
+    : TAB.indicator;
 
   return (
     <nav aria-label={ariaLabel} className={`relative max-w-full ${className}`}>
@@ -153,7 +160,7 @@ export function SlidingTabs<T extends string>({
         <div ref={trackRef} className={TAB.track}>
           <span
             aria-hidden
-            className={`${TAB.indicator} ${indicator.width === 0 ? 'opacity-0' : 'opacity-100'}`}
+            className={`${indicatorClass} ${indicator.width === 0 ? 'opacity-0' : 'opacity-100'}`}
             style={{ left: indicator.left, width: indicator.width }}
           />
 
@@ -171,7 +178,7 @@ export function SlidingTabs<T extends string>({
                 aria-current={isActive ? 'page' : undefined}
                 aria-label={iconOnly ? item.label : undefined}
                 className={[
-                  'relative z-10 inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap rounded-lg transition-colors duration-200',
+                  `relative z-10 inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap rounded-lg transition-colors ${instant ? 'duration-75' : 'duration-200'}`,
                   btnPad,
                   isActive ? TAB.active : TAB.inactive,
                 ].join(' ')}

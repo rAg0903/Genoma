@@ -2,12 +2,14 @@ const pool = require('../config/database');
 const kitLifecycleService = require('../services/kit-lifecycle.service');
 const { v4: uuidv4 } = require('uuid');
 
+// DATE_FORMAT em data_prevista garante que o driver node-mysql2 devolve uma
+// string e não um objecto Date (que sofreria conversão UTC, deslocando o dia).
 const baseSelect = `
   SELECT
     c.id,
     c.processo_id,
     c.posto_id,
-    c.data_prevista,
+    DATE_FORMAT(c.data_prevista, '%Y-%m-%d') AS data_prevista,
     c.periodo,
     c.data_efetiva,
     c.created_at,
@@ -16,6 +18,7 @@ const baseSelect = `
     pr.kit_id,
     k.codigo_barras AS kit_codigo,
     pa.nome AS paciente_nome,
+    pr.paciente_id AS paciente_id,
     COALESCE(po.nome, pr.posto) AS posto_nome
   FROM colheitas c
   LEFT JOIN processos pr ON pr.id = c.processo_id
@@ -27,27 +30,75 @@ const baseSelect = `
 exports.findAll = async (filters = {}) => {
   const connection = await pool.getConnection();
   try {
-    const where = [];
-    const params = [];
+    // --- Parte 1: colheitas registadas (com ou sem processo) ---
+    // Apenas agendamentos pendentes: sem data efetiva e status pré-colheita.
+    const where1 = [
+      'c.data_efetiva IS NULL',
+      "(pr.status_id IS NULL OR pr.status_id IN ('Agendado', 'Kit Reservado'))",
+    ];
+    const params1 = [];
 
     if (filters.from) {
-      where.push('c.data_prevista >= ?');
-      params.push(filters.from);
+      where1.push('DATE(c.data_prevista) >= ?');
+      params1.push(filters.from);
     }
     if (filters.to) {
-      where.push('c.data_prevista <= ?');
-      params.push(filters.to);
+      where1.push('DATE(c.data_prevista) <= ?');
+      params1.push(filters.to);
     }
     if (filters.posto_id) {
-      where.push('c.posto_id = ?');
-      params.push(filters.posto_id);
+      where1.push('c.posto_id = ?');
+      params1.push(filters.posto_id);
     }
 
-    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const [rows] = await connection.execute(
-      `${baseSelect} ${whereSql} ORDER BY c.data_prevista ASC, c.periodo ASC`,
-      params
-    );
+    const whereSql1 = `WHERE ${where1.join(' AND ')}`;
+
+    // --- Parte 2: contactos pré-processo com data de colheita prevista ---
+    // Estes contactos ainda não têm processo criado (data_colheita_prevista
+    // é limpa quando o processo é criado em processos.service.js).
+    const where2 = ['p.ativo = TRUE', 'p.data_colheita_prevista IS NOT NULL'];
+    const params2 = [];
+
+    if (filters.from) {
+      where2.push('DATE(p.data_colheita_prevista) >= ?');
+      params2.push(filters.from);
+    }
+    if (filters.to) {
+      where2.push('DATE(p.data_colheita_prevista) <= ?');
+      params2.push(filters.to);
+    }
+    if (filters.posto_id) {
+      where2.push('p.posto_colheita_id = ?');
+      params2.push(filters.posto_id);
+    }
+
+    const whereSql2 = `WHERE ${where2.join(' AND ')}`;
+
+    const sql = `
+      ${baseSelect} ${whereSql1}
+      UNION ALL
+      SELECT
+        CONCAT('pre-', p.id)                          AS id,
+        NULL                                          AS processo_id,
+        p.posto_colheita_id                           AS posto_id,
+        DATE_FORMAT(p.data_colheita_prevista, '%Y-%m-%d') AS data_prevista,
+        NULL                                          AS periodo,
+        NULL                                          AS data_efetiva,
+        p.created_at,
+        NULL                                          AS numero_processo,
+        'Agendado'                                    AS processo_status,
+        NULL                                          AS kit_id,
+        NULL                                          AS kit_codigo,
+        p.nome                                        AS paciente_nome,
+        p.id                                          AS paciente_id,
+        po.nome                                       AS posto_nome
+      FROM pacientes p
+      LEFT JOIN postos po ON po.id = p.posto_colheita_id
+      ${whereSql2}
+      ORDER BY data_prevista ASC, periodo ASC
+    `;
+
+    const [rows] = await connection.execute(sql, [...params1, ...params2]);
     return rows;
   } finally {
     connection.release();
@@ -145,25 +196,56 @@ exports.findPostoById = async (id) => {
 exports.getCalendar = async ({ from, to }) => {
   const connection = await pool.getConnection();
   try {
-    const where = [];
-    const params = [];
+    // Parte 1: colheitas registadas — apenas pendentes (sem efetiva, status pré-colheita)
+    const where1 = [
+      'c.data_efetiva IS NULL',
+      "(pr.status_id IS NULL OR pr.status_id IN ('Agendado', 'Kit Reservado'))",
+    ];
+    const params1 = [];
     if (from) {
-      where.push('c.data_prevista >= ?');
-      params.push(from);
+      where1.push('DATE(c.data_prevista) >= ?');
+      params1.push(from);
     }
     if (to) {
-      where.push('c.data_prevista <= ?');
-      params.push(to);
+      where1.push('DATE(c.data_prevista) <= ?');
+      params1.push(to);
     }
-    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const [rows] = await connection.execute(
-      `SELECT c.data_prevista AS dia, COUNT(*) AS total
-       FROM colheitas c
-       ${whereSql}
-       GROUP BY c.data_prevista
-       ORDER BY c.data_prevista ASC`,
-      params
-    );
+    const whereSql1 = `WHERE ${where1.join(' AND ')}`;
+
+    // Parte 2: contactos pré-processo com data de colheita prevista
+    const where2 = ['p.ativo = TRUE', 'p.data_colheita_prevista IS NOT NULL'];
+    const params2 = [];
+    if (from) {
+      where2.push('DATE(p.data_colheita_prevista) >= ?');
+      params2.push(from);
+    }
+    if (to) {
+      where2.push('DATE(p.data_colheita_prevista) <= ?');
+      params2.push(to);
+    }
+    const whereSql2 = `WHERE ${where2.join(' AND ')}`;
+
+    // DATE_FORMAT retorna VARCHAR — evita que o driver node-mysql2 converta o
+    // valor para um objecto Date JavaScript e aplique o offset UTC, que
+    // deslocaria o dia para trás em fusos horários positivos (ex: UTC+1).
+    const sql = `
+      SELECT dia, SUM(total) AS total FROM (
+        SELECT DATE_FORMAT(c.data_prevista, '%Y-%m-%d') AS dia, COUNT(*) AS total
+        FROM colheitas c
+        LEFT JOIN processos pr ON pr.id = c.processo_id
+        ${whereSql1}
+        GROUP BY DATE_FORMAT(c.data_prevista, '%Y-%m-%d')
+        UNION ALL
+        SELECT DATE_FORMAT(p.data_colheita_prevista, '%Y-%m-%d') AS dia, COUNT(*) AS total
+        FROM pacientes p
+        ${whereSql2}
+        GROUP BY DATE_FORMAT(p.data_colheita_prevista, '%Y-%m-%d')
+      ) combined
+      GROUP BY dia
+      ORDER BY dia ASC
+    `;
+
+    const [rows] = await connection.execute(sql, [...params1, ...params2]);
     return rows;
   } finally {
     connection.release();

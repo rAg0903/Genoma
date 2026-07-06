@@ -41,3 +41,12 @@ exports.executivo = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.sla = async (req, res) => {
+  try {
+    const data = await dashboardsService.getSLA(await medicoScope(req.user));
+    res.json({ data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

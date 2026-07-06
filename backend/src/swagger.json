@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "API Genoma - Sistema de Laboratório Genómico",
-    "description": "API RESTful para gerenciamento de laboratório genómico com pacientes, testes, pedidos e resultados",
+    "description": "API RESTful para o CRM Genoma. Nota: esta documentação OpenAPI cobre apenas um subconjunto dos endpoints (~9 de ~28 módulos). Em produção o Swagger UI fica desactivado por defeito (SWAGGER_ENABLED=false).",
     "version": "1.0.0",
     "contact": {
       "name": "Support",

@@ -3,23 +3,15 @@ const router = express.Router();
 
 const pacientesController = require('../controllers/pacientes.controller.js');
 const authMiddleware = require('../middleware/auth.middleware');
+const { requireAdmin } = require('../middleware/authorization.middleware');
+const { pacienteValidator, pacienteUpdateValidator, idValidator } = require('../middleware/validators');
+const { validationMiddleware } = require('../middleware/error.middleware');
 
-// GET /api/pacientes - Listar todos os pacientes
 router.get('/', authMiddleware, pacientesController.list);
-
-// GET /api/pacientes/search - Procurar pacientes por nome
 router.get('/search', authMiddleware, pacientesController.search);
-
-// GET /api/pacientes/:id - Obter um paciente específico
-router.get('/:id', authMiddleware, pacientesController.getById);
-
-// POST /api/pacientes - Criar um novo paciente
-router.post('/', authMiddleware, pacientesController.create);
-
-// PUT /api/pacientes/:id - Atualizar um paciente
-router.put('/:id', authMiddleware, pacientesController.update);
-
-// DELETE /api/pacientes/:id - Deletar um paciente
-router.delete('/:id', authMiddleware, pacientesController.delete);
+router.get('/:id', authMiddleware, idValidator, validationMiddleware, pacientesController.getById);
+router.post('/', authMiddleware, pacienteValidator, validationMiddleware, pacientesController.create);
+router.put('/:id', authMiddleware, [idValidator, ...pacienteUpdateValidator], validationMiddleware, pacientesController.update);
+router.delete('/:id', authMiddleware, requireAdmin, idValidator, validationMiddleware, pacientesController.delete);
 
 module.exports = router;

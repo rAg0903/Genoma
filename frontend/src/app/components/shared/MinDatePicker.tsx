@@ -13,6 +13,8 @@ type MinDatePickerProps = {
   value: string;
   onChange: (value: string) => void;
   minDate?: string;
+  /** Limite superior (ex.: data de nascimento não pode ser no futuro). */
+  maxDate?: string;
   /** Em edição: mostra e mantém selecionável a data já registada, mesmo que seja passada. */
   allowExistingPastDate?: boolean;
   /** Permite qualquer data (ex.: filtros de pesquisa em registos históricos). */
@@ -30,6 +32,7 @@ export function MinDatePicker({
   value,
   onChange,
   minDate = todayLocal(),
+  maxDate,
   allowExistingPastDate = false,
   allowAnyDate = false,
   className,
@@ -44,7 +47,11 @@ export function MinDatePicker({
   const pickerFromYear = fromYearProp ?? (allowAnyDate ? 1920 : currentYear);
   const pickerToYear = toYearProp ?? (allowAnyDate ? currentYear : currentYear + 5);
   const pickerFromDate = useMemo(() => new Date(pickerFromYear, 0, 1), [pickerFromYear]);
-  const pickerToDate = useMemo(() => new Date(pickerToYear, 11, 31), [pickerToYear]);
+  const maxDateBound = useMemo(() => (maxDate ? isoToLocalDate(maxDate) : undefined), [maxDate]);
+  const pickerToDate = useMemo(() => {
+    if (maxDateBound) return maxDateBound;
+    return new Date(pickerToYear, 11, 31);
+  }, [maxDateBound, pickerToYear]);
 
   const CaptionNav = useMemo(
     () => (props: CaptionProps) => (
@@ -61,16 +68,20 @@ export function MinDatePicker({
 
   const todayMin = useMemo(() => isoToLocalDate(minDate) ?? isoToLocalDate(todayLocal())!, [minDate]);
   const todayMinIso = useMemo(() => normalizeCalendarDate(todayMin), [todayMin]);
+  const maxDateIso = useMemo(
+    () => (maxDateBound ? normalizeCalendarDate(maxDateBound) : undefined),
+    [maxDateBound],
+  );
   const valueDate = useMemo(() => isoToLocalDate(value), [value]);
   const valueIso = useMemo(() => normalizeCalendarDate(value), [value]);
 
   const navFromMonth = useMemo(() => {
-    if (allowAnyDate) return new Date(2020, 0, 1);
+    if (allowAnyDate) return pickerFromDate;
     if (allowExistingPastDate && valueDate && valueDate < todayMin) {
       return startOfMonth(valueDate);
     }
     return startOfMonth(todayMin);
-  }, [allowAnyDate, allowExistingPastDate, valueDate, todayMin]);
+  }, [allowAnyDate, allowExistingPastDate, pickerFromDate, valueDate, todayMin]);
 
   const selected = valueDate ?? undefined;
 
@@ -87,14 +98,17 @@ export function MinDatePicker({
     !isSameMonth(date, month) && startOfMonth(date).getTime() > month.getTime();
 
   const isDayDisabled = (date: Date) => {
-    if (allowAnyDate) return false;
     const iso = normalizeCalendarDate(date);
+    if (allowAnyDate) {
+      if (maxDateIso && iso > maxDateIso) return true;
+      return false;
+    }
     if (allowExistingPastDate && valueIso && iso === valueIso) return false;
     return iso < todayMinIso;
   };
 
   const isDateDisabled = (date: Date) => {
-    if (allowAnyDate) return false;
+    if (allowAnyDate) return isDayDisabled(date);
     if (!isSameMonth(date, month)) {
       if (isOutsideNextMonth(date)) return isDayDisabled(date);
       return true;

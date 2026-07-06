@@ -25,6 +25,8 @@ import {
   DashboardToolbar, DashboardScope, DashboardPeriod,
 } from './dashboard/DashboardToolbar';
 import { PROCESS_STATUS_STYLES } from '../../lib/design-system';
+import { isAtrasado, isResultadoPorValidar } from '../../lib/processos';
+import { WorkQueuePanel, WorkQueueItem } from './shared/WorkQueuePanel';
 
 // --- Tipos das respostas de dashboard ------------------------------------
 interface ApiAlerta { nivel: 'critico' | 'aviso' | 'info'; mensagem: string }
@@ -178,6 +180,45 @@ function AdminDashboardPage() {
     return built;
   }, [data, fallback, navigate, t]);
 
+  const adminWorkQueue = useMemo(() => {
+    const items: WorkQueueItem[] = [];
+    const kitsDisp = kpis?.kits_disponiveis ?? fallback.kitsDisponiveis;
+    if (kitsDisp <= 5) {
+      items.push({
+        id: 'stock-low',
+        title: t('ux.workQueue.lowStock'),
+        subtitle: t('dashboard.alerts.restock'),
+        badge: String(kitsDisp),
+        tone: 'danger',
+        icon: Package,
+        onClick: () => navigate('/stocks'),
+      });
+    }
+    processos.filter(isResultadoPorValidar).slice(0, 6).forEach((p) => {
+      items.push({
+        id: `val-${p.id}`,
+        title: p.paciente_nome,
+        subtitle: t('ux.workQueue.pendingValidation'),
+        badge: p.numero,
+        tone: 'violet',
+        icon: FlaskConical,
+        onClick: () => navigate(`/processos/${p.id}`),
+      });
+    });
+    processos.filter((p) => isAtrasado(p)).slice(0, 6).forEach((p) => {
+      items.push({
+        id: `late-${p.id}`,
+        title: p.paciente_nome,
+        subtitle: t('ux.workQueue.overdue'),
+        badge: p.numero,
+        tone: 'warning',
+        icon: AlertTriangle,
+        onClick: () => navigate(`/processos/${p.id}`),
+      });
+    });
+    return items;
+  }, [fallback.kitsDisponiveis, kpis?.kits_disponiveis, navigate, processos, t]);
+
   // ---- KPIs operacionais (7 widgets pedidos) ------------------------------
   const operacionalKpis = useMemo(() => [
     { label: t('dashboard.kpi.totalContacts'), value: formatNumber(kpis?.total_contactos ?? contacts.length), icon: Users, tone: 'neutral' as const, hint: t('dashboard.kpi.registeredPatients'), onClick: () => navigate('/contactos') },
@@ -247,7 +288,16 @@ function AdminDashboardPage() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <AlertPanel alerts={alerts} />
+            <div className="space-y-4">
+              <WorkQueuePanel
+                title={t('ux.workQueue.adminTitle')}
+                subtitle={t('ux.workQueue.adminSubtitle')}
+                items={adminWorkQueue}
+                emptyMessage={t('ux.workQueue.empty')}
+                maxHeightClass="max-h-[240px]"
+              />
+              <AlertPanel alerts={alerts} />
+            </div>
           </div>
 
           {/* Evolucao + kits */}

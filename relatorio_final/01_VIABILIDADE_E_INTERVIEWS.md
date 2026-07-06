@@ -1,16 +1,16 @@
 # Capítulo 1 — Viabilidade e Entrevistas com Stakeholders
 
 **Projeto:** CRM Genoma — Sistema de Gestão Operacional de Testes Genéticos  
-**Instituição:** ISLA — [Curso de Engenharia Informática 25/26]  
-**Autor:** [Rafael Fernandes Males]  
-**Orientador:** [Ana Paula]  
-**Data:** Junho de 2026
+**Instituição:** ISLA — Engenharia Informática (2025/2026)  
+**Autores:** Rafael Fernandes Males (a22212343) e Alberto Macieira (a22301601)  
+**Orientador:** Ana Paula  
+**Data:** Julho de 2026
 
 ---
 
 ## 1.1. Contexto e Enquadramento
 
-A Genoma é uma entidade dedicada à prestação de serviços de testes genéticos, com um fluxo operacional que abrange a receção de material biológico (kits), o agendamento de colheitas, o processamento laboratorial, a validação clínica de resultados, a emissão de relatórios e a faturação final. O sistema legado limitava-se essencialmente a funcionalidades de CRM genérico, sem suporte adequado à rastreabilidade ponta a ponta exigida por contextos de diagnóstico genómico e conformidade regulatória (RGPD, rastreio de lotes).
+A Genoma — organização anteriormente denominada **Stemyca** — é uma entidade dedicada à prestação de serviços de testes genéticos, com um fluxo operacional que abrange a receção de material biológico (kits), o agendamento de colheitas, o processamento laboratorial, a validação clínica de resultados, a emissão de relatórios e a faturação final. O sistema legado era uma aplicação de **instalação local**, operável exclusivamente a partir do único computador onde estava instalada e acessível apenas através de uma conta de **administrador**, sem suporte a perfis de utilizador diferenciados. Com a descontinuação do produto pelo fornecedor, a organização ficou sem margem de evolução, sem gestão de acessos e sem a rastreabilidade ponta a ponta exigida por contextos de diagnóstico genómico e pela conformidade regulatória (RGPD, rastreio de lotes). Foi neste contexto que a reengenharia do CRM foi solicitada à equipa.
 
 O presente projeto consiste no desenvolvimento de uma aplicação web full-stack — **Genoma CRM** — que materializa o fluxo operacional real da organização:
 
@@ -44,7 +44,7 @@ O domínio genómico impõe requisitos técnicos específicos que o sistema já 
 2. **Rastreabilidade bidireccional** lote ↔ kit ↔ processo ↔ resultado, exposta via módulo `/api/trace`.
 3. **Integridade 1:1 kit-processo** garantida por índice `UNIQUE` em `processos.kit_id`.
 4. **Auditoria** centralizada em `logs_auditoria`, com 14 registos já persistidos em ambiente de desenvolvimento.
-5. **Migrações versionadas** (`backend/src/migrations/`, 46+ ficheiros) que asseguram evolução controlada do schema.
+5. **Migrações versionadas** (`backend/src/migrations/`, 63 ficheiros, `000` a `063`) que asseguram evolução controlada do schema.
 
 ### 1.2.3. Riscos Técnicos Identificados
 

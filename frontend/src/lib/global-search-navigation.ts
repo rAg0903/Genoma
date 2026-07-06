@@ -22,12 +22,12 @@ export function navigateToSearchTarget(
   }
 
   if (target.listing === 'processos' || target.listing === 'resultados') {
-    navigate(`/processos/${target.id}/editar`);
+    navigate(`/processos/${target.id}`);
     return;
   }
 
   if (target.listing === 'kits' || target.listing === 'lotes') {
-    navigate(`/listagens?tab=${target.listing}`);
+    navigate(`/listagens?tab=${target.listing}&q=${encodeURIComponent(target.id)}`);
     return;
   }
 

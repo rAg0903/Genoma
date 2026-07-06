@@ -283,6 +283,7 @@ Entidade central do CRM. Agrega paciente, médico, kit, teste e estado do workfl
 
 ### `colheitas` (Agendamentos)
 
+A listagem REST (`GET /api/agendamentos`) inclui `paciente_id` (join a `processos` ou contacto pré-processo) para a UI `/colheitas-hoje`.
 | Coluna | Tipo | Nulo | Chave | Descrição |
 |---|---|---|---|---|
 | `id` | CHAR(36) | NÃO | PK | UUID |
@@ -322,7 +323,7 @@ O schema encontra-se predominantemente em **3ª Forma Normal (3FN)**:
 | Métrica | Valor |
 |---|---|
 | Total de tabelas | 29 |
-| Migrações aplicadas | 59 |
+| Migrações aplicadas | 63 |
 | Perfis configurados | 3 |
 | Testes no catálogo | 3 |
 | Kits registados | 4 |
@@ -331,13 +332,17 @@ O schema encontra-se predominantemente em **3ª Forma Normal (3FN)**:
 
 ---
 
-## 4.8. Evolução Recente do Schema (Migrações 057–059)
+## 4.8. Evolução Recente do Schema (Migrações 057–063)
 
 | Migração | Descrição |
 |---|---|
 | `057_processo_data_envio_laboratorio.js` | Campo `data_envio_laboratorio` distinto da recepção no laboratório |
 | `058_backfill_processo_colheita_snapshot.js` | Backfill e preservação do snapshot de colheita no processo |
 | `059_empresa_notas_morada_extra.js` | Colunas `cidade`, `distrito`, `notas` na tabela `empresas` |
+| `060_paciente_origem_conceicao.js` | Origem da conceção (`natural`, `fiv_ovulos_proprios`, `fiv_doacao_ovulos`) e `quer_saber_sexo` em `pacientes` e `informacao_clinica` |
+| `061_processo_data_conclusao.js` | Campo `data_conclusao` (faturado/cancelado) em `processos`, com backfill dos processos concluídos |
+| `062_backfill_auto_descartes.js` | Backfill dos descartes automáticos de kits (colheitas sem envio e kits expirados) |
+| `063_devolucao_descarte.js` | Novo motivo de movimento `DevolucaoDescarte` no ENUM de `movimentos_kits` |
 
 ---
 

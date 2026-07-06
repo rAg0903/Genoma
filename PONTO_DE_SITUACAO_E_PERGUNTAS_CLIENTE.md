@@ -61,11 +61,11 @@ Abaixo, ponto a ponto, o que já foi realizado.
   (envio de kits de um sítio para outro), com o stock a atualizar-se sozinho.
 - Tem um **registo de auditoria** (quem fez o quê e quando) guardado na base de dados.
 
-### 4. Novo Módulo de Agendamentos (a porta de entrada)
-- Foi criado de raiz um **calendário de colheitas**, com cores conforme a carga de cada dia.
-- Ao agendar, o sistema **reserva automaticamente um kit** — garante que não se marca uma
-  colheita sem material disponível.
-- A partir do agendamento, **o processo é criado automaticamente**, poupando trabalho manual.
+### 4. Colheitas do dia (operacional nos postos)
+- A vista **`/colheitas-hoje`** concentra o calendário de colheitas e a lista do dia (filtro por posto, cores de carga).
+- Ao **registar colheita**, o operador é enviado para a **ficha do contacto**, separador **Colheita**, para confirmar data efectiva e kit — não se regista directamente a partir da lista.
+- A API de agendamentos (`/api/agendamentos`) mantém a **reserva automática de kit** ao criar agendamento a partir do contacto.
+- A antiga entrada de menu **Agendamentos** foi removida; o URL `/agendamentos` redirecciona para `/colheitas-hoje`.
 
 ### 5. Módulo de Listagens (centro de relatórios e consultas)
 - Deixou de ser duas tabelas para passar a ser um **centro de consulta e extração de dados**.

@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { LayoutGrid, Table2, FolderOpen, Ban, ArrowRight } from 'lucide-react';
-import { toast } from 'sonner';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -24,9 +23,12 @@ import {
   processoMatchesEstadoFilter, isAtivo, isAtrasado, isResultadoPorValidar,
   isRelatorioPorEnviar, isFaturaPorEmitir, isAntigo, resolveDataConclusao, proximosEstados,
 } from '../../lib/processos';
+import { needsTransitionConfirm } from '../../lib/process-data-quality';
 import { isProcessoLaboratorio } from '../../lib/contactos';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
+import { useConfirmAction } from '../context/ConfirmActionContext';
+import { notifyError, notifySuccess } from '../../lib/toast';
 
 const isHoje = (d?: string) => {
   if (!d) return false;
@@ -46,10 +48,11 @@ const KPI_PREDICATE: Record<ProcessKpiId, (p: Processo) => boolean> = {
 };
 
 export function ProcessesPage() {
-  const { processos, updateProcesso, deleteProcesso, refreshProcessos, motivosAnulacao } = useData();
+  const { processos, contacts, updateProcesso, deleteProcesso, refreshProcessos, motivosAnulacao } = useData();
   const { hasPermission, role } = useAuth();
   const { t } = useLanguage();
   const confirmDelete = useConfirmDelete();
+  const confirmAction = useConfirmAction();
   const navigate = useNavigate();
   const canCreate = hasPermission('processos', 'create');
   const canUpdate = hasPermission('processos', 'update');
@@ -86,10 +89,18 @@ export function ProcessesPage() {
   const medicos = useMemo(() => [...new Set(processosLaboratorio.map((p) => p.medico).filter(Boolean))], [processosLaboratorio]);
   const postos = useMemo(() => [...new Set(processosLaboratorio.map((p) => p.posto).filter(Boolean))], [processosLaboratorio]);
 
+  const nifByPaciente = useMemo(() => {
+    const map = new Map<string, string>();
+    contacts.forEach((c) => map.set(c.id, c.nif || ''));
+    return map;
+  }, [contacts]);
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     const rows = processosLaboratorio.filter((p) => {
-      const matchSearch = !q || [p.numero, p.paciente_nome, p.medico, p.kit_codigo, p.teste].some((f) => (f || '').toLowerCase().includes(q));
+      const matchSearch = !q || [
+        p.numero, p.paciente_nome, p.medico, p.kit_codigo, p.teste, nifByPaciente.get(p.paciente_id),
+      ].some((f) => (f || '').toLowerCase().includes(q));
       const matchEstado = !estadoFilter || processoMatchesEstadoFilter(p.estado, estadoFilter);
       const matchPosto = !postoFilter || p.posto === postoFilter;
       const matchMedico = !medicoFilter || p.medico === medicoFilter;
@@ -103,7 +114,7 @@ export function ProcessesPage() {
       return [...rows].sort((a, b) => (resolveDataConclusao(b) || '').localeCompare(resolveDataConclusao(a) || ''));
     }
     return rows;
-  }, [processosLaboratorio, search, estadoFilter, postoFilter, medicoFilter, dataInicio, dataFim, effectiveKpiFilter]);
+  }, [processosLaboratorio, search, estadoFilter, postoFilter, medicoFilter, dataInicio, dataFim, effectiveKpiFilter, nifByPaciente]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   const safePage = Math.min(page, totalPages);
@@ -128,10 +139,10 @@ export function ProcessesPage() {
     if (!(await confirmDelete(deleteTargetLabel('o processo', p.numero)))) return;
     try {
       await deleteProcesso(p.id);
-      toast.success('Processo eliminado.');
+      notifySuccess(t('pages.processes.deleted', { numero: p.numero }));
       setDrawerProcesso((prev) => (prev?.id === p.id ? null : prev));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Falha ao eliminar.');
+      notifyError(e, t('common.operationFailed'));
     }
   };
 
@@ -141,12 +152,22 @@ export function ProcessesPage() {
       setCancelTargets([p]);
       return;
     }
+    if (needsTransitionConfirm(destino)) {
+      const ok = await confirmAction({
+        title: t('ux.confirmAction.transitionTitle'),
+        message: t('ux.confirmAction.transitionMessage', {
+          numero: p.numero,
+          estado: ESTADO_LABEL[destino],
+        }),
+      });
+      if (!ok) return;
+    }
     try {
       await updateProcesso(p.id, { estado: destino });
       setDrawerProcesso((prev) => (prev?.id === p.id ? { ...prev, estado: destino } : prev));
-      toast.success(`${p.numero} -> ${ESTADO_LABEL[destino]}`);
+      notifySuccess(`${p.numero} → ${ESTADO_LABEL[destino]}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Transicao invalida.');
+      notifyError(e, t('common.operationFailed'));
     }
   };
 
@@ -161,7 +182,7 @@ export function ProcessesPage() {
         /* skip */
       }
     }
-    toast.success(ok === 1 ? 'Processo cancelado.' : `${ok}/${cancelTargets.length} processos cancelados.`);
+    notifySuccess(ok === 1 ? t('pages.processes.form.cancelled') : `${ok}/${cancelTargets.length} processos cancelados.`);
     setCancelTargets([]);
     clearSelection();
   };
@@ -186,11 +207,21 @@ export function ProcessesPage() {
 
   const bulkTransition = async (destino: EstadoProcesso) => {
     const targets = [...selectedProcessos];
+    if (needsTransitionConfirm(destino)) {
+      const ok = await confirmAction({
+        title: t('ux.confirmAction.transitionTitle'),
+        message: t('ux.confirmAction.bulkTransitionMessage', {
+          count: targets.length,
+          estado: ESTADO_LABEL[destino],
+        }),
+      });
+      if (!ok) return;
+    }
     let ok = 0;
     for (const p of targets) {
       try { await updateProcesso(p.id, { estado: destino }); ok += 1; } catch { /* skip invalid */ }
     }
-    toast.success(`${ok}/${targets.length} processos atualizados.`);
+    notifySuccess(`${ok}/${targets.length} processos atualizados.`);
     clearSelection();
   };
 

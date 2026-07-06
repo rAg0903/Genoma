@@ -453,7 +453,7 @@ Processo clínico/laboratorial — entidade central do CRM.
 **Índices:** `idx_processos_status`, `idx_processos_data_entrada`, `uk_processos_kit`
 
 #### `colheitas`
-Agendamentos e registo de colheitas.
+Agendamentos e registo de colheitas. A API `/api/agendamentos` devolve também `paciente_id` (via `processos.paciente_id` ou contacto pré-processo) para navegação na UI operacional.
 
 | Coluna | Tipo | Null | Chave | Default |
 |---|---|---|---|---|

@@ -5,6 +5,7 @@
 
 const mysql = require('mysql2/promise');
 const environment = require('./environment');
+const logger = require('./logger');
 
 const pool = mysql.createPool({
   host: environment.DATABASE.host,
@@ -35,20 +36,12 @@ const pool = mysql.createPool({
 // Log de conexão bem-sucedida
 pool.on('connection', () => {
   if (environment.isDevelopment) {
-    console.log('✅ Nova conexão ao banco de dados estabelecida');
+    logger.debug('Nova conexão ao banco de dados estabelecida');
   }
 });
 
-// Log de erros de conexão
 pool.on('error', (err) => {
-  console.error('❌ Erro de conexão ao banco de dados:', err.message);
-  if (err.code === 'PROTOCOL_CONNECTION_LOST') {
-    console.error('   Conexão foi deixada cair pelo servidor');
-  } else if (err.code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') {
-    console.error('   Muitas conexões falharam');
-  } else if (err.code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') {
-    console.error('   Sem conexão válida com o MySQL durante query');
-  }
+  logger.error({ err, code: err.code }, 'Erro de conexão ao banco de dados');
 });
 
 module.exports = pool;

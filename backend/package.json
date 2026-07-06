@@ -13,7 +13,9 @@
     "wipe:crm": "node src/utils/wipe-crm-data.js",
     "reset:crm": "node src/utils/reset-crm.js",
     "export:database": "node src/utils/export-database.js",
+    "backup:database": "node src/utils/backup-database.js",
     "jobs:auto-descartes": "node src/utils/run-auto-descartes.js",
+    "import:historico": "node src/utils/import-historico.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint .",
@@ -43,10 +45,18 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "mysql2": "^3.18.2",
+    "nodemailer": "^9.0.3",
+    "pdfkit": "^0.19.1",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "@sentry/node": "^9.15.0",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.14",
+    "pino-pretty": "^13.0.0",
+    "supertest": "^7.2.2"
   }
 }

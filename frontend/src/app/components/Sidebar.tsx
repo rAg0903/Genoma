@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router';
 import { useMemo } from 'react';
-import { Home, User, Activity, Box, FileText, Settings, ChevronDown, X } from 'lucide-react';
+import { Home, User, Activity, Box, FileText, Settings, ChevronDown, X, ClipboardList } from 'lucide-react';
 import { UserAccountMenu } from './shared/UserAccountMenu';
 import { UserAvatar } from './shared/UserAvatar';
 import { GenomaLogo } from './shared/GenomaLogo';
@@ -48,6 +48,7 @@ type MenuItem = {
 const menuItemDefs: MenuItem[] = [
   { path: '/', labelKey: 'nav.dashboard', icon: Home, end: true, module: 'dashboard' as PermissionModule },
   { path: '/contactos', labelKey: 'nav.contacts', icon: User, end: false, module: 'contactos' as PermissionModule },
+  { path: '/colheitas-hoje', labelKey: 'nav.colheitasHoje', icon: ClipboardList, end: false, module: 'contactos' as PermissionModule },
   { path: '/processos', labelKey: 'nav.processes', icon: Activity, end: false, module: 'processos' as PermissionModule },
   {
     path: '/stocks',

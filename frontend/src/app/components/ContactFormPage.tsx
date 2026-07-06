@@ -555,6 +555,7 @@ export function ContactFormPage() {
     const gestacao = parseGestacaoRegistoInput(gravidez.gestacao_semanas_registo, gravidez.gestacao_dias_registo);
     setCreatingProcesso(true);
     try {
+      const colheitaData = colheita.data_efetiva || today();
       const novoProcesso: Omit<Processo, 'id'> = {
         numero: kit.codigo_barras,
         paciente_id: contactId,
@@ -564,10 +565,11 @@ export function ContactFormPage() {
         posto: postoNome,
         posto_id: colheita.posto_id || undefined,
         kit_codigo: kit.codigo_barras,
-        estado: 'Colheita Realizada',
+        estado: 'Em Analise',
         data_entrada: today(),
-        data_colheita: colheita.data_efetiva || today(),
+        data_colheita: colheitaData,
         data_colheita_prevista: colheita.data_prevista || undefined,
+        data_envio_laboratorio: colheitaData,
         teste_id: gravidez.teste_id,
         teste: resolveTesteSelecionavelLabel(testes, gravidez.teste_id),
         observacoes: notas || undefined,
@@ -663,6 +665,8 @@ export function ContactFormPage() {
                       value={form.data_nascimento}
                       onChange={(v) => setForm({ ...form, data_nascimento: v })}
                       placeholder={t('form.placeholders.date')}
+                      fromYear={1920}
+                      maxDate={today()}
                     />
                   </FormField>
                   <FormField label={t('form.fields.gender')} width="md">

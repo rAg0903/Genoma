@@ -27,6 +27,7 @@ interface TopbarProps {
 const ROUTE_LABEL_KEYS: Record<string, string> = {
   '/': 'nav.dashboard',
   '/contactos': 'nav.contacts',
+  '/colheitas-hoje': 'nav.colheitasHoje',
   '/processos': 'nav.processes',
   '/stocks': 'nav.stocks',
   '/listagens': 'nav.listings',
@@ -91,7 +92,6 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
     () => [
       { value: 'auto' as LanguagePreference, label: t('settings.languageAuto') },
       { value: 'pt' as LanguagePreference, label: t('settings.languagePt') },
-      { value: 'en' as LanguagePreference, label: t('settings.languageEn') },
     ],
     [t],
   );

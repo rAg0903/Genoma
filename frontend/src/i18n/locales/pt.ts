@@ -62,6 +62,46 @@ const pt = {
     confirm: 'Eliminar',
     cancel: 'Cancelar',
   },
+  ux: {
+    dataQuality: {
+      title: 'Dados incompletos',
+      missingPosto: 'Posto de colheita em falta.',
+      missingColheitaDate: 'Data de colheita não registada.',
+      missingLabSend: 'Processo em análise sem data de envio ao laboratório.',
+    },
+    confirmAction: {
+      confirm: 'Confirmar',
+      transitionTitle: 'Confirmar avanço de estado',
+      transitionMessage: 'Avançar o processo {numero} para «{estado}»?',
+      bulkTransitionMessage: 'Avançar {count} processo(s) para «{estado}»?',
+      cancelAgendamentoTitle: 'Cancelar agendamento',
+      cancelAgendamentoMessage: 'Cancelar o agendamento de {nome}?',
+    },
+    workQueue: {
+      medicoTitle: 'A minha fila de trabalho',
+      medicoSubtitle: 'Resultados e colheitas que requerem a sua atenção',
+      adminTitle: 'Fila operacional',
+      adminSubtitle: 'Stock, validações e atrasos',
+      empty: 'Sem tarefas pendentes.',
+      validateResult: 'Validar resultado',
+      collectionToday: 'Colheita agendada',
+      lowStock: 'Stock de kits baixo',
+      pendingValidation: 'Resultados por validar',
+      overdue: 'Processos em atraso',
+    },
+    colheitasHoje: {
+      title: 'Colheitas de hoje',
+      subtitle: 'Vista simplificada para postos e tablet',
+      empty: 'Sem colheitas agendadas para hoje.',
+      emptyHint: 'Crie um agendamento a partir da ficha do contacto, no separador Colheita.',
+      registar: 'Registar colheita',
+      resumoHoje: 'Hoje',
+      totalAgendamentos: 'agendamento(s)',
+      agendamentoCount: 'agendamento(s)',
+      pendentes: '{count} por registar',
+    },
+    languageEnDisabled: 'Inglês temporariamente indisponível — em breve.',
+  },
   faturacao: {
     alert: {
       titleNotInvoiced: 'Faturação pendente',
@@ -99,6 +139,8 @@ const pt = {
   nav: {
     dashboard: 'Painel',
     contacts: 'Contactos',
+    agendamentos: 'Agendamentos',
+    colheitasHoje: 'Colheitas hoje',
     processes: 'Processos',
     stocks: 'Inventário',
     listings: 'Relatórios',
@@ -696,7 +738,8 @@ const pt = {
     processes: {
       title: 'Processos',
       subtitle: 'Pipeline clínico-laboratorial — da colheita à faturação',
-      searchPlaceholder: 'Pesquisar por nº, doente, médico, kit ou teste...',
+      searchPlaceholder: 'Pesquisar por nº, NIF, doente, médico, kit ou teste...',
+      deleted: 'Processo {numero} eliminado.',
       kpi: {
         activeProcesses: 'Processos ativos',
         oldProcesses: 'Processos antigos',

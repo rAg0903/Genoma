@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { APP } from '../../lib/design-tokens';
 import { Outlet } from 'react-router';
-import { GlobalSearchProvider } from '../context/GlobalSearchContext';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 
@@ -9,7 +8,6 @@ export function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <GlobalSearchProvider>
     <div className={`h-screen flex overflow-hidden ${APP.root}`} style={{ fontFamily: 'Inter, sans-serif' }}>
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -32,6 +30,5 @@ export function MainLayout() {
         </main>
       </div>
     </div>
-    </GlobalSearchProvider>
   );
 }

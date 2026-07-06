@@ -13,8 +13,27 @@ interface GlobalSearchContextValue {
 
 const GlobalSearchContext = createContext<GlobalSearchContextValue | null>(null);
 
-export function GlobalSearchProvider({ children }: { children: ReactNode }) {
+function GlobalSearchPaletteHost({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const navigate = useNavigate();
+
+  const onNavigate = useCallback(
+    (target: SearchResultItem['target']) => {
+      onClose();
+      navigateToSearchTarget(navigate, target);
+    },
+    [navigate, onClose],
+  );
+
+  return <GlobalSearchPalette open={open} onClose={onClose} onNavigate={onNavigate} />;
+}
+
+export function GlobalSearchProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
   const openSearch = useCallback(() => setOpen(true), []);
@@ -32,14 +51,6 @@ export function GlobalSearchProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const onNavigate = useCallback(
-    (target: SearchResultItem['target']) => {
-      setOpen(false);
-      navigateToSearchTarget(navigate, target);
-    },
-    [navigate],
-  );
-
   const value = useMemo(
     () => ({ open, openSearch, closeSearch, toggleSearch }),
     [open, openSearch, closeSearch, toggleSearch],
@@ -48,7 +59,7 @@ export function GlobalSearchProvider({ children }: { children: ReactNode }) {
   return (
     <GlobalSearchContext.Provider value={value}>
       {children}
-      <GlobalSearchPalette open={open} onClose={closeSearch} onNavigate={onNavigate} />
+      <GlobalSearchPaletteHost open={open} onClose={closeSearch} />
     </GlobalSearchContext.Provider>
   );
 }

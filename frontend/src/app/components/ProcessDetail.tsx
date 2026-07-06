@@ -19,6 +19,7 @@ import { AnexosTab, DetailDivider, DetailPanel, DetailSection, InfoField } from 
 import { ProcessResultadoTab } from './processos/ProcessResultadoTab';
 import { ProcessFaturacaoView } from './shared/ProcessFaturacaoFields';
 import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
+import { ProcessDataQualityBanner } from './shared/ProcessDataQualityBanner';
 import { extractFaturacaoFromProcesso } from '../../lib/process-form';
 import { StatusBadge } from './shared/StatusBadge';
 import { PROCESS_STATUS_STYLES, ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
@@ -133,11 +134,14 @@ export function ProcessDetail({
         />
 
         <FormTabContent>
-          <FaturacaoAlertBanner
-            value={extractFaturacaoFromProcesso(processo)}
-            context="processo"
-            onGoToFaturacao={() => setTab('faturacao')}
-          />
+          <div className="space-y-3">
+            <ProcessDataQualityBanner processo={processo} />
+            <FaturacaoAlertBanner
+              value={extractFaturacaoFromProcesso(processo)}
+              context="processo"
+              onGoToFaturacao={() => setTab('faturacao')}
+            />
+          </div>
         </FormTabContent>
 
         {tab === 'identificacao' && (
