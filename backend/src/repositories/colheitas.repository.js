@@ -293,6 +293,7 @@ exports.registarColheita = async ({
   dataEfetiva,
   postoId,
   laboratorioFinalId,
+  utilizadorId = null,
 }) => {
   const connection = await pool.getConnection();
   try {
@@ -310,6 +311,7 @@ exports.registarColheita = async ({
         postoId,
         dataEfetiva,
         laboratorioFinalId,
+        utilizadorId,
       });
     } else {
       await connection.execute(

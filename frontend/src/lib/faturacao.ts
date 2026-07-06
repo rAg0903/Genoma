@@ -18,21 +18,21 @@ export function isFaturaPaga(data: ProcessFaturacaoData): boolean {
 export function getFaturacaoAlert(
   data: ProcessFaturacaoData,
   context: 'contacto' | 'processo' = 'contacto',
-): { type: FaturacaoAlertType; message: string } | null {
+): { type: FaturacaoAlertType; messageKey: string } | null {
   if (!isFaturaEmitida(data)) {
     return {
       type: 'nao_facturado',
-      message: context === 'processo'
-        ? 'Este processo ainda não foi faturado. Preencha os dados da fatura no separador Faturação.'
-        : 'Este contacto ainda não foi faturado. Preencha os dados da fatura no separador Faturação.',
+      messageKey: context === 'processo'
+        ? 'faturacao.alert.processNotInvoiced'
+        : 'faturacao.alert.contactNotInvoiced',
     };
   }
   if (!isFaturaPaga(data)) {
     return {
       type: 'nao_pago',
-      message: context === 'processo'
-        ? 'Este processo ainda não foi pago. Preencha os dados do recibo no separador Faturação.'
-        : 'Este contacto ainda não foi pago. Preencha os dados do recibo no separador Faturação.',
+      messageKey: context === 'processo'
+        ? 'faturacao.alert.processNotPaid'
+        : 'faturacao.alert.contactNotPaid',
     };
   }
   return null;

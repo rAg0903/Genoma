@@ -5,7 +5,7 @@ exports.findByProcesso = async (processoId) => {
   const connection = await pool.getConnection();
   try {
     const [rows] = await connection.execute(
-      `SELECT id, processo_id, semanas_gravidez, dias_gravidez, tipo_gravidez,
+      `SELECT id, processo_id, semanas_gravidez, dias_gravidez, tipo_gravidez, origem_conceicao,
               quer_saber_sexo, motivo_prescricao, gestacao_registada_em, data_registo
        FROM informacao_clinica
        WHERE processo_id = ?
@@ -26,21 +26,30 @@ const normalizeTipoGravidez = (value) => {
   return null;
 };
 
+const normalizeOrigemConceicao = (value) => {
+  if (!value) return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (['natural', 'fiv_ovulos_proprios', 'fiv_doacao_ovulos'].includes(normalized)) return normalized;
+  return null;
+};
+
 exports.create = async (data) => {
   const connection = await pool.getConnection();
   try {
     const id = uuidv4();
     const tipoGravidez = normalizeTipoGravidez(data.tipo_gravidez);
+    const origemConceicao = normalizeOrigemConceicao(data.origem_conceicao);
     await connection.execute(
       `INSERT INTO informacao_clinica
-        (id, processo_id, semanas_gravidez, dias_gravidez, tipo_gravidez, quer_saber_sexo, motivo_prescricao)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (id, processo_id, semanas_gravidez, dias_gravidez, tipo_gravidez, origem_conceicao, quer_saber_sexo, motivo_prescricao)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.processo_id,
         data.semanas_gravidez || null,
         data.dias_gravidez || null,
         tipoGravidez,
+        origemConceicao,
         data.quer_saber_sexo ? 1 : 0,
         data.motivo_prescricao || null,
       ]
@@ -55,10 +64,12 @@ exports.upsertForProcesso = async (processoId, data = {}) => {
   const connection = await pool.getConnection();
   try {
     const tipoGravidez = normalizeTipoGravidez(data.tipo_gravidez);
+    const origemConceicao = normalizeOrigemConceicao(data.origem_conceicao);
     const motivo = data.motivo_prescricao || data.onde_seguida || null;
     const semanas = data.semanas_gravidez ?? data.gestacao_semanas_registo ?? null;
     const dias = data.dias_gravidez ?? data.gestacao_dias_registo ?? null;
     const gestacaoRegistadaEm = data.gestacao_registada_em || null;
+    const querSaberSexo = data.quer_saber_sexo !== undefined ? (data.quer_saber_sexo ? 1 : 0) : null;
     const [rows] = await connection.execute(
       `SELECT id FROM informacao_clinica WHERE processo_id = ? ORDER BY data_registo DESC LIMIT 1`,
       [processoId]
@@ -67,21 +78,24 @@ exports.upsertForProcesso = async (processoId, data = {}) => {
     if (rows[0]) {
       await connection.execute(
         `UPDATE informacao_clinica
-         SET tipo_gravidez = ?, motivo_prescricao = ?, semanas_gravidez = ?, dias_gravidez = ?, gestacao_registada_em = ?
+         SET tipo_gravidez = ?, origem_conceicao = ?, quer_saber_sexo = COALESCE(?, quer_saber_sexo),
+             motivo_prescricao = ?, semanas_gravidez = ?, dias_gravidez = ?, gestacao_registada_em = ?
          WHERE id = ?`,
-        [tipoGravidez, motivo, semanas, dias, gestacaoRegistadaEm, rows[0].id]
+        [tipoGravidez, origemConceicao, querSaberSexo, motivo, semanas, dias, gestacaoRegistadaEm, rows[0].id]
       );
       return rows[0].id;
     }
 
-    if (!tipoGravidez && !motivo && semanas == null && dias == null && !gestacaoRegistadaEm) return null;
+    if (!tipoGravidez && !origemConceicao && !motivo && semanas == null && dias == null && !gestacaoRegistadaEm && querSaberSexo == null) {
+      return null;
+    }
 
     const id = uuidv4();
     await connection.execute(
       `INSERT INTO informacao_clinica
-        (id, processo_id, semanas_gravidez, dias_gravidez, tipo_gravidez, motivo_prescricao, gestacao_registada_em, quer_saber_sexo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-      [id, processoId, semanas, dias, tipoGravidez, motivo, gestacaoRegistadaEm]
+        (id, processo_id, semanas_gravidez, dias_gravidez, tipo_gravidez, origem_conceicao, motivo_prescricao, gestacao_registada_em, quer_saber_sexo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, processoId, semanas, dias, tipoGravidez, origemConceicao, motivo, gestacaoRegistadaEm, querSaberSexo ?? 0]
     );
     return id;
   } finally {

@@ -171,6 +171,15 @@ exports.confirmLabArrival = async (req, res) => {
   }
 };
 
+exports.revertDescarteForKit = async (req, res) => {
+  try {
+    const kit = await stocksService.revertDescarteForKit(req.params.id, req.body, req.user);
+    res.json({ message: 'Kit devolvido à origem com sucesso', data: kit });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
 exports.getKitTrace = async (req, res) => {
   try {
     const trace = await stocksService.getKitTrace(req.params.id);

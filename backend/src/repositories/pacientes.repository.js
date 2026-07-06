@@ -123,16 +123,18 @@ exports.create = async (data) => {
             `INSERT INTO pacientes
                 (id, nome, data_nascimento, genero, nif, telemovel, email, morada,
                  codigo_postal, pais, distrito, cidade, altura, peso,
-                 medico_id, teste_id, tipo_gravidez, gestacao_semanas_registo, gestacao_dias_registo,
+                 medico_id, teste_id, tipo_gravidez, origem_conceicao, quer_saber_sexo,
+                 gestacao_semanas_registo, gestacao_dias_registo,
                  gestacao_registada_em, onde_seguida, posto_colheita_id,
                  data_colheita_prevista, notas_internas, estado_agendamento)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id, data.nome, data.data_nascimento || null, data.genero || null, data.nif || null,
                 data.telemovel || null, data.email || null, data.morada || null,
                 data.codigo_postal || null, data.pais || null, data.distrito || null,
                 data.cidade || null, data.altura ?? null, data.peso ?? null,
                 data.medico_id || null, data.teste_id || null, data.tipo_gravidez || null,
+                data.origem_conceicao || null, data.quer_saber_sexo ? 1 : 0,
                 data.gestacao_semanas_registo ?? null, data.gestacao_dias_registo ?? null,
                 data.gestacao_registada_em || null,
                 data.onde_seguida || null, data.posto_colheita_id || null,
@@ -219,6 +221,14 @@ exports.update = async (id, data) => {
         if (data.tipo_gravidez !== undefined) {
             updates.push('tipo_gravidez = ?');
             values.push(data.tipo_gravidez);
+        }
+        if (data.origem_conceicao !== undefined) {
+            updates.push('origem_conceicao = ?');
+            values.push(data.origem_conceicao);
+        }
+        if (data.quer_saber_sexo !== undefined) {
+            updates.push('quer_saber_sexo = ?');
+            values.push(data.quer_saber_sexo ? 1 : 0);
         }
         if (data.gestacao_semanas_registo !== undefined) {
             updates.push('gestacao_semanas_registo = ?');

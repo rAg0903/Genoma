@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   Save, User, MapPin, Baby, Syringe, Receipt, StickyNote, Paperclip,
-  AlertTriangle, CheckCircle2, Package, X, Loader2, Ban,
+  AlertTriangle, CheckCircle2, Package, X, Loader2, Ban, CalendarDays,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPostalCodeAutofillHandlers } from '../../lib/postal-code-pt';
-import { filterPostosNearContact, formatPostoProximidadeMotivo, hasValidContactPostalCode } from '../../lib/posto-proximity';
+import { ORIGEM_CONCEICAO_OPTIONS } from '../../lib/origem-conceicao';
+import { filterPostosNearContact, formatPostoOptionLabel, formatPostoProximidadeMotivo, hasValidContactPostalCode } from '../../lib/posto-proximity';
 import { getTestesComSubTestes, getTestesSelecionaveisComLabel, resolveParentFromTesteId, resolvePrecoTesteSelecionavel, resolveTesteSelecionavelLabel } from '../../lib/testes';
 import { Contact, Processo } from '../data/types';
 import { useData } from '../context/DataContext';
@@ -16,7 +17,7 @@ import { apiRequest } from '../../lib/api';
 import { getAuthToken } from '../../lib/api-processos';
 import { navigateToProcessoFromContact } from '../../lib/contact-processo-redirect';
 import { buildContactClinicalPayload, buildContactPosConversao, contactTemProcessoAtivo,
-  CONTACTO_ESTADO_LABEL, findProcessoDoContacto, isProcessoLaboratorio,
+  findProcessoDoContacto, isProcessoLaboratorio,
 } from '../../lib/contactos';
 import { todayLocal } from '../../lib/dates';
 import {
@@ -32,9 +33,9 @@ import { AnexosTab, DetailPanel, DetailSection, DetailDivider } from './ContactD
 import { GestacaoFields } from './GestacaoFields';
 import { ProcessFaturacaoFields } from './shared/ProcessFaturacaoFields';
 import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
-import { FormAvatarInitials, FormField, FormInlineAlert, FormInput, FormNumberInput, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton, FormRadixSelect, FormSectionNote, FormTabContent, FormTextarea } from './shared/FormPageChrome';
+import { FormAvatarInitials, FormField, FormFieldAccessory, FormInlineAlert, FormInput, FormNumberInput, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton, FormRadixSelect, FormSectionNote, FormTabContent, FormTextarea } from './shared/FormPageChrome';
 import { FormDatePicker } from './shared/FormDatePicker';
-import { AppModal, ModalAlert } from './shared/AppModal';
+import { AppModal, ModalActions, ModalAlert } from './shared/AppModal';
 import { Medico, medicosApi } from '../../lib/api-medicos';
 import { parseGestacaoRegistoInput } from '../../lib/gestacao';
 import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
@@ -42,16 +43,7 @@ import { CONTROL, FORM } from '../../lib/design-tokens';
 
 type TabId = 'identificacao' | 'gravidez' | 'colheita' | 'faturacao' | 'notas' | 'anexos';
 
-const TABS: { id: TabId; label: string; icon: typeof User }[] = [
-  { id: 'identificacao', label: 'Identificação', icon: User },
-  { id: 'gravidez', label: 'Gravidez', icon: Baby },
-  { id: 'colheita', label: 'Colheita', icon: Syringe },
-  { id: 'faturacao', label: 'Faturação', icon: Receipt },
-  { id: 'notas', label: 'Notas', icon: StickyNote },
-  { id: 'anexos', label: 'Anexos', icon: Paperclip },
-];
-
-const inputClass = CONTROL.input;
+const CONTACT_TAB_IDS = new Set<TabId>(['identificacao', 'gravidez', 'colheita', 'faturacao', 'notas', 'anexos']);
 
 const emptyForm: Omit<Contact, 'id' | 'created_at'> = {
   nome: '', data_nascimento: '', genero: 'Feminino', nif: '', telemovel: '', email: '', morada: '',
@@ -62,23 +54,24 @@ const today = todayLocal;
 
 const emptyGravidez = {
   medico_id: '', entidade_id: '', onde_seguida: '', teste_pai_id: '', teste_id: '', tipo_gravidez: 'Singular',
+  origem_conceicao: 'natural', quer_saber_sexo: false,
   gestacao_semanas_registo: '', gestacao_dias_registo: '', gestacao_registada_em: '',
 };
 const emptyColheita = { posto_id: '', data_prevista: '', data_efetiva: '' };
 
 interface KitOpcao { id: string; codigo_barras: string; tracking: string; tipo_kit: string; teste_nome?: string; data_validade: string }
 
-const TAB_IDS = new Set<TabId>(TABS.map((t) => t.id));
+const inputClass = CONTROL.input;
 
 export function ContactFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { t } = useLanguage();
+  const { t, localeTag } = useLanguage();
   const {
     contacts, addContact, updateContact, processos, addProcesso, updateProcesso,
     postos, testes, motivosAnulacao, getPostoStock, getPostoKitsDisponiveis, marcarKitUtilizado,
-    getAnexosByPaciente, addAnexo, deleteAnexo,
+    getAnexosByPaciente, uploadAnexoFile, deleteAnexo,
   } = useData();
   const { hasPermission, role, currentUser } = useAuth();
   const canUpdate = hasPermission('contactos', 'update');
@@ -88,9 +81,26 @@ export function ContactFormPage() {
   const editing = Boolean(id);
   const [tab, setTab] = useState<TabId>('identificacao');
 
+  const tabs = useMemo(() => [
+    { id: 'identificacao' as const, label: t('form.tabs.identificacao'), icon: User },
+    { id: 'gravidez' as const, label: t('form.tabs.gravidez'), icon: Baby },
+    { id: 'colheita' as const, label: t('form.tabs.colheita'), icon: Syringe },
+    { id: 'faturacao' as const, label: t('form.tabs.faturacao'), icon: Receipt },
+    { id: 'notas' as const, label: t('form.tabs.notas'), icon: StickyNote },
+    { id: 'anexos' as const, label: t('form.tabs.anexos'), icon: Paperclip },
+  ], [t]);
+
+  const origemConceicaoOptions = useMemo(
+    () => ORIGEM_CONCEICAO_OPTIONS.map((item) => ({
+      value: item.value,
+      label: t(`form.options.conceptionOrigin.${item.value}`),
+    })),
+    [t],
+  );
+
   useEffect(() => {
     const requested = searchParams.get('tab');
-    if (requested && TAB_IDS.has(requested as TabId)) {
+    if (requested && CONTACT_TAB_IDS.has(requested as TabId)) {
       setTab(requested as TabId);
     }
   }, [searchParams]);
@@ -112,9 +122,13 @@ export function ContactFormPage() {
 
   // Modal de seleção de kit + resultado
   const [kitModal, setKitModal] = useState<{ open: boolean; loading: boolean; kits: KitOpcao[] }>({ open: false, loading: false, kits: [] });
+  const [kitPendingConfirm, setKitPendingConfirm] = useState<KitOpcao | null>(null);
+  const [creatingProcesso, setCreatingProcesso] = useState(false);
   const [labPreview, setLabPreview] = useState<{ id: string; nome: string; codigo?: string } | null>(null);
   const [linked, setLinked] = useState<{ kit: string; processo: string } | null>(null);
   const [estadoAgendamento, setEstadoAgendamento] = useState<Contact['estado_agendamento']>(null);
+  const [mostrarTodosPostos, setMostrarTodosPostos] = useState(false);
+  const [postoSelectOpen, setPostoSelectOpen] = useState(false);
 
   const postosAtivos = useMemo(() => postos.filter((p) => p.ativo !== false), [postos]);
   const contactoTemMoradaParaColheita = useMemo(
@@ -129,6 +143,24 @@ export function ContactFormPage() {
       cidade: form.cidade,
     });
   }, [contactoTemMoradaParaColheita, postosAtivos, form.codigo_postal, form.distrito, form.cidade]);
+  const postosDropdownOptions = useMemo(() => {
+    if (!contactoTemMoradaParaColheita) return [];
+
+    if (mostrarTodosPostos) {
+      return postosAtivos
+        .slice()
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt'))
+        .map((posto) => ({
+          value: posto.id,
+          label: formatPostoOptionLabel(posto),
+        }));
+    }
+
+    return postosProximos.map(({ posto, motivo }) => ({
+      value: posto.id,
+      label: `${formatPostoOptionLabel(posto)} · ${formatPostoProximidadeMotivo(motivo)}`,
+    }));
+  }, [contactoTemMoradaParaColheita, mostrarTodosPostos, postosAtivos, postosProximos]);
   const testesComSubTestes = useMemo(() => getTestesComSubTestes(testes), [testes]);
   const subTestesDoPai = useMemo(() => {
     const pai = testesComSubTestes.find((t) => t.id === gravidez.teste_pai_id);
@@ -188,6 +220,7 @@ export function ContactFormPage() {
     contactFaturacao,
   );
   const hydratedIdRef = useRef<string | null>(null);
+  const moradaSnapshotRef = useRef<string | null>(null);
 
   const applyContactToForm = (c: Contact) => {
     setForm({
@@ -202,6 +235,8 @@ export function ContactFormPage() {
       teste_pai_id: resolveParentFromTesteId(testes, c.teste_id)?.id || '',
       teste_id: c.teste_id || '',
       tipo_gravidez: c.tipo_gravidez === 'gemelar' ? 'Gemelar' : 'Singular',
+      origem_conceicao: c.origem_conceicao || 'natural',
+      quer_saber_sexo: !!c.quer_saber_sexo,
       gestacao_semanas_registo: c.gestacao_semanas_registo != null ? String(c.gestacao_semanas_registo) : '',
       gestacao_dias_registo: c.gestacao_dias_registo != null ? String(c.gestacao_dias_registo) : '',
       gestacao_registada_em: c.gestacao_registada_em || '',
@@ -225,6 +260,8 @@ export function ContactFormPage() {
   useEffect(() => {
     if (id) return;
     hydratedIdRef.current = null;
+    moradaSnapshotRef.current = null;
+    setMostrarTodosPostos(false);
     setSavedContactId(null);
     setForm(emptyForm);
     setGravidez(emptyGravidez);
@@ -249,10 +286,14 @@ export function ContactFormPage() {
   useEffect(() => {
     if (!id) {
       hydratedIdRef.current = null;
+      moradaSnapshotRef.current = null;
       return;
     }
     if (contactTemProcessoAtivo(id, processos)) return;
     if (hydratedIdRef.current === id) return;
+
+    moradaSnapshotRef.current = null;
+    setMostrarTodosPostos(false);
 
     const fromList = contacts.find((x) => x.id === id);
     if (fromList) {
@@ -315,18 +356,46 @@ export function ContactFormPage() {
     }
   }, [medicos, gravidez.medico_id, gravidez.entidade_id, gravidez.onde_seguida]);
 
-  // Limpar posto selecionado quando deixa de estar entre os postos próximos
+  // Preservar postos distantes já guardados; limpar apenas quando a morada muda
+  useEffect(() => {
+    const moradaKey = `${form.morada}|${form.codigo_postal}|${form.distrito}|${form.cidade}`;
+    if (moradaSnapshotRef.current === null) {
+      moradaSnapshotRef.current = moradaKey;
+      return;
+    }
+    if (moradaSnapshotRef.current === moradaKey) return;
+    moradaSnapshotRef.current = moradaKey;
+    setMostrarTodosPostos(false);
+    setColheita((prev) => {
+      if (!prev.posto_id || !contactoTemMoradaParaColheita) return prev;
+      const stillNearby = postosProximos.some(({ posto }) => posto.id === prev.posto_id);
+      return stillNearby ? prev : { ...prev, posto_id: '' };
+    });
+  }, [form.morada, form.codigo_postal, form.distrito, form.cidade, contactoTemMoradaParaColheita, postosProximos]);
+
+  // Limpar posto selecionado quando deixa de ser válido para o modo actual
   useEffect(() => {
     if (!colheita.posto_id) return;
     if (!contactoTemMoradaParaColheita) {
       setColheita((prev) => (prev.posto_id ? { ...prev, posto_id: '' } : prev));
       return;
     }
-    const stillNearby = postosProximos.some(({ posto }) => posto.id === colheita.posto_id);
-    if (!stillNearby) {
-      setColheita((prev) => ({ ...prev, posto_id: '' }));
+    if (mostrarTodosPostos) {
+      const stillActive = postosAtivos.some((posto) => posto.id === colheita.posto_id);
+      if (!stillActive) {
+        setColheita((prev) => ({ ...prev, posto_id: '' }));
+      }
+      return;
     }
-  }, [colheita.posto_id, contactoTemMoradaParaColheita, postosProximos]);
+    const stillNearby = postosProximos.some(({ posto }) => posto.id === colheita.posto_id);
+    if (stillNearby) return;
+    const stillActive = postosAtivos.some((posto) => posto.id === colheita.posto_id);
+    if (stillActive) {
+      setMostrarTodosPostos(true);
+      return;
+    }
+    setColheita((prev) => ({ ...prev, posto_id: '' }));
+  }, [colheita.posto_id, contactoTemMoradaParaColheita, mostrarTodosPostos, postosAtivos, postosProximos]);
 
   // Validação de stock quando posto + data prevista + teste estão preenchidos
   useEffect(() => {
@@ -356,8 +425,8 @@ export function ContactFormPage() {
   }, [form.codigo_postal, savedContactId, autofillFromCp]);
 
   const validarIdentificacao = (): boolean => {
-    if (!form.nome.trim()) { toast.error('Nome completo é obrigatório.'); setTab('identificacao'); return false; }
-    if (!form.telemovel.trim()) { toast.error('Telemóvel é obrigatório.'); setTab('identificacao'); return false; }
+    if (!form.nome.trim()) { toast.error(t('pages.contacts.form.toast.nameRequired')); setTab('identificacao'); return false; }
+    if (!form.telemovel.trim()) { toast.error(t('pages.contacts.form.toast.phoneRequired')); setTab('identificacao'); return false; }
     return true;
   };
 
@@ -372,7 +441,7 @@ export function ContactFormPage() {
           applyContactToForm(updated);
           setEstadoAgendamento(updated.estado_agendamento ?? null);
         } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'Não foi possível guardar o contacto.');
+          toast.error(e instanceof Error ? e.message : t('pages.contacts.form.toast.saveFailed'));
           return null;
         }
       }
@@ -384,7 +453,7 @@ export function ContactFormPage() {
       setEstadoAgendamento(created.estado_agendamento ?? null);
       return created.id;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Não foi possível guardar o contacto.');
+      toast.error(e instanceof Error ? e.message : t('pages.contacts.form.toast.saveFailed'));
       return null;
     }
   };
@@ -423,14 +492,14 @@ export function ContactFormPage() {
         }
       }
 
-      toast.success(isNew ? 'Contacto criado com sucesso!' : 'Contacto atualizado com sucesso!');
+      toast.success(isNew ? t('pages.contacts.form.toast.created') : t('pages.contacts.form.toast.updated'));
 
       if (isNew && saved.id) {
         hydratedIdRef.current = saved.id;
         navigate(`/contactos/${saved.id}/editar`, { replace: true });
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Falha ao guardar contacto.');
+      toast.error(e instanceof Error ? e.message : t('pages.contacts.form.toast.saveError'));
     } finally {
       setSaving(false);
     }
@@ -445,7 +514,7 @@ export function ContactFormPage() {
       setColheita((c) => ({ ...c, data_efetiva: '' }));
       return;
     }
-    if (!colheita.posto_id) { toast.error('Selecione primeiro o Posto de Colheita.'); return; }
+    if (!colheita.posto_id) { toast.error(t('pages.contacts.form.toast.selectPostoFirst')); return; }
     if (!gravidez.medico_id || !gravidez.teste_id) {
       toast.error(t('pages.contacts.form.selectPackGravidez'));
       setTab('gravidez');
@@ -473,15 +542,18 @@ export function ContactFormPage() {
     } catch (e) {
       setKitModal({ open: false, loading: false, kits: [] });
       setLabPreview(null);
-      toast.error(e instanceof Error ? e.message : 'Falha ao carregar kits do posto.');
+      toast.error(e instanceof Error ? e.message : t('pages.contacts.form.toast.loadKitsFailed'));
     }
   };
 
-  const handleSelecionarKit = async (kit: KitOpcao) => {
+  const handleConfirmarKit = async () => {
+    const kit = kitPendingConfirm;
+    if (!kit) return;
     const contactId = savedContactId;
-    if (!contactId) { toast.error('Guarde o contacto primeiro.'); return; }
+    if (!contactId) { toast.error(t('pages.contacts.form.toast.saveContactFirst')); return; }
     const postoNome = postos.find((p) => p.id === colheita.posto_id)?.nome || '';
     const gestacao = parseGestacaoRegistoInput(gravidez.gestacao_semanas_registo, gravidez.gestacao_dias_registo);
+    setCreatingProcesso(true);
     try {
       const novoProcesso: Omit<Processo, 'id'> = {
         numero: kit.codigo_barras,
@@ -501,6 +573,8 @@ export function ContactFormPage() {
         observacoes: notas || undefined,
         onde_seguida: ondeSeguidaNome || undefined,
         tipo_gravidez: gravidez.tipo_gravidez === 'Gemelar' ? 'gemelar' : gravidez.tipo_gravidez === 'Singular' ? 'singular' : null,
+        origem_conceicao: gravidez.origem_conceicao || null,
+        quer_saber_sexo: gravidez.quer_saber_sexo,
         gestacao_semanas_registo: gestacao?.semanas ?? null,
         gestacao_dias_registo: gestacao?.dias ?? null,
         gestacao_registada_em: gestacaoDataRegisto || undefined,
@@ -515,36 +589,41 @@ export function ContactFormPage() {
         });
       } catch { /* processo criado; estado do kit best-effort */ }
       setKitModal({ open: false, loading: false, kits: [] });
+      setKitPendingConfirm(null);
       setLabPreview(null);
-      toast.success(`Processo ${processo.numero} criado. O registo passou para Processos.`);
-      navigate(`/processos/${processo.id}/editar`, { replace: true });
+      setLinked({ kit: kit.codigo_barras, processo: processo.numero });
+      toast.success(t('pages.contacts.form.toast.processCreated', { processo: processo.numero, kit: kit.codigo_barras }));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Não foi possível associar o kit / criar o processo.');
+      toast.error(e instanceof Error ? e.message : t('pages.contacts.form.toast.kitAssociateFailed'));
+    } finally {
+      setCreatingProcesso(false);
     }
   };
 
-  const initials = (form.nome || 'Novo Contacto').split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+  const initials = (form.nome || t('pages.contacts.form.header.newContact')).split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
   const podeGuardar = savedContactId ? canUpdate : canCreate;
+
+  const subtitleParts = [
+    editing ? t('pages.contacts.form.header.editMode') : t('pages.contacts.form.header.createMode'),
+    estadoAgendamento ? t('form.options.schedulingState.scheduled') : '',
+    linked ? t('pages.contacts.form.header.processLinked', { processo: linked.processo }) : '',
+  ].filter(Boolean);
 
   return (
     <FormPageShell>
       <FormPageBody>
         <FormPageHeader
           onBack={() => navigate('/contactos')}
-          title={form.nome || (editing ? 'Editar contacto' : 'Novo Contacto')}
-          subtitle={[
-            editing ? 'Edição de contacto' : 'Criação de contacto',
-            estadoAgendamento ? CONTACTO_ESTADO_LABEL[estadoAgendamento] : '',
-            linked ? `Processo ${linked.processo}` : '',
-          ].filter(Boolean).join(' · ')}
-          avatar={<FormAvatarInitials initials={initials || 'NC'} />}
+          title={form.nome || (editing ? t('pages.contacts.form.header.editContact') : t('pages.contacts.form.header.newContact'))}
+          subtitle={subtitleParts.join(' · ')}
+          avatar={<FormAvatarInitials initials={initials || t('pages.contacts.form.header.initialsFallback')} />}
           actions={podeGuardar ? (
             <FormPrimaryButton onClick={handleGuardar} disabled={saving}>
               <Save className="w-4 h-4" />
-              <span className="hidden sm:inline">{saving ? 'A guardar…' : 'Guardar'}</span>
+              <span className="hidden sm:inline">{saving ? t('form.saving') : t('form.save')}</span>
             </FormPrimaryButton>
           ) : undefined}
-          tabs={TABS}
+          tabs={tabs}
           activeTab={tab}
           onTabChange={setTab}
         />
@@ -570,67 +649,67 @@ export function ContactFormPage() {
         {tab === 'identificacao' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Dados do contacto" icon={User}>
+              <DetailSection title={t('pages.contacts.form.sections.contactData')} icon={User}>
                 <div className={FORM.fieldRow}>
-                  <FormField label="Nome completo" required width="2xl">
+                  <FormField label={t('form.fields.fullName')} required width="2xl">
                     <FormInput
                       value={form.nome}
                       onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                      placeholder="Nome completo do paciente"
+                      placeholder={t('form.placeholders.fullName')}
                     />
                   </FormField>
-                  <FormField label="Data de nascimento" width="sm">
+                  <FormField label={t('form.fields.birthDate')} width="sm">
                     <FormDatePicker
                       value={form.data_nascimento}
                       onChange={(v) => setForm({ ...form, data_nascimento: v })}
-                      placeholder="dd/mm/aaaa"
+                      placeholder={t('form.placeholders.date')}
                     />
                   </FormField>
-                  <FormField label="Género" width="md">
+                  <FormField label={t('form.fields.gender')} width="md">
                     <FormRadixSelect
                       value={form.genero}
                       onChange={(v) => setForm({ ...form, genero: v })}
                       options={[
-                        { value: 'Feminino', label: 'Feminino' },
-                        { value: 'Masculino', label: 'Masculino' },
+                        { value: 'Feminino', label: t('form.options.gender.female') },
+                        { value: 'Masculino', label: t('form.options.gender.male') },
                       ]}
                     />
                   </FormField>
-                  <FormField label="NIF" width="md">
+                  <FormField label={t('form.fields.nif')} width="md">
                     <FormInput
                       className="font-mono tabular-nums"
                       value={form.nif}
                       onChange={(e) => setForm({ ...form, nif: e.target.value })}
-                      placeholder="000000000"
+                      placeholder={t('form.placeholders.nif')}
                     />
                   </FormField>
-                  <FormField label="Telemóvel" required width="lg">
+                  <FormField label={t('form.fields.phone')} required width="lg">
                     <FormInput
                       value={form.telemovel}
                       onChange={(e) => setForm({ ...form, telemovel: e.target.value })}
-                      placeholder="+351 900 000 000"
+                      placeholder={t('form.placeholders.phone')}
                     />
                   </FormField>
-                  <FormField label="Email" width="xl">
+                  <FormField label={t('form.fields.email')} width="xl">
                     <FormInput
                       type="email"
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      placeholder="email@exemplo.com"
+                      placeholder={t('form.placeholders.email')}
                     />
                   </FormField>
-                  <FormField label="Altura (cm)" width="xs">
+                  <FormField label={t('form.fields.height')} width="xs">
                     <FormNumberInput
                       value={form.altura}
                       onChange={(e) => setForm({ ...form, altura: e.target.value.replace(/[^\d.,]/g, '') })}
-                      placeholder="165"
+                      placeholder={t('form.placeholders.height')}
                     />
                   </FormField>
-                  <FormField label="Peso (kg)" width="xs">
+                  <FormField label={t('form.fields.weight')} width="xs">
                     <FormNumberInput
                       value={form.peso}
                       onChange={(e) => setForm({ ...form, peso: e.target.value.replace(/[^\d.,]/g, '') })}
-                      placeholder="65"
+                      placeholder={t('form.placeholders.weight')}
                     />
                   </FormField>
                 </div>
@@ -638,48 +717,48 @@ export function ContactFormPage() {
 
               <DetailDivider />
 
-              <DetailSection title="Morada" icon={MapPin}>
+              <DetailSection title={t('pages.contacts.form.sections.address')} icon={MapPin}>
                 <div className={FORM.fieldRow}>
-                  <FormField label="Morada" width="3xl">
+                  <FormField label={t('form.fields.address')} width="3xl">
                     <FormInput
                       value={form.morada}
                       onChange={(e) => setForm({ ...form, morada: e.target.value })}
-                      placeholder="Rua, número, andar"
+                      placeholder={t('form.placeholders.address')}
                     />
                   </FormField>
-                  <FormField label="Código postal" width="sm">
+                  <FormField label={t('form.fields.postalCode')} width="sm">
                     <FormInput
                       className="font-mono tabular-nums"
                       value={form.codigo_postal}
                       onChange={(e) => handleCodigoPostalChange(e.target.value)}
                       onBlur={(e) => void autofillFromCp(e.target.value)}
-                      placeholder="0000-000"
+                      placeholder={t('form.placeholders.postalCode')}
                     />
                   </FormField>
-                  <FormField label="Cidade" width="lg">
+                  <FormField label={t('form.fields.city')} width="lg">
                     <FormInput
                       value={form.cidade}
                       onChange={(e) => setForm({ ...form, cidade: e.target.value })}
-                      placeholder="Cidade"
+                      placeholder={t('form.placeholders.city')}
                     />
                   </FormField>
-                  <FormField label="Distrito" width="lg">
+                  <FormField label={t('form.fields.district')} width="lg">
                     <FormInput
                       value={form.distrito}
                       onChange={(e) => setForm({ ...form, distrito: e.target.value })}
-                      placeholder="Distrito"
+                      placeholder={t('form.placeholders.district')}
                     />
                   </FormField>
-                  <FormField label="País" width="md">
+                  <FormField label={t('form.fields.country')} width="md">
                     <FormInput
                       value={form.pais}
                       onChange={(e) => setForm({ ...form, pais: e.target.value })}
-                      placeholder="Portugal"
+                      placeholder={t('form.placeholders.country')}
                     />
                   </FormField>
                 </div>
                 <p className={`${FORM.hint} mt-3`}>
-                  Distrito e cidade podem ser preenchidos automaticamente a partir do código postal.
+                  {t('pages.contacts.form.hints.postalAutofill')}
                 </p>
               </DetailSection>
 
@@ -703,7 +782,7 @@ export function ContactFormPage() {
                       </label>
                       {temProcessoAtivo && (
                         <p className="text-amber-600 dark:text-amber-400 text-xs">
-                          Este contacto tem um processo activo. Cancele o processo em Processos para anular aqui ou use os motivos de processo.
+                          {t('pages.contacts.form.hints.activeProcessVoid')}
                         </p>
                       )}
 
@@ -720,7 +799,7 @@ export function ContactFormPage() {
                           </FormField>
                           {motivosAtivos.length === 0 && (
                             <p className="text-amber-600 dark:text-amber-400 mt-1 text-xs">
-                              Sem motivos configurados. Adicione em Administração → Motivos de anulação.
+                              {t('pages.contacts.form.hints.noVoidReasons')}
                             </p>
                           )}
                           <p className="text-slate-500 dark:text-slate-400 mt-2 text-xs">
@@ -739,9 +818,9 @@ export function ContactFormPage() {
         {tab === 'gravidez' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Acompanhamento clínico" icon={User}>
+              <DetailSection title={t('pages.contacts.form.sections.clinicalFollowUp')} icon={User}>
                 <div className={FORM.fieldRow}>
-                  <FormField label="Médico" width="lg">
+                  <FormField label={t('form.fields.doctor')} width="lg">
                     {medicoFieldLocked ? (
                       <FormInput
                         readOnly
@@ -752,7 +831,7 @@ export function ContactFormPage() {
                       <FormRadixSelect
                         value={gravidez.medico_id}
                         onChange={(v) => setGravidez({ ...gravidez, medico_id: v, entidade_id: '' })}
-                        placeholder="Selecione o médico…"
+                        placeholder={t('form.placeholders.selectDoctor')}
                         options={medicos.filter((m) => m.ativo !== false).map((m) => ({
                           value: m.utilizador_id,
                           label: m.nome,
@@ -761,10 +840,10 @@ export function ContactFormPage() {
                     )}
                   </FormField>
                   <FormField
-                    label="Onde é seguida"
+                    label={t('form.fields.followUpLocation')}
                     width="3xl"
                     hint={gravidez.medico_id && entidadesDoMedico.length === 0
-                      ? 'Este médico não tem entidades associadas. Configure em Administração → Médicos.'
+                      ? t('pages.contacts.form.hints.doctorNoEntities')
                       : undefined}
                   >
                     <FormRadixSelect
@@ -772,7 +851,7 @@ export function ContactFormPage() {
                       onChange={(v) => setGravidez({ ...gravidez, entidade_id: v })}
                       disabled={!gravidez.medico_id}
                       placeholder={
-                        gravidez.medico_id ? 'Selecione a entidade…' : 'Selecione primeiro o médico…'
+                        gravidez.medico_id ? t('form.placeholders.selectEntity') : t('form.placeholders.selectDoctorFirst')
                       }
                       options={entidadesDoMedico.map((local) => ({
                         value: local.entidade_id,
@@ -785,20 +864,19 @@ export function ContactFormPage() {
 
               <DetailDivider />
 
-              <DetailSection title="Teste e pacote" icon={Package}>
+              <DetailSection title={t('pages.contacts.form.sections.testAndPack')} icon={Package}>
                 <div className={FORM.fieldRow}>
-                  <FormField label="Teste" width="lg">
+                  <FormField label={t('form.fields.test')} width="lg">
                     <FormRadixSelect
                       value={gravidez.teste_pai_id}
                       onChange={(v) => setGravidez({ ...gravidez, teste_pai_id: v, teste_id: '' })}
-                      placeholder="Selecione o teste…"
-                      options={testesComSubTestes.map((t) => ({ value: t.id, label: t.nome }))}
+                      placeholder={t('form.placeholders.selectTest')}
+                      options={testesComSubTestes.map((teste) => ({ value: teste.id, label: teste.nome }))}
                     />
                   </FormField>
                   <FormField
                     label={t('pages.contacts.form.pack')}
                     width="lg"
-                    hint={t('pages.contacts.form.packHint')}
                   >
                     <FormRadixSelect
                       value={gravidez.teste_id}
@@ -810,22 +888,47 @@ export function ContactFormPage() {
                       options={subTestesDoPai.map((st) => ({ value: st.id, label: st.nome }))}
                     />
                   </FormField>
-                  <FormField label="Tipo de gravidez" width="md">
+                </div>
+              </DetailSection>
+
+              <DetailDivider />
+
+              <DetailSection title={t('pages.contacts.form.sections.pregnancy')} icon={Baby}>
+                <div className={FORM.fieldRow}>
+                  <FormField label={t('form.fields.pregnancyType')} width="md">
                     <FormRadixSelect
                       value={gravidez.tipo_gravidez}
                       onChange={(v) => setGravidez({ ...gravidez, tipo_gravidez: v })}
                       options={[
-                        { value: 'Singular', label: 'Singular' },
-                        { value: 'Gemelar', label: 'Gemelar' },
+                        { value: 'Singular', label: t('form.options.pregnancyType.singular') },
+                        { value: 'Gemelar', label: t('form.options.pregnancyType.twin') },
                       ]}
                     />
+                  </FormField>
+                  <FormField label={t('form.fields.conceptionOrigin')} width="xl">
+                    <FormRadixSelect
+                      value={gravidez.origem_conceicao}
+                      onChange={(v) => setGravidez({ ...gravidez, origem_conceicao: v })}
+                      options={origemConceicaoOptions}
+                    />
+                  </FormField>
+                  <FormField label={t('form.fields.preferences')} width="lg" controlClassName="flex items-center">
+                    <label className={`${FORM.checkboxRow} inline-flex`}>
+                      <input
+                        type="checkbox"
+                        checked={gravidez.quer_saber_sexo}
+                        onChange={(e) => setGravidez({ ...gravidez, quer_saber_sexo: e.target.checked })}
+                        className={CHECKBOX_INPUT_CLASS}
+                      />
+                      <span>{t('pages.contacts.form.hints.wantsGender')}</span>
+                    </label>
                   </FormField>
                 </div>
               </DetailSection>
 
               <DetailDivider />
 
-              <DetailSection title="Gestação" icon={Baby}>
+              <DetailSection title={t('pages.contacts.form.sections.gestation')} icon={CalendarDays}>
                 <GestacaoFields
                   semanasRegisto={gravidez.gestacao_semanas_registo}
                   diasRegisto={gravidez.gestacao_dias_registo}
@@ -838,7 +941,7 @@ export function ContactFormPage() {
 
               <div className="px-5 pb-5 sm:px-6">
                 <FormSectionNote>
-                  O médico e o teste são usados uma única vez: ao associar o kit na colheita, o contacto passa a processo e deixa de aparecer em Contactos.
+                  {t('pages.contacts.form.hints.medicTestOnce')}
                 </FormSectionNote>
               </div>
             </DetailPanel>
@@ -848,49 +951,56 @@ export function ContactFormPage() {
         {tab === 'colheita' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Agendamento" icon={Syringe}>
+              <DetailSection title={t('pages.contacts.form.sections.scheduling')} icon={Syringe}>
                 <div className={FORM.fieldRow}>
                   <FormField
-                    label="Posto de colheita"
+                    label={t('form.fields.collectionSite')}
                     required
                     width="3xl"
                     hint={
                       !contactoTemMoradaParaColheita
-                        ? 'Indique a morada e o código postal no separador Identificação para ver postos próximos.'
-                        : contactoTemMoradaParaColheita && postosProximos.length === 0
-                          ? 'Não existem postos próximos desta morada. Configure postos em Administração → Laboratórios.'
-                          : 'Postos do mesmo distrito, cidade ou código postal próximo — do mais perto ao mais longe.'
+                        ? t('pages.contacts.form.hints.postoNeedAddress')
+                        : mostrarTodosPostos
+                          ? t('pages.contacts.form.hints.postoShowAll')
+                          : contactoTemMoradaParaColheita && postosProximos.length === 0
+                            ? t('pages.contacts.form.hints.postoNoNearby')
+                            : t('pages.contacts.form.hints.postoNearby')
                     }
                   >
                     <FormRadixSelect
                       value={colheita.posto_id}
                       onChange={(v) => setColheita({ ...colheita, posto_id: v })}
                       disabled={!contactoTemMoradaParaColheita}
+                      open={postoSelectOpen}
+                      onOpenChange={setPostoSelectOpen}
                       placeholder={
                         !form.morada?.trim()
-                          ? 'Preencha primeiro a morada…'
+                          ? t('form.placeholders.fillAddressFirst')
                           : !hasValidContactPostalCode(form.codigo_postal)
-                            ? 'Preencha primeiro o código postal…'
-                            : 'Selecione o posto…'
+                            ? t('form.placeholders.fillPostalCodeFirst')
+                            : t('form.placeholders.selectSite')
                       }
-                      options={postosProximos.map(({ posto, motivo }) => ({
-                        value: posto.id,
-                        label: [
-                          posto.nome,
-                          posto.cidade ? ` — ${posto.cidade}` : '',
-                          posto.codigo_postal ? ` (${posto.codigo_postal})` : '',
-                          ` · ${formatPostoProximidadeMotivo(motivo)}`,
-                        ].join(''),
-                      }))}
+                      options={postosDropdownOptions}
+                      footer={
+                        contactoTemMoradaParaColheita && postosAtivos.length > 0 ? (
+                          <button
+                            type="button"
+                            className="w-full rounded-md px-2.5 py-2 text-left text-sm text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-teal-900/25"
+                            onClick={() => setMostrarTodosPostos((prev) => !prev)}
+                          >
+                            {mostrarTodosPostos ? t('pages.contacts.form.posto.showNearbyOnly') : t('pages.contacts.form.posto.showAll')}
+                          </button>
+                        ) : undefined
+                      }
                     />
                   </FormField>
-                  <FormField label="Data prevista da colheita" required width="sm">
+                  <FormField label={t('form.fields.scheduledCollectionDate')} required width="sm">
                     <FormDatePicker
                       value={colheita.data_prevista}
                       onChange={(v) => setColheita({ ...colheita, data_prevista: v })}
                       allowAnyDate={false}
                       allowExistingPastDate
-                      placeholder="dd/mm/aaaa"
+                      placeholder={t('form.placeholders.date')}
                     />
                   </FormField>
                 </div>
@@ -905,18 +1015,21 @@ export function ContactFormPage() {
                     ) : checkingStock ? (
                       <FormInlineAlert tone="info">
                         <Loader2 className="w-4 h-4 shrink-0 animate-spin mt-0.5" />
-                        <span>A verificar stock do posto…</span>
+                        <span>{t('pages.contacts.form.stock.checking')}</span>
                       </FormInlineAlert>
                     ) : stockInfo && stockInfo.disponiveis > 0 ? (
                       <FormInlineAlert tone="success">
                         <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                        <span>{stockInfo.disponiveis} kit(s) {kitStockLabel} disponível(eis) neste posto.</span>
+                        <span>{t('pages.contacts.form.stock.available', { count: stockInfo.disponiveis, kitType: kitStockLabel })}</span>
                       </FormInlineAlert>
                     ) : (
                       <FormInlineAlert tone="warning">
                         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                         <span>
-                          Atenção: o posto {postos.find((p) => p.id === colheita.posto_id)?.nome || ''} não possui kits {kitStockLabel} para a data selecionada. O registo não é bloqueado.
+                          {t('pages.contacts.form.stock.unavailable', {
+                            posto: postos.find((p) => p.id === colheita.posto_id)?.nome || '',
+                            kitType: kitStockLabel,
+                          })}
                         </span>
                       </FormInlineAlert>
                     )}
@@ -926,12 +1039,12 @@ export function ContactFormPage() {
 
               <DetailDivider />
 
-              <DetailSection title="Colheita efectiva" icon={Package}>
+              <DetailSection title={t('pages.contacts.form.sections.effectiveCollection')} icon={Package}>
                 <div className={FORM.fieldRow}>
                   <FormField
-                    label="Data efectiva da colheita"
+                    label={t('form.fields.effectiveCollectionDate')}
                     width="sm"
-                    hint="Ao preencher, será pedida a seleção de um kit disponível do posto."
+                    hint={t('pages.contacts.form.hints.effectiveDateKit')}
                   >
                     <FormDatePicker
                       value={colheita.data_efetiva}
@@ -939,16 +1052,16 @@ export function ContactFormPage() {
                       onChange={(v) => void handleDataEfetiva(v)}
                       allowAnyDate={false}
                       allowExistingPastDate
-                      placeholder="dd/mm/aaaa"
+                      placeholder={t('form.placeholders.date')}
                     />
                   </FormField>
                   {linked && (
-                    <div className="w-full max-w-xl pt-6">
+                    <FormFieldAccessory className="w-full max-w-xl">
                       <FormInlineAlert tone="success">
                         <Package className="w-4 h-4 shrink-0 mt-0.5" />
-                        <span>Kit {linked.kit} associado · Processo {linked.processo} criado.</span>
+                        <span>{t('pages.contacts.form.kit.linked', { kit: linked.kit, processo: linked.processo })}</span>
                       </FormInlineAlert>
-                    </div>
+                    </FormFieldAccessory>
                   )}
                 </div>
               </DetailSection>
@@ -959,14 +1072,15 @@ export function ContactFormPage() {
         {tab === 'faturacao' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Faturação" icon={Receipt}>
+              <DetailSection title={t('pages.contacts.form.sections.billing')} icon={Receipt}>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
-                  Emita a fatura ao criar o contacto. Os dados são transferidos para o processo após a colheita.
+                  {t('pages.contacts.form.hints.billingIntro')}
                 </p>
                 <ProcessFaturacaoFields
                   value={contactFaturacao}
                   onChange={setContactFaturacao}
                   canUpdate={canEditFaturacao}
+                  showMultibancoEnvio={false}
                 />
               </DetailSection>
             </DetailPanel>
@@ -976,17 +1090,17 @@ export function ContactFormPage() {
         {tab === 'notas' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Notas internas" icon={StickyNote}>
+              <DetailSection title={t('pages.contacts.form.sections.internalNotes')} icon={StickyNote}>
                 <FormField
-                  label="Observações"
+                  label={t('form.fields.observations')}
                   width="3xl"
-                  hint="Notas internas do contacto — copiadas para o processo na colheita."
+                  hint={t('pages.contacts.form.hints.notesCopied')}
                 >
                   <FormTextarea
                     rows={6}
                     value={notas}
                     onChange={(e) => setNotas(e.target.value)}
-                    placeholder="Registe aqui informação relevante para a equipa…"
+                    placeholder={t('form.placeholders.internalNotes')}
                   />
                 </FormField>
               </DetailSection>
@@ -1002,13 +1116,13 @@ export function ContactFormPage() {
                 canUpdate={canUpdate || canCreate}
                 canDelete={canUpdate}
                 getAnexos={getAnexosByPaciente}
-                addAnexo={addAnexo}
+                uploadAnexoFile={uploadAnexoFile}
                 deleteAnexo={deleteAnexo}
               />
             ) : (
               <DetailPanel>
-                <DetailSection title="Anexos" icon={Paperclip}>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Guarde o contacto primeiro para poder adicionar anexos.</p>
+                <DetailSection title={t('pages.contacts.form.sections.attachments')} icon={Paperclip}>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t('pages.contacts.form.hints.saveForAttachments')}</p>
                 </DetailSection>
               </DetailPanel>
             )}
@@ -1018,22 +1132,24 @@ export function ContactFormPage() {
 
       {/* Modal de seleção de kit */}
       {kitModal.open && (
-        <AppModal title="Selecionar kit disponível" onClose={() => { setKitModal({ open: false, loading: false, kits: [] }); setLabPreview(null); }}>
+        <AppModal title={t('pages.contacts.form.kit.modalSelectTitle')} onClose={() => { setKitModal({ open: false, loading: false, kits: [] }); setLabPreview(null); }}>
           {labPreview && (
             <ModalAlert>
-              Laboratório final previsto: <strong>{labPreview.nome}</strong>
-              {labPreview.codigo ? ` (${labPreview.codigo})` : ''}
+              {t('pages.contacts.form.kit.labPreview', {
+                nome: labPreview.nome,
+                codigo: labPreview.codigo ? ` (${labPreview.codigo})` : '',
+              })}
             </ModalAlert>
           )}
           {kitModal.loading ? (
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 py-6 justify-center text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" /> A carregar kits…
+              <Loader2 className="w-4 h-4 animate-spin" /> {t('pages.contacts.form.kit.loading')}
             </div>
           ) : kitModal.kits.length === 0 ? (
             <div className="py-8 text-center">
               <Package className="w-8 h-8 text-slate-200 dark:text-slate-700 mx-auto mb-2" />
               <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Sem kits {kitStockLabel} disponíveis neste posto.
+                {t('pages.contacts.form.kit.noneAvailable', { kitType: kitStockLabel })}
               </p>
             </div>
           ) : (
@@ -1042,13 +1158,14 @@ export function ContactFormPage() {
                 <button
                   key={k.id}
                   type="button"
-                  onClick={() => void handleSelecionarKit(k)}
+                  onClick={() => setKitPendingConfirm(k)}
                   className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/30 transition-colors text-left"
                 >
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-mono">{k.codigo_barras}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {k.teste_nome || k.tipo_kit || 'Kit'}{k.data_validade ? ` · validade ${new Date(k.data_validade).toLocaleDateString('pt-PT')}` : ''}
+                      {k.teste_nome || k.tipo_kit || t('pages.contacts.form.kit.defaultLabel')}
+                      {k.data_validade ? t('pages.contacts.form.kit.validity', { date: new Date(k.data_validade).toLocaleDateString(localeTag) }) : ''}
                     </div>
                   </div>
                   <Package className="w-4 h-4 text-teal-600 dark:text-teal-400" />
@@ -1056,6 +1173,54 @@ export function ContactFormPage() {
               ))}
             </div>
           )}
+        </AppModal>
+      )}
+
+      {kitPendingConfirm && (
+        <AppModal
+          title={t('pages.contacts.form.kit.confirmTitle')}
+          icon={AlertTriangle}
+          iconClassName="text-amber-600 dark:text-amber-400"
+          onClose={() => !creatingProcesso && setKitPendingConfirm(null)}
+          footer={
+            <ModalActions
+              onCancel={() => setKitPendingConfirm(null)}
+              onSubmit={() => void handleConfirmarKit()}
+              cancelLabel={t('pages.contacts.form.kit.chooseOther')}
+              submitLabel={creatingProcesso ? t('pages.contacts.form.kit.creatingProcess') : t('pages.contacts.form.kit.confirmCreate')}
+              saving={creatingProcesso}
+            />
+          }
+        >
+          <ModalAlert tone="warning">
+            {t('pages.contacts.form.kit.confirmWarning')}
+          </ModalAlert>
+          <dl className="mt-4 space-y-2 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-500 dark:text-slate-400">{t('form.fields.kit')}</dt>
+              <dd className="font-mono font-semibold text-slate-900 dark:text-slate-100">{kitPendingConfirm.codigo_barras}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-500 dark:text-slate-400">{t('form.fields.patient')}</dt>
+              <dd className="text-slate-900 dark:text-slate-100 text-right">{form.nome || '—'}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-500 dark:text-slate-400">{t('form.fields.site')}</dt>
+              <dd className="text-slate-900 dark:text-slate-100 text-right">
+                {postos.find((p) => p.id === colheita.posto_id)?.nome || '—'}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-500 dark:text-slate-400">{t('form.fields.effectiveDate')}</dt>
+              <dd className="text-slate-900 dark:text-slate-100">{colheita.data_efetiva || '—'}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-slate-500 dark:text-slate-400">{t('form.fields.test')}</dt>
+              <dd className="text-slate-900 dark:text-slate-100 text-right">
+                {resolveTesteSelecionavelLabel(testes, gravidez.teste_id) || '—'}
+              </dd>
+            </div>
+          </dl>
         </AppModal>
       )}
     </FormPageShell>

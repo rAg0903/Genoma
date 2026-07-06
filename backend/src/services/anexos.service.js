@@ -1,5 +1,7 @@
 const anexosRepository = require('../repositories/anexos.repository');
 const logService = require('./log.service');
+const fs = require('fs');
+const path = require('path');
 
 const TIPOS_VALIDOS = ['Documento', 'Email', 'Outro'];
 
@@ -46,9 +48,44 @@ exports.create = async (data, user) => {
   return anexo;
 };
 
+exports.createFromUpload = async (file, data, user) => {
+  if (!file) throw new Error('Ficheiro em falta');
+  if (!data.paciente_id && !data.processo_id) {
+    throw new Error('Anexo tem de estar associado a um contacto ou processo');
+  }
+
+  const relativePath = path.join('uploads', 'anexos', file.filename).replace(/\\/g, '/');
+  return exports.create({
+    paciente_id: data.paciente_id || null,
+    processo_id: data.processo_id || null,
+    tipo: 'Documento',
+    titulo: file.originalname || file.filename,
+    url: relativePath,
+  }, user);
+};
+
+exports.getFilePath = async (id) => {
+  const anexo = await anexosRepository.findById(id);
+  if (!anexo?.url) throw new Error('Anexo não encontrado');
+  if (!anexo.url.startsWith('uploads/')) throw new Error('Anexo sem ficheiro');
+  const absolutePath = path.join(__dirname, '../..', anexo.url);
+  if (!fs.existsSync(absolutePath)) throw new Error('Ficheiro não encontrado');
+  return { anexo, absolutePath };
+};
+
 exports.delete = async (id, user) => {
+  const anexo = await anexosRepository.findById(id);
   const removed = await anexosRepository.delete(id);
   if (!removed) throw new Error('Anexo não encontrado');
+
+  if (anexo?.url?.startsWith('uploads/')) {
+    const absolutePath = path.join(__dirname, '../..', anexo.url);
+    try {
+      if (fs.existsSync(absolutePath)) fs.unlinkSync(absolutePath);
+    } catch (err) {
+      console.warn('Falha ao remover ficheiro de anexo:', err.message);
+    }
+  }
   if (user) {
     try {
       await logService.log({ utilizador_id: user.id, acao: 'Removeu anexo', tabela: 'anexos', registro_id: id });

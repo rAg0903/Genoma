@@ -1,10 +1,12 @@
-import { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { CHECKBOX_INPUT_CLASS } from '../../../lib/design-system';
-import { todayLocal, formatCalendarDatePt } from '../../../lib/dates';
+import { todayLocal, formatCalendarDatePt, maxCalendarDate, normalizeCalendarDate } from '../../../lib/dates';
 import { CONTROL, DETAIL, FORM } from '../../../lib/design-tokens';
-import { ProcessFaturacaoData } from '../../../lib/process-form';
-import { InfoField } from '../ContactDetail';
-import { FormField, FormInput, FormNumberInput, FormSelect } from './FormPageChrome';
+import { ProcessFaturacaoData, isDocumentoFaturaCompleto } from '../../../lib/process-form';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { InfoField } from './DetailLayout';
+import { FormField, FormInput, FormNumberInput, FormSelect, FormFieldAccessory } from './FormPageChrome';
+import { FormDatePicker } from './FormDatePicker';
 
 const readOnlyClass = `${CONTROL.input} ${FORM.readOnlyInput}`;
 
@@ -15,6 +17,7 @@ interface ProcessFaturacaoFieldsProps {
   value: ProcessFaturacaoData;
   onChange: (value: ProcessFaturacaoData) => void;
   canUpdate?: boolean;
+  showMultibancoEnvio?: boolean;
 }
 
 function FaturacaoSubsection({ title, children }: { title: string; children: ReactNode }) {
@@ -28,13 +31,34 @@ function FaturacaoSubsection({ title, children }: { title: string; children: Rea
   );
 }
 
-export function ProcessFaturacaoFields({ value, onChange, canUpdate = true }: ProcessFaturacaoFieldsProps) {
-  const set = (patch: Partial<ProcessFaturacaoData>) => onChange({ ...value, ...patch });
+export function ProcessFaturacaoFields({ value, onChange, canUpdate = true, showMultibancoEnvio = true }: ProcessFaturacaoFieldsProps) {
+  const { t } = useLanguage();
+  const documentoCompleto = isDocumentoFaturaCompleto(value);
+  const paymentMinDate = useMemo(
+    () => maxCalendarDate(todayLocal(), value.fatura_data_emissao),
+    [value.fatura_data_emissao],
+  );
+
+  const set = (patch: Partial<ProcessFaturacaoData>) => {
+    const next = { ...value, ...patch };
+    const paymentMin = maxCalendarDate(todayLocal(), next.fatura_data_emissao);
+    if (next.pagamento_data) {
+      const normalizedPayment = normalizeCalendarDate(next.pagamento_data);
+      if (normalizedPayment && normalizedPayment < paymentMin) {
+        next.pagamento_data = paymentMin;
+      }
+    }
+    if (!isDocumentoFaturaCompleto(next) && next.pago) {
+      onChange({ ...next, pago: false, pagamento_data: '', recibo_numero: '' });
+      return;
+    }
+    onChange(next);
+  };
 
   return (
     <div className="space-y-5">
-      <FaturacaoSubsection title="Valores">
-        <FormField label="Preço do teste" width="md">
+      <FaturacaoSubsection title={t('faturacao.fields.values')}>
+        <FormField label={t('faturacao.fields.testPrice')} width="md">
           <div className="relative">
             <FormNumberInput
               min={0}
@@ -52,7 +76,7 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true }: Pr
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">€</span>
           </div>
         </FormField>
-        <FormField label="Desconto (%)" width="sm">
+        <FormField label={t('faturacao.fields.discount')} width="sm">
           <FormNumberInput
             inputMode="decimal"
             value={String(value.desconto_percentual ?? 0)}
@@ -63,7 +87,7 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true }: Pr
             disabled={!canUpdate}
           />
         </FormField>
-        <div className={`${FORM.fieldWidth.md} flex items-end`}>
+        <FormFieldAccessory width="md">
           <button
             type="button"
             onClick={() => set({
@@ -73,10 +97,10 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true }: Pr
             disabled={!canUpdate}
             className={`${CONTROL.buttonSecondary} w-full justify-center h-9`}
           >
-            Aplicar 10% médico
+            {t('faturacao.fields.applyDoctorDiscount')}
           </button>
-        </div>
-        <div className={`${FORM.fieldWidth.lg} flex items-end pb-2`}>
+        </FormFieldAccessory>
+        <FormFieldAccessory width="lg">
           <label className={`${FORM.checkboxRow} inline-flex`}>
             <input
               type="checkbox"
@@ -85,15 +109,15 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true }: Pr
               disabled={!canUpdate}
               className={CHECKBOX_INPUT_CLASS}
             />
-            Não gera comissão
+            {t('faturacao.fields.noCommission')}
           </label>
-        </div>
+        </FormFieldAccessory>
       </FaturacaoSubsection>
 
       <div className={DETAIL.divider} />
 
-      <FaturacaoSubsection title="Documento de fatura">
-        <FormField label="Nº fatura" width="md">
+      <FaturacaoSubsection title={t('faturacao.fields.invoiceDocument')}>
+        <FormField label={t('faturacao.fields.invoiceNumber')} width="md">
           <FormInput
             type="text"
             value={value.fatura_numero || ''}
@@ -101,15 +125,14 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true }: Pr
             disabled={!canUpdate}
           />
         </FormField>
-        <FormField label="Data fatura" width="sm">
-          <FormInput
-            type="date"
+        <FormField label={t('faturacao.fields.invoiceDate')} width="sm">
+          <FormDatePicker
             value={value.fatura_data_emissao || ''}
-            onChange={(e) => set({ fatura_data_emissao: e.target.value })}
+            onChange={(v) => set({ fatura_data_emissao: v })}
             disabled={!canUpdate}
           />
         </FormField>
-        <FormField label="Valor fatura" width="md">
+        <FormField label={t('faturacao.fields.invoiceAmount')} width="md">
           <input
             type="text"
             readOnly
@@ -119,71 +142,87 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true }: Pr
         </FormField>
       </FaturacaoSubsection>
 
-      <div className={DETAIL.divider} />
+      {showMultibancoEnvio && (
+        <>
+          <div className={DETAIL.divider} />
 
-      <FaturacaoSubsection title="Multibanco e envio">
-        <FormField label="Entidade multibanco" width="sm">
-          <FormInput
-            type="text"
-            value={value.entidade_multibanco || ''}
-            onChange={(e) => set({ entidade_multibanco: e.target.value })}
-            disabled={!canUpdate}
-          />
-        </FormField>
-        <FormField label="Referência multibanco" width="lg">
-          <FormInput
-            type="text"
-            value={value.referencia_multibanco || ''}
-            onChange={(e) => set({ referencia_multibanco: e.target.value })}
-            className="font-mono tabular-nums"
-            disabled={!canUpdate}
-          />
-        </FormField>
-        <FormField label="Data envio email" width="sm">
-          <FormInput
-            type="date"
-            value={value.fatura_envio_email || ''}
-            onChange={(e) => set({ fatura_envio_email: e.target.value })}
-            disabled={!canUpdate}
-          />
-        </FormField>
-        <FormField label="Data envio SMS" width="sm">
-          <FormInput
-            type="date"
-            value={value.fatura_envio_sms || ''}
-            onChange={(e) => set({ fatura_envio_sms: e.target.value })}
-            disabled={!canUpdate}
-          />
-        </FormField>
-      </FaturacaoSubsection>
+          <FaturacaoSubsection title={t('faturacao.fields.multibancoSection')}>
+            <FormField label={t('faturacao.fields.multibancoEntity')} width="sm">
+              <FormInput
+                type="text"
+                value={value.entidade_multibanco || ''}
+                onChange={(e) => set({ entidade_multibanco: e.target.value })}
+                disabled={!canUpdate}
+              />
+            </FormField>
+            <FormField label={t('faturacao.fields.multibancoReference')} width="lg">
+              <FormInput
+                type="text"
+                value={value.referencia_multibanco || ''}
+                onChange={(e) => set({ referencia_multibanco: e.target.value })}
+                className="font-mono tabular-nums"
+                disabled={!canUpdate}
+              />
+            </FormField>
+            <FormField label={t('faturacao.fields.emailSentDate')} width="sm">
+              <FormDatePicker
+                value={value.fatura_envio_email || ''}
+                onChange={(v) => set({ fatura_envio_email: v })}
+                disabled={!canUpdate}
+              />
+            </FormField>
+            <FormField label={t('faturacao.fields.smsSentDate')} width="sm">
+              <FormDatePicker
+                value={value.fatura_envio_sms || ''}
+                onChange={(v) => set({ fatura_envio_sms: v })}
+                disabled={!canUpdate}
+              />
+            </FormField>
+          </FaturacaoSubsection>
+        </>
+      )}
 
       <div className={DETAIL.divider} />
 
       <div className="space-y-4">
-        <label className={`${FORM.checkboxRow} inline-flex`}>
+        <label className={`${FORM.checkboxRow} inline-flex ${!documentoCompleto ? 'opacity-50 cursor-not-allowed' : ''}`}>
           <input
             type="checkbox"
             checked={!!value.pago}
             onChange={(e) => set({
               pago: e.target.checked,
-              pagamento_data: e.target.checked && !value.pagamento_data ? todayLocal() : value.pagamento_data,
+              pagamento_data: e.target.checked
+                ? (
+                  value.pagamento_data
+                  && normalizeCalendarDate(value.pagamento_data) >= paymentMinDate
+                    ? value.pagamento_data
+                    : paymentMinDate
+                )
+                : value.pagamento_data,
             })}
-            disabled={!canUpdate}
+            disabled={!canUpdate || !documentoCompleto}
             className={CHECKBOX_INPUT_CLASS}
           />
-          <span className="font-medium">Marcar como pago</span>
+          <span className="font-medium">{t('faturacao.fields.markPaid')}</span>
         </label>
+        {!documentoCompleto && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {t('faturacao.fields.markPaidHint')}
+          </p>
+        )}
         {value.pago && (
           <div className={FORM.fieldRow}>
-            <FormField label="Data pagamento" width="sm">
-              <FormInput
-                type="date"
+            <FormField label={t('faturacao.fields.paymentDate')} width="sm">
+              <FormDatePicker
                 value={value.pagamento_data || ''}
-                onChange={(e) => set({ pagamento_data: e.target.value, pago: e.target.value ? true : value.pago })}
+                onChange={(v) => set({ pagamento_data: v, pago: v ? true : value.pago })}
                 disabled={!canUpdate}
+                allowAnyDate={false}
+                minDate={paymentMinDate}
+                allowExistingPastDate
               />
             </FormField>
-            <FormField label="Nº recibo" width="md">
+            <FormField label={t('faturacao.fields.receiptNumber')} width="md">
               <FormInput
                 type="text"
                 value={value.recibo_numero || ''}
@@ -199,24 +238,31 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true }: Pr
   );
 }
 
-export function ProcessFaturacaoView({ value }: { value: ProcessFaturacaoData }) {
+export function ProcessFaturacaoView({ value, showMultibancoEnvio = true }: { value: ProcessFaturacaoData; showMultibancoEnvio?: boolean }) {
+  const { t } = useLanguage();
+  const yesNo = (v: boolean) => (v ? t('faturacao.fields.yes') : t('faturacao.fields.no'));
+
   return (
     <div className={DETAIL.grid}>
-      <InfoField label="Preço do teste" value={formatMoney(value.valor_base)} />
-      <InfoField label="Não gera comissão" value={value.nao_gera_comissao ? 'Sim' : 'Não'} />
-      <InfoField label="Desconto (%)" value={String(value.desconto_percentual ?? 0)} />
-      <InfoField label="Nº Fatura" value={value.fatura_numero || ''} mono />
-      <InfoField label="Data Fatura" value={fmt(value.fatura_data_emissao)} />
-      <InfoField label="Valor Fatura" value={formatMoney(value.valor_final)} />
-      <InfoField label="Entidade Multibanco" value={value.entidade_multibanco || ''} />
-      <InfoField label="Referência Multibanco" value={value.referencia_multibanco || ''} mono />
-      <InfoField label="Data Envio Email" value={fmt(value.fatura_envio_email)} />
-      <InfoField label="Data Envio SMS" value={fmt(value.fatura_envio_sms)} />
-      <InfoField label="Pago" value={value.pago ? 'Sim' : 'Não'} />
+      <InfoField label={t('faturacao.fields.testPrice')} value={formatMoney(value.valor_base)} />
+      <InfoField label={t('faturacao.fields.noCommission')} value={yesNo(!!value.nao_gera_comissao)} />
+      <InfoField label={t('faturacao.fields.discount')} value={String(value.desconto_percentual ?? 0)} />
+      <InfoField label={t('faturacao.fields.invoiceNumber')} value={value.fatura_numero || ''} mono />
+      <InfoField label={t('faturacao.fields.invoiceDate')} value={fmt(value.fatura_data_emissao)} />
+      <InfoField label={t('faturacao.fields.invoiceAmount')} value={formatMoney(value.valor_final)} />
+      {showMultibancoEnvio && (
+        <>
+          <InfoField label={t('faturacao.fields.multibancoEntity')} value={value.entidade_multibanco || ''} />
+          <InfoField label={t('faturacao.fields.multibancoReference')} value={value.referencia_multibanco || ''} mono />
+          <InfoField label={t('faturacao.fields.emailSentDate')} value={fmt(value.fatura_envio_email)} />
+          <InfoField label={t('faturacao.fields.smsSentDate')} value={fmt(value.fatura_envio_sms)} />
+        </>
+      )}
+      <InfoField label={t('faturacao.fields.paid')} value={yesNo(!!value.pago)} />
       {value.pago && (
         <>
-          <InfoField label="Data Pagamento" value={fmt(value.pagamento_data)} />
-          <InfoField label="Nº Recibo" value={value.recibo_numero || ''} mono />
+          <InfoField label={t('faturacao.fields.paymentDate')} value={fmt(value.pagamento_data)} />
+          <InfoField label={t('faturacao.fields.receiptNumber')} value={value.recibo_numero || ''} mono />
         </>
       )}
     </div>

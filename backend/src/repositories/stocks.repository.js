@@ -224,8 +224,9 @@ exports.createLote = async (data) => {
   }
 };
 
-exports.generateNumeroEnvio = async () => {
-  const connection = await pool.getConnection();
+exports.generateNumeroEnvio = async (externalConnection = null) => {
+  const ownsConnection = !externalConnection;
+  const connection = externalConnection || await pool.getConnection();
   try {
     const year = new Date().getFullYear();
     const prefix = `ENV-${year}-`;
@@ -245,7 +246,7 @@ exports.generateNumeroEnvio = async () => {
 
     return `${prefix}${String(next).padStart(5, '0')}`;
   } finally {
-    connection.release();
+    if (ownsConnection) connection.release();
   }
 };
 
@@ -574,11 +575,12 @@ exports.findAvailableKits = async ({ origem, loteId, quantidade }) => {
   }
 };
 
-exports.createRequisicaoWithKits = async ({ requisicao, kits, movimentos, destinoRef = {} }) => {
-  const connection = await pool.getConnection();
+exports.createRequisicaoWithKits = async ({ requisicao, kits, movimentos, destinoRef = {}, connection: externalConnection = null }) => {
+  const ownsConnection = !externalConnection;
+  const connection = externalConnection || await pool.getConnection();
   try {
     const { v4: uuidv4 } = require('uuid');
-    await connection.beginTransaction();
+    if (ownsConnection) await connection.beginTransaction();
 
     const requisicaoId = uuidv4();
     await connection.execute(
@@ -671,13 +673,13 @@ exports.createRequisicaoWithKits = async ({ requisicao, kits, movimentos, destin
       );
     }
 
-    await connection.commit();
+    if (ownsConnection) await connection.commit();
     return { id: requisicaoId, ...requisicao };
   } catch (error) {
-    await connection.rollback();
+    if (ownsConnection) await connection.rollback();
     throw error;
   } finally {
-    connection.release();
+    if (ownsConnection) connection.release();
   }
 };
 

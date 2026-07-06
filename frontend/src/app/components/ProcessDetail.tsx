@@ -62,7 +62,7 @@ export function ProcessDetail({
   canDelete = true,
   topNotice,
 }: ProcessDetailProps) {
-  const { contacts, getAnexosByPaciente, addAnexo, deleteAnexo } = useData();
+  const { contacts, getAnexosByPaciente, uploadAnexoFile, deleteAnexo } = useData();
   const [tab, setTab] = useState<TabId>('identificacao');
   const [paciente, setPaciente] = useState<Contact | null>(null);
 
@@ -297,10 +297,11 @@ export function ProcessDetail({
           <FormTabContent className="space-y-4">
             <AnexosTab
               pacienteId={processo.paciente_id}
+              processoId={processo.id}
               canUpdate={false}
               canDelete={false}
               getAnexos={getAnexosByPaciente}
-              addAnexo={addAnexo}
+              uploadAnexoFile={uploadAnexoFile}
               deleteAnexo={deleteAnexo}
             />
           </FormTabContent>

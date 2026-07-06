@@ -120,7 +120,8 @@ export const DETAIL = {
     'flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-teal-500/10 ring-1 ring-teal-500/15 dark:bg-teal-400/12 dark:ring-teal-400/25',
   sectionIcon: 'h-3.5 w-3.5 text-teal-600 dark:text-teal-400 shrink-0',
   divider: 'border-t border-slate-200/80 dark:border-[#3d4f6a]/45',
-  label: 'text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400',
+  label: 'text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-snug',
+  labelArea: 'min-h-[2.5rem] flex items-end',
   value: 'text-sm font-medium text-slate-800 dark:text-slate-100 mt-0.5',
   valueEmpty: 'text-slate-400 dark:text-slate-500 font-normal',
   grid: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4',
@@ -128,16 +129,16 @@ export const DETAIL = {
   card: 'rounded-xl border border-slate-200/80 bg-white shadow-sm dark:bg-[#1f2a3d] dark:border-[#3d4f6a]/50 dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset] p-5 sm:p-6',
 } as const;
 
-/** Tabs deslizantes (cápsula #0f172b + texto branco). */
+/** Tabs deslizantes (cápsula escura em light; clara em dark — alinhado ao botão primário do login). */
 export const TAB = {
   track: 'relative inline-flex gap-0.5 p-1 rounded-xl bg-slate-100/80 dark:bg-[#151f30]',
   indicator:
-    'pointer-events-none absolute top-1 bottom-1 rounded-lg bg-[#0f172b] dark:bg-teal-700/85 shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
-  active: 'font-semibold text-white dark:text-white',
+    'pointer-events-none absolute top-1 bottom-1 rounded-lg bg-[#0f172b] dark:bg-slate-100 shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+  active: 'font-semibold text-white dark:text-slate-900',
   inactive: 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
-  activeIcon: 'text-white dark:text-teal-50',
+  activeIcon: 'text-white dark:text-slate-900',
   inactiveIcon: 'text-slate-400 dark:text-slate-500',
-  activeCount: 'bg-white/20 dark:bg-white/15 text-white dark:text-white',
+  activeCount: 'bg-white/20 text-white dark:bg-slate-900/10 dark:text-slate-800',
 } as const;
 
 /** Painéis de listagem / tabelas */
@@ -145,6 +146,16 @@ export const PANEL = {
   table:
     'bg-white dark:bg-[#1f2a3d] rounded-xl border border-slate-200 dark:border-[#334155]/65 overflow-hidden',
   tableHead: 'bg-slate-50 dark:bg-[#151f30] border-b border-slate-200 dark:border-[#334155]/55',
+} as const;
+
+/** Modais (Admin, Inventário, etc.) — alinhados com SURFACE/PANEL no dark mode. */
+export const MODAL = {
+  overlay: 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/60',
+  headerBorder: 'border-slate-200 dark:border-[#334155]/65',
+  footer:
+    'flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-200 dark:border-[#334155]/65 bg-slate-50/50 dark:bg-[#151f30]/80 shrink-0',
+  closeBtn:
+    'p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-[#243044] transition-colors shrink-0',
 } as const;
 
 // ----------------------------------------------------------------------------
@@ -234,16 +245,22 @@ export const CONTROL = {
   segmentItem:
     'relative z-10 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors duration-200',
   segmentItemActive:
-    'font-semibold text-white dark:text-white',
+    'font-semibold text-white dark:text-slate-900',
   segmentIndicator:
-    'pointer-events-none absolute top-1 bottom-1 rounded-lg bg-[#0f172b] dark:bg-teal-700/85 shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+    'pointer-events-none absolute top-1 bottom-1 rounded-lg bg-[#0f172b] dark:bg-slate-100 shadow-sm transition-[left,width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
   segmentItemIdle:
     'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
 } as const;
 
 /** Campos de formulário (páginas e modais). */
 export const FORM = {
-  label: 'block text-xs font-medium text-slate-700 dark:text-slate-300',
+  label: 'block text-xs font-medium text-slate-700 dark:text-slate-300 leading-snug',
+  /** Reserva altura para 2 linhas de label — mantém inputs alinhados na mesma linha. */
+  labelArea: 'min-h-[2.5rem] flex items-end',
+  /** Área do controlo abaixo do label (inputs, selects, date pickers). */
+  fieldControl: 'mt-1.5 min-h-9',
+  /** Controlo auxiliar (botão/checkbox) alinhado com inputs adjacentes. */
+  fieldControlAlign: 'mt-1.5 min-h-9 flex items-center',
   hint: 'mt-1.5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400',
   stack: 'space-y-4',
   alertInfo:

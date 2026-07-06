@@ -4,6 +4,14 @@ const motivosAnulacaoService = require('./motivos_anulacao.service');
 const logService = require('./log.service');
 const { isMedicoUser, assertPacienteAccess } = require('../utils/medico-access');
 
+const normalizeOrigemConceicao = (v) => {
+    if (v === undefined) return undefined;
+    if (v === null || v === '') return null;
+    const normalized = String(v).trim().toLowerCase();
+    if (['natural', 'fiv_ovulos_proprios', 'fiv_doacao_ovulos'].includes(normalized)) return normalized;
+    throw new Error('Origem da conceção inválida');
+};
+
 exports.listAll = async (user) => {
     if (await isMedicoUser(user)) {
         return pacientesRepository.findForMedico(user.id);
@@ -37,6 +45,8 @@ exports.resetParaNovaColheita = async (id, user) => {
         medico_id: null,
         teste_id: null,
         tipo_gravidez: null,
+        origem_conceicao: null,
+        quer_saber_sexo: false,
         gestacao_semanas_registo: null,
         gestacao_dias_registo: null,
         gestacao_registada_em: null,
@@ -136,6 +146,8 @@ exports.create = async (data, user) => {
         medico_id: data.medico_id || null,
         teste_id: data.teste_id || null,
         tipo_gravidez: data.tipo_gravidez || null,
+        origem_conceicao: normalizeOrigemConceicao(data.origem_conceicao) ?? null,
+        quer_saber_sexo: !!data.quer_saber_sexo,
         gestacao_semanas_registo: toNumber(data.gestacao_semanas_registo),
         gestacao_dias_registo: toNumber(data.gestacao_dias_registo),
         gestacao_registada_em: data.gestacao_registada_em || null,
@@ -234,6 +246,10 @@ exports.update = async (id, data, user) => {
     if (data.medico_id !== undefined) updateData.medico_id = data.medico_id || null;
     if (data.teste_id !== undefined) updateData.teste_id = data.teste_id || null;
     if (data.tipo_gravidez !== undefined) updateData.tipo_gravidez = data.tipo_gravidez || null;
+    if (data.origem_conceicao !== undefined) {
+        updateData.origem_conceicao = normalizeOrigemConceicao(data.origem_conceicao) ?? null;
+    }
+    if (data.quer_saber_sexo !== undefined) updateData.quer_saber_sexo = !!data.quer_saber_sexo;
     if (data.gestacao_semanas_registo !== undefined) updateData.gestacao_semanas_registo = toNumber(data.gestacao_semanas_registo);
     if (data.gestacao_dias_registo !== undefined) updateData.gestacao_dias_registo = toNumber(data.gestacao_dias_registo);
     if (data.gestacao_registada_em !== undefined) updateData.gestacao_registada_em = data.gestacao_registada_em || null;
@@ -266,7 +282,10 @@ exports.update = async (id, data, user) => {
     if (estadoResultante === 'Cancelado') {
         await motivosAnulacaoService.assertMotivoParaContexto(motivoResultante, 'contacto');
         const processos = await processosRepository.findByPaciente(id);
-        const temProcessoAtivo = processos.some((p) => (p.status_id || p.status) !== 'Cancelado');
+        const temProcessoAtivo = processos.some((p) => {
+            const status = p.status_id || p.status;
+            return status !== 'Cancelado' && status !== 'Faturado';
+        });
         if (temProcessoAtivo) {
             throw new Error('Este contacto tem um processo activo. Cancele o processo em Processos.');
         }

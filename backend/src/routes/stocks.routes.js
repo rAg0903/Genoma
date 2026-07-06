@@ -7,6 +7,7 @@ const stocksController = require('../controllers/stocks.controller');
 
 router.get('/kits/:id/trace', authMiddleware, requireStockSubmoduleAccess('kits'), stocksController.getKitTrace);
 router.post('/kits/:id/confirmar-lab', authMiddleware, requireStockSubmoduleAccess('kits'), stocksController.confirmLabArrival);
+router.post('/kits/:id/reverter-descarte', authMiddleware, requireStockSubmoduleAccess('descartes'), stocksController.revertDescarteForKit);
 router.get('/kits', authMiddleware, requireStockSubmoduleAccess('kits'), stocksController.getKits);
 router.get('/kits/check-duplicado', authMiddleware, requireStockSubmoduleAccess('kits'), stocksController.checkKitDuplicado);
 router.post('/kits', authMiddleware, requireStockSubmoduleAccess('kits'), stocksController.createKit);

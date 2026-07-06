@@ -25,6 +25,7 @@ type MenuSubItemId =
   | 'colheitas'
   | 'pacientes'
   | 'utilizadores'
+  | 'inicio'
   | 'permissoes'
   | 'empresas'
   | 'testes'
@@ -80,9 +81,10 @@ const menuItemDefs: MenuItem[] = [
     icon: Settings,
     end: false,
     module: 'definicoes' as PermissionModule,
-    defaultSubItemId: 'utilizadores',
+    defaultSubItemId: 'inicio',
     subItems: [
-      { id: 'utilizadores', labelKey: 'navSub.utilizadores', path: '/definicoes' },
+      { id: 'inicio', labelKey: 'navSub.inicio', path: '/definicoes' },
+      { id: 'utilizadores', labelKey: 'navSub.utilizadores', path: '/definicoes?tab=utilizadores' },
       { id: 'permissoes', labelKey: 'navSub.permissoes', path: '/definicoes?tab=permissoes' },
       { id: 'empresas', labelKey: 'navSub.empresas', path: '/definicoes?tab=empresas' },
       { id: 'testes', labelKey: 'navSub.testes', path: '/definicoes?tab=testes' },
@@ -132,7 +134,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
 
     if (item.module === 'definicoes') {
-      return item.subItems.filter((subItem) => hasDefinicoesSubmodulePermission(subItem.id as DefinicoesSubmodule));
+      return item.subItems.filter((subItem) => {
+        if (subItem.id === 'inicio') return true;
+        return hasDefinicoesSubmodulePermission(subItem.id as DefinicoesSubmodule);
+      });
     }
 
     return item.subItems;

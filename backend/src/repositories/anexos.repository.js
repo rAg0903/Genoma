@@ -1,6 +1,22 @@
 const pool = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 
+exports.findById = async (id) => {
+  const connection = await pool.getConnection();
+  try {
+    const [rows] = await connection.execute(
+      `SELECT id, paciente_id, processo_id, tipo, titulo, descricao, url, created_at
+       FROM anexos
+       WHERE id = ?
+       LIMIT 1`,
+      [id]
+    );
+    return rows[0] || null;
+  } finally {
+    connection.release();
+  }
+};
+
 exports.findByPaciente = async (pacienteId) => {
   const connection = await pool.getConnection();
   try {

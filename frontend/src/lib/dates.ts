@@ -33,6 +33,15 @@ export function todayLocal(): string {
   return normalizeCalendarDate(new Date());
 }
 
+/** Maior data de calendário entre várias strings YYYY-MM-DD (ignora vazias). */
+export function maxCalendarDate(...values: (string | null | undefined)[]): string {
+  const normalized = values
+    .map((v) => normalizeCalendarDate(v))
+    .filter(Boolean)
+    .sort();
+  return normalized[normalized.length - 1] || todayLocal();
+}
+
 /** Converte YYYY-MM-DD para Date local (meia-noite local, sem desvio UTC). */
 export function isoToLocalDate(value?: string | null): Date | undefined {
   const normalized = normalizeCalendarDate(value ?? '');

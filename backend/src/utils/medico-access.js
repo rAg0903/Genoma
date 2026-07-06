@@ -4,9 +4,10 @@ const processosRepository = require('../repositories/processos.repository');
 const { normalizeRoleName } = require('../config/stock-permissions');
 
 const isMedicoUser = async (user) => {
-  if (!user?.role) return false;
+  const perfilId = user?.role || user?.perfil_id;
+  if (!perfilId) return false;
   try {
-    const perfil = await perfisRepository.findById(user.role);
+    const perfil = await perfisRepository.findById(perfilId);
     return perfil ? normalizeRoleName(perfil.nome) === 'medico' : false;
   } catch {
     return false;

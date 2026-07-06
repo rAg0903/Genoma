@@ -6,21 +6,21 @@ export const ADMIN_TABLE_PANEL_CLASS = PANEL.table;
 
 export const ADMIN_TABLE_HEAD_CLASS = PANEL.tableHead;
 
-export const ADMIN_TABLE_BODY_CLASS = 'divide-y divide-slate-100 dark:divide-slate-800';
+export const ADMIN_TABLE_BODY_CLASS = 'divide-y divide-slate-100 dark:divide-[#334155]/55';
 
 export const ADMIN_TABLE_ROW_CLASS =
-  'hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group';
+  'hover:bg-slate-50 dark:hover:bg-[#243044]/50 transition-colors group';
 
 export const ADMIN_TH_CLASS =
   'text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400';
 
 export const ADMIN_ATIVO_STATUS_MAP = {
   Ativo: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  Inativo: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+  Inativo: 'bg-slate-100 text-slate-600 dark:bg-[#243044] dark:text-slate-400',
 };
 
 export const ADMIN_ACTION_BTN_CLASS =
-  'p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-lg';
+  'p-1.5 hover:bg-slate-100 dark:hover:bg-[#243044] text-slate-600 dark:text-slate-400 rounded-lg';
 
 export const ADMIN_DELETE_BTN_CLASS =
   'p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-500 rounded-lg';

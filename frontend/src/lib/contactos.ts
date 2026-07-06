@@ -1,5 +1,7 @@
 import { Contact, EstadoContactoAgendamento, Processo } from '../app/data/types';
 import { parseGestacaoRegistoInput, resolveGestacaoRegistadaEm } from './gestacao';
+import { normalizeOrigemConceicao } from './origem-conceicao';
+import { isAtivo } from './processos';
 
 /** Estados visiveis na pagina Contactos (pipeline + filtros). */
 export type ContactoPipelineEstado = 'Criado' | 'Agendado' | 'Cancelado';
@@ -53,15 +55,21 @@ export const deriveEstadoAgendamento = (
   return null;
 };
 
-/** Contacto ja convertido em processo (exclui cancelados). */
+/** Contacto com processo laboratorial ainda em curso. */
 export const contactTemProcessoAtivo = (contactId: string, processos: Processo[]): boolean =>
   processos.some(
-    (p) => p.paciente_id === contactId && p.estado !== 'Cancelado' && isProcessoLaboratorio(p.estado),
+    (p) => p.paciente_id === contactId && isAtivo(p) && isProcessoLaboratorio(p.estado),
   );
 
 export const findProcessoDoContacto = (contactId: string, processos: Processo[]): Processo | undefined =>
   processos.find(
-    (p) => p.paciente_id === contactId && p.estado !== 'Cancelado' && isProcessoLaboratorio(p.estado),
+    (p) => p.paciente_id === contactId && isAtivo(p) && isProcessoLaboratorio(p.estado),
+  );
+
+/** Processos concluídos ou cancelados do contacto (histórico). */
+export const findProcessosHistoricoDoContacto = (contactId: string, processos: Processo[]): Processo[] =>
+  processos.filter(
+    (p) => p.paciente_id === contactId && !isAtivo(p) && isProcessoLaboratorio(p.estado),
   );
 
 /** Lista de contactos ainda em fase pre-processo (sem processo laboratorial activo). */
@@ -76,6 +84,8 @@ export const buildContactPosConversao = (
   medico_id: undefined,
   teste_id: undefined,
   tipo_gravidez: null,
+  origem_conceicao: null,
+  quer_saber_sexo: false,
   gestacao_semanas_registo: null,
   gestacao_dias_registo: null,
   gestacao_registada_em: null,
@@ -91,6 +101,8 @@ export type GravidezFormState = {
   onde_seguida: string;
   teste_id: string;
   tipo_gravidez: string;
+  origem_conceicao: string;
+  quer_saber_sexo: boolean;
   gestacao_semanas_registo: string;
   gestacao_dias_registo: string;
   gestacao_registada_em: string;
@@ -117,6 +129,8 @@ export const buildContactClinicalPayload = (
     medico_id: gravidez.medico_id || undefined,
     teste_id: gravidez.teste_id || undefined,
     tipo_gravidez: gravidez.tipo_gravidez === 'Gemelar' ? 'gemelar' : gravidez.tipo_gravidez === 'Singular' ? 'singular' : null,
+    origem_conceicao: normalizeOrigemConceicao(gravidez.origem_conceicao),
+    quer_saber_sexo: !!gravidez.quer_saber_sexo,
     gestacao_semanas_registo: gestacao?.semanas ?? null,
     gestacao_dias_registo: gestacao?.dias ?? null,
     gestacao_registada_em: gestacao_registada_em,

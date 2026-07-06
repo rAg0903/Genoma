@@ -20,7 +20,7 @@ import { StockByLocationPanel } from './stocks/StockByLocationPanel';
 import { LotesTab } from './stocks/LotesTab';
 import { RequisicoesTab } from './stocks/RequisicoesTab';
 import { DescartesTab } from './stocks/DescartesTab';
-import { LoteFormModal, RequisicaoFormModal, RequisicaoEditModal, DescarteFormModal } from './stocks/StockForms';
+import { LoteFormModal, RequisicaoFormModal, RequisicaoEditModal } from './stocks/StockForms';
 import { computeStockAlerts } from '../../lib/stocks';
 import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
 import { DashboardAlert } from './dashboard/AlertPanel';
@@ -39,8 +39,8 @@ export function StocksPage() {
   const {
     kits, addKit, checkKitDuplicado,
     lotes, addLote, updateLote,
-    requisicoesKits, addRequisicaoKit, addDescarteEnvio, updateRequisicaoKit,
-    postos, laboratorios, empresas, testes,
+    requisicoesKits, addRequisicaoKit, updateRequisicaoKit, revertDescarteKit,
+    postos, laboratorios, empresas,
   } = useData();
   const { hasPermission, hasStockSubmodulePermission } = useAuth();
   const { t } = useLanguage();
@@ -67,7 +67,6 @@ export function StocksPage() {
 
   const [loteModal, setLoteModal] = useState<{ open: boolean; lote: Lote | null }>({ open: false, lote: null });
   const [reqModal, setReqModal] = useState(false);
-  const [descarteModal, setDescarteModal] = useState(false);
   const [editReq, setEditReq] = useState<RequisicaoKit | null>(null);
 
   const finalLabIds = useMemo(
@@ -94,8 +93,6 @@ export function StocksPage() {
         return { label: t('stocks.actions.newBatch'), mobileLabel: t('common.new'), onClick: () => setLoteModal({ open: true, lote: null }), icon: Plus };
       case 'requisicoes':
         return { label: t('stocks.actions.newShipment'), mobileLabel: t('common.new'), onClick: () => setReqModal(true), icon: Plus };
-      case 'descartes':
-        return { label: t('stocks.actions.newDescarte'), mobileLabel: t('common.new'), onClick: () => setDescarteModal(true), icon: Plus };
       default:
         return null;
     }
@@ -158,6 +155,9 @@ export function StocksPage() {
         {activeTab === 'descartes' && (
           <DescartesTab
             requisicoes={requisicoesKits}
+            kits={kits}
+            canUpdate={canUpdate}
+            onRevertKit={revertDescarteKit}
             featureHealthLabId={finalLabIds.length ? undefined : defaultFinalLab?.id}
             finalLabIds={finalLabIds}
           />
@@ -180,18 +180,6 @@ export function StocksPage() {
       {reqModal && (
         <RequisicaoFormModal onClose={() => setReqModal(false)}
           onSave={(data) => { void wrap(() => addRequisicaoKit(data), t('stocks.toast.shipmentRegistered')); setReqModal(false); }} />
-      )}
-      {descarteModal && (
-        <DescarteFormModal
-          laboratorios={laboratorios}
-          testes={testes}
-          lotes={lotes}
-          onClose={() => setDescarteModal(false)}
-          onSave={(data) => {
-            void wrap(async () => addDescarteEnvio(data), t('stocks.toast.descarteRegistered'));
-            setDescarteModal(false);
-          }}
-        />
       )}
       {editReq && (
         <RequisicaoEditModal

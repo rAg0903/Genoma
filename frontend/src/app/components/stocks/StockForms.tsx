@@ -12,12 +12,9 @@ import {
   encodeLocationRef,
   encodeRequisicaoLocationRef,
   filterShipmentLocationOptions,
-  filterShipmentLocationsWithDescarteKits,
   flattenDistributionLocationOptions,
   formatRequisicaoLocationLabel,
   kitMatchesLocationRefForDistribuicao,
-  kitMatchesLocationRefForDescarte,
-  resolveSelectedKitsFinalLabLabel,
   locationRefToApiPayload,
   ShipmentLocationOptions,
   StockLocationRef,
@@ -592,149 +589,6 @@ export function RequisicaoFormModal({ onClose, onSave }: { onClose: () => void; 
       )}
 
       <div><label className={label}>Observacoes</label><textarea rows={2} className={input} value={f.observacoes} onChange={(e) => setF({ ...f, observacoes: e.target.value })} /></div>
-    </ModalShell>
-  );
-}
-
-export function DescarteFormModal({
-  onClose,
-  onSave,
-  laboratorios,
-  testes,
-  lotes,
-}: {
-  onClose: () => void;
-  onSave: (data: { data: string; observacoes?: string; kit_ids: string[] }) => void;
-  laboratorios: import('../../data/types').Laboratorio[];
-  testes: import('../../data/types').Teste[];
-  lotes: import('../../data/types').Lote[];
-}) {
-  const { kits, empresas, postos } = useData();
-  const shipmentLocations = useMemo(
-    () => filterShipmentLocationsWithDescarteKits(
-      buildDistributionLocationOptions(empresas, postos, laboratorios),
-      kits,
-    ),
-    [empresas, postos, laboratorios, kits],
-  );
-  const locationOptions = useMemo(
-    () => flattenDistributionLocationOptions(shipmentLocations),
-    [shipmentLocations],
-  );
-  const [origemKey, setOrigemKey] = useState('');
-  const [data, setData] = useState(todayLocal());
-  const [observacoes, setObservacoes] = useState('');
-  const [selectedKits, setSelectedKits] = useState<Kit[]>([]);
-
-  useEffect(() => {
-    if (origemKey && !locationOptions.some((o) => encodeLocationRef(o) === origemKey)) {
-      setOrigemKey('');
-      setSelectedKits([]);
-    }
-  }, [locationOptions, origemKey]);
-
-  const origemRef = useMemo(
-    () => locationOptions.find((o) => encodeLocationRef(o) === origemKey),
-    [locationOptions, origemKey],
-  );
-
-  const kitsNaOrigem = useMemo(() => {
-    if (!origemRef) return [];
-    return kits
-      .filter((k) => kitMatchesLocationRefForDescarte(k, origemRef))
-      .sort((a, b) => a.codigo_barras.localeCompare(b.codigo_barras));
-  }, [origemRef, kits]);
-
-  const availableKits = useMemo(
-    () => kitsNaOrigem.filter((k) => !selectedKits.some((s) => s.id === k.id)),
-    [kitsNaOrigem, selectedKits],
-  );
-
-  useEffect(() => {
-    setSelectedKits((prev) => prev.filter((k) => kitsNaOrigem.some((x) => x.id === k.id)));
-  }, [kitsNaOrigem]);
-
-  const destinoInfo = useMemo(
-    () => resolveSelectedKitsFinalLabLabel(selectedKits, lotes, testes, laboratorios),
-    [selectedKits, lotes, testes, laboratorios],
-  );
-
-  const handleSave = () => {
-    if (!origemRef) {
-      toast.error('Selecione a origem.');
-      return;
-    }
-    if (selectedKits.length === 0) {
-      toast.error('Selecione pelo menos um kit utilizado ou expirado.');
-      return;
-    }
-    if (destinoInfo.mixed) {
-      toast.error('Os kits selecionados têm laboratórios finais diferentes. Registe descartes separados.');
-      return;
-    }
-    if (data < todayLocal()) {
-      toast.error('A data não pode ser anterior a hoje.');
-      return;
-    }
-    onSave({
-      data,
-      observacoes: observacoes || undefined,
-      kit_ids: selectedKits.map((k) => k.id),
-      ...locationRefToApiPayload(origemRef, 'origem'),
-    });
-  };
-
-  const hasLocations = locationOptions.length > 0;
-
-  return (
-    <ModalShell title="Descarte / envio para laboratório final" wide onClose={onClose} onSubmit={handleSave} submitLabel={`Registar descarte (${selectedKits.length})`}>
-      <p className="text-xs text-slate-500">
-        Envio de kits utilizados ou expirados para o laboratório final definido no teste. Origem: empresa ou posto onde os kits se encontram.
-      </p>
-      <div className={`rounded-lg border px-3 py-2 ${destinoInfo.mixed ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20' : 'border-indigo-100 bg-indigo-50/60 dark:border-indigo-900/40 dark:bg-indigo-950/20'}`}>
-        <p className={`text-xs ${destinoInfo.mixed ? 'text-amber-800 dark:text-amber-300' : 'text-indigo-800 dark:text-indigo-300'}`}>
-          Destino: <strong>{destinoInfo.labNome}</strong>
-          {selectedKits.length === 0 && ' (selecione kits para ver o destino)'}
-        </p>
-      </div>
-      <div>
-        <label className={label}>Data</label>
-        <MinDatePicker className={input} value={data} onChange={setData} />
-      </div>
-      <div>
-        <label className={label}>Origem</label>
-        {!hasLocations ? (
-          <p className="text-xs text-slate-400 mt-1">Nenhuma empresa ou posto com kits utilizados ou expirados aguardando descarte.</p>
-        ) : (
-          <DistributionLocationSelect
-            value={origemKey}
-            onChange={(value) => {
-              setOrigemKey(value);
-              setSelectedKits([]);
-            }}
-            options={shipmentLocations}
-            placeholder="Selecione a origem..."
-          />
-        )}
-      </div>
-
-      {origemRef && (
-        <div>
-          <label className={label}>Kits utilizados ou expirados</label>
-          {kitsNaOrigem.length === 0 ? (
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-              Não existem kits utilizados ou expirados em {origemRef.nome}.
-            </p>
-          ) : (
-            <>
-              <KitTransferList available={availableKits} selected={selectedKits} onChange={setSelectedKits} />
-              <p className="text-xs text-slate-400 mt-1.5">Apenas kits utilizados, expirados ou com validade ultrapassada.</p>
-            </>
-          )}
-        </div>
-      )}
-
-      <div><label className={label}>Observacoes</label><textarea rows={2} className={input} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} /></div>
     </ModalShell>
   );
 }

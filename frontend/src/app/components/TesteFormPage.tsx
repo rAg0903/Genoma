@@ -10,6 +10,7 @@ import { findTestePrincipal, getTestesPrincipais, sortTestesByCodigo } from '../
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { FORM } from '../../lib/design-tokens';
 import { DetailDivider, DetailPanel, DetailSection } from './ContactDetail';
 import {
@@ -86,13 +87,9 @@ const buildTestePayload = (form: Omit<Teste, 'id'>): Omit<Teste, 'id'> => {
 
 type TabId = 'dados' | 'sub_testes';
 
-const TABS: { id: TabId; label: string; icon: typeof FlaskConical }[] = [
-  { id: 'dados', label: 'Dados', icon: FlaskConical },
-  { id: 'sub_testes', label: 'Sub-testes', icon: Layers },
-];
-
 export function TesteFormPage() {
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -109,6 +106,11 @@ export function TesteFormPage() {
   const [saving, setSaving] = useState(false);
   const initialTab = searchParams.get('tab') === 'sub_testes' ? 'sub_testes' : 'dados';
   const [tab, setTab] = useState<TabId>(initialTab);
+
+  const tabs = useMemo(() => [
+    { id: 'dados' as const, label: t('form.tabs.dados'), icon: FlaskConical },
+    { id: 'sub_testes' as const, label: t('form.tabs.subTestes'), icon: Layers },
+  ], [t]);
 
   const parentTeste = useMemo(
     () => (id ? findTestePrincipal(testes, id) : undefined),
@@ -157,7 +159,7 @@ export function TesteFormPage() {
     void refreshTestes()
       .then(() => setCatalogReady(true))
       .catch(() => {
-        toast.error('Não foi possível carregar o teste.');
+        toast.error(t('pages.admin.form.teste.loadError'));
         voltar();
       });
   }, [id, refreshTestes, navigate]);
@@ -171,9 +173,9 @@ export function TesteFormPage() {
       return;
     }
     setLoading(false);
-    toast.error('Teste não encontrado.');
+    toast.error(t('pages.admin.form.teste.notFound'));
     voltar();
-  }, [id, catalogReady, testes, navigate]);
+  }, [id, catalogReady, testes, navigate, t]);
 
   const handleSave = async (ev: React.FormEvent) => {
     ev.preventDefault();
@@ -183,14 +185,14 @@ export function TesteFormPage() {
       const payload = buildTestePayload(form);
       if (editing && id) {
         await updateTeste(id, payload);
-        toast.success('Teste atualizado.');
+        toast.success(t('pages.admin.form.teste.updated'));
       } else {
         await addTeste(payload);
-        toast.success('Teste criado.');
+        toast.success(t('pages.admin.form.teste.created'));
       }
       voltar();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Falha ao guardar teste.');
+      toast.error(e instanceof Error ? e.message : t('pages.admin.form.teste.saveError'));
     } finally {
       setSaving(false);
     }
@@ -202,14 +204,14 @@ export function TesteFormPage() {
   const handleDeleteSubTeste = async (subId: string, nome: string) => {
     if (!(await confirmDelete(deleteTargetLabel('o sub-teste', nome)))) return;
     void deleteSubTeste(subId)
-      .then(() => toast.success('Sub-teste eliminado.'))
-      .catch((e) => toast.error(e instanceof Error ? e.message : 'Falha ao eliminar sub-teste.'));
+      .then(() => toast.success(t('pages.admin.form.teste.subTesteDeleted')))
+      .catch((e) => toast.error(e instanceof Error ? e.message : t('pages.admin.form.teste.subTesteDeleteError')));
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[40vh] text-gray-400">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> A carregar teste…
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('pages.admin.form.teste.loading')}
       </div>
     );
   }
@@ -219,8 +221,8 @@ export function TesteFormPage() {
       <FormPageBody>
         <FormPageHeader
           onBack={voltar}
-          title={editing ? 'Editar teste' : 'Novo teste'}
-          subtitle={form.nome || 'Configuração do teste laboratorial'}
+          title={editing ? t('pages.admin.form.teste.edit') : t('pages.admin.form.teste.new')}
+          subtitle={form.nome || t('pages.admin.form.teste.defaultSubtitle')}
           avatar={(
             <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center flex-shrink-0">
               <FlaskConical className="w-5 h-5 text-teal-700 dark:text-teal-400" />
@@ -229,10 +231,10 @@ export function TesteFormPage() {
           actions={podeGuardar && tab === 'dados' ? (
             <FormPrimaryButton type="submit" form="teste-form" disabled={saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {editing ? 'Gravar' : 'Criar'}
+              {editing ? t('common.save') : t('form.create')}
             </FormPrimaryButton>
           ) : undefined}
-          tabs={editing ? TABS : undefined}
+          tabs={editing ? tabs : undefined}
           activeTab={editing ? tab : undefined}
           onTabChange={editing ? setTab : undefined}
         />
@@ -241,15 +243,15 @@ export function TesteFormPage() {
           <FormTabContent>
             <form id="teste-form" onSubmit={(e) => void handleSave(e)}>
               <DetailPanel>
-                <DetailSection title="Identificação" icon={FlaskConical}>
+                <DetailSection title={t('form.sections.identificacao')} icon={FlaskConical}>
                   <div className={FORM.fieldRow}>
-                    <FormField label="Nome do teste" required width="2xl">
+                    <FormField label={t('form.fields.nomeTeste')} required width="2xl">
                       <FormInput
                         required
                         name="teste-nome"
                         value={form.nome}
                         onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
-                        placeholder="Maternity"
+                        placeholder={t('form.placeholders.nomeTeste')}
                       />
                     </FormField>
                   </div>
@@ -257,45 +259,45 @@ export function TesteFormPage() {
 
                 <DetailDivider />
 
-                <DetailSection title="Configuração" icon={Building2}>
+                <DetailSection title={t('form.sections.configuracao')} icon={Building2}>
                   <div className={FORM.fieldRow}>
-                    <FormField label="Empresa" width="xl">
+                    <FormField label={t('form.fields.empresa')} width="xl">
                       <FormRadixSelect
                         value={form.empresa}
                         onChange={(v) => setForm((f) => ({ ...f, empresa: v }))}
-                        placeholder="Selecione…"
+                        placeholder={t('form.select')}
                         options={empresaOptions}
                       />
                     </FormField>
-                    <FormField label="Tipo de kit" width="lg">
+                    <FormField label={t('form.fields.tipoKit')} width="lg">
                       <FormRadixSelect
                         value={form.tipo_kit}
                         onChange={(v) => setForm((f) => ({ ...f, tipo_kit: v }))}
-                        placeholder="Selecione…"
+                        placeholder={t('form.select')}
                         options={tipoKitOptions}
                       />
                     </FormField>
-                    <FormField label="Laboratório final (descarte)" required width="2xl">
+                    <FormField label={t('form.fields.laboratorioFinal')} required width="2xl">
                       <FormRadixSelect
                         value={form.laboratorio_final_id || ''}
                         onChange={(v) => setForm((f) => ({ ...f, laboratorio_final_id: v || null }))}
-                        placeholder="Selecione o laboratório de processamento…"
+                        placeholder={t('form.placeholders.selectLaboratorio')}
                         options={laboratorioOptions}
                       />
                     </FormField>
                   </div>
                   <div className="mt-3">
                     <FormSectionNote>
-                      Destino dos kits utilizados/expirados deste teste. Os preços são definidos nos sub-testes.
+                      {t('pages.admin.form.teste.kitDestinoNote')}
                     </FormSectionNote>
                   </div>
                 </DetailSection>
 
                 <DetailDivider />
 
-                <DetailSection title="Parâmetros" icon={Clock}>
+                <DetailSection title={t('form.sections.parametros')} icon={Clock}>
                   <div className={FORM.fieldRow}>
-                    <FormField label="Tempo de resposta (dias)" width="sm">
+                    <FormField label={t('form.fields.tempoResposta')} width="sm">
                       <FormNumberInput
                         inputMode="numeric"
                         value={form.tempo_resposta_dias ?? ''}
@@ -303,10 +305,10 @@ export function TesteFormPage() {
                           ...f,
                           tempo_resposta_dias: e.target.value === '' ? null : parseInt(e.target.value, 10),
                         }))}
-                        placeholder="10"
+                        placeholder={t('form.placeholders.tempoResposta')}
                       />
                     </FormField>
-                    <FormField label="Gestação mínima (semanas)" width="sm">
+                    <FormField label={t('form.fields.gestacaoMinima')} width="sm">
                       <FormNumberInput
                         inputMode="numeric"
                         value={form.gestacao_minima_semanas ?? ''}
@@ -314,7 +316,7 @@ export function TesteFormPage() {
                           ...f,
                           gestacao_minima_semanas: e.target.value === '' ? null : parseInt(e.target.value, 10),
                         }))}
-                        placeholder="10"
+                        placeholder={t('form.placeholders.gestacaoMinima')}
                       />
                     </FormField>
                   </div>
@@ -322,8 +324,8 @@ export function TesteFormPage() {
 
                 <DetailDivider />
 
-                <DetailSection title="Descrição" icon={StickyNote}>
-                  <FormField label="Descrição" width="3xl">
+                <DetailSection title={t('form.sections.descricao')} icon={StickyNote}>
+                  <FormField label={t('form.fields.descricao')} width="3xl">
                     <FormTextarea
                       name="teste-descricao"
                       value={form.descricao}
@@ -340,31 +342,31 @@ export function TesteFormPage() {
         {tab === 'sub_testes' && editing && id && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Sub-testes" icon={Layers}>
+              <DetailSection title={t('form.sections.subTestes')} icon={Layers}>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <FormSectionNote className="mb-0">
-                    Variantes com preços e parâmetros Maternity. Estes são os testes selecionáveis na colheita.
+                    {t('pages.admin.form.teste.subTestesHint')}
                   </FormSectionNote>
                   {canCreate && (
                     <button type="button" onClick={openNewSubTeste} className={`${ADD_ACTION_BUTTON_CLASS} shrink-0`}>
-                      <Plus className="w-4 h-4" /> Novo sub-teste
+                      <Plus className="w-4 h-4" /> {t('common.create.subTest')}
                     </button>
                   )}
                 </div>
 
                 {subTestes.length === 0 ? (
                   <p className="text-sm text-gray-400 text-center py-8">
-                    Sem sub-testes. Adicione variantes como Maternity 21 Plus Core, Genome, etc.
+                    {t('pages.admin.form.teste.noSubTestes')}
                   </p>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                     <table className="w-full">
                       <thead className="bg-slate-50 dark:bg-slate-900/50 text-[11px] uppercase tracking-wide text-slate-500">
                         <tr>
-                          <th className="px-4 py-2.5 text-left font-semibold">Código</th>
-                          <th className="px-4 py-2.5 text-left font-semibold">Nome</th>
-                          <th className="px-4 py-2.5 text-left font-semibold">Preço venda</th>
-                          <th className="px-4 py-2.5 text-right font-semibold">Ações</th>
+                          <th className="px-4 py-2.5 text-left font-semibold">{t('form.fields.codigo')}</th>
+                          <th className="px-4 py-2.5 text-left font-semibold">{t('form.fields.nome')}</th>
+                          <th className="px-4 py-2.5 text-left font-semibold">{t('pages.admin.form.teste.precoVenda')}</th>
+                          <th className="px-4 py-2.5 text-right font-semibold">{t('common.actions')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -378,12 +380,12 @@ export function TesteFormPage() {
                             <td className="px-4 py-3">
                               <div className="flex justify-end gap-1">
                                 {canUpdate && (
-                                  <button type="button" onClick={() => openEditSubTeste(st.id)} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700" title="Editar sub-teste">
+                                  <button type="button" onClick={() => openEditSubTeste(st.id)} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700" title={t('pages.admin.form.teste.editSubTeste')}>
                                     <Edit className="w-4 h-4" />
                                   </button>
                                 )}
                                 {canDelete && (
-                                  <button type="button" onClick={() => handleDeleteSubTeste(st.id, st.nome)} className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" title="Eliminar sub-teste">
+                                  <button type="button" onClick={() => handleDeleteSubTeste(st.id, st.nome)} className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" title={t('pages.admin.form.teste.deleteSubTeste')}>
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 )}

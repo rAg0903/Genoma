@@ -29,15 +29,9 @@ import { Teste } from '../data/types';
 import { getTestesSelecionaveis, getTestesSelecionaveisComLabel } from '../../lib/testes';
 import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
 import { FORM } from '../../lib/design-tokens';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 type TabId = 'identificacao' | 'condicoes' | 'relatorios' | 'notas';
-
-const TABS: { id: TabId; label: string; icon: typeof User }[] = [
-  { id: 'identificacao', label: 'Identificação', icon: User },
-  { id: 'condicoes', label: 'Condições comerciais', icon: Receipt },
-  { id: 'relatorios', label: 'Relatórios', icon: FileText },
-  { id: 'notas', label: 'Notas', icon: StickyNote },
-];
 
 const emptyContacto = (): MedicoContactoSecundario => ({ nome: '', funcao: '', email: '', telefone: '' });
 
@@ -69,6 +63,7 @@ const mergeCondicoesComCatalogo = (testes: Teste[], atuais: MedicoCondicaoTesteI
 };
 
 export function MedicoFormPage() {
+  const { t } = useLanguage();
   const { id } = useParams();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -84,6 +79,13 @@ export function MedicoFormPage() {
   const [form, setForm] = useState<MedicoPayload>(emptyForm);
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
+
+  const tabs = useMemo(() => [
+    { id: 'identificacao' as const, label: t('form.tabs.identificacao'), icon: User },
+    { id: 'condicoes' as const, label: t('form.tabs.condicoes'), icon: Receipt },
+    { id: 'relatorios' as const, label: t('form.tabs.relatorios'), icon: FileText },
+    { id: 'notas' as const, label: t('form.tabs.notas'), icon: StickyNote },
+  ], [t]);
 
   const entidadesAtivas = useMemo(() => entidades.filter((e) => e.ativo !== false), [entidades]);
   const entidadeOptions = useMemo(
@@ -149,14 +151,14 @@ export function MedicoFormPage() {
         });
       })
       .catch((err) => {
-        toast.error(err instanceof Error ? err.message : 'Não foi possível carregar o médico.');
+        toast.error(err instanceof Error ? err.message : t('pages.admin.form.medico.loadError'));
         navigate(listPath);
       })
       .finally(() => setLoading(false));
   }, [id, listPath, navigate, testesAtivos]);
 
   const displayName = [form.titulo, form.nome].filter(Boolean).join(' ').trim();
-  const initials = (displayName || 'Novo Médico').split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+  const initials = (displayName || t('pages.admin.form.medico.new')).split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
   const podeGuardar = editing ? canUpdate : canCreate;
 
   const updateContacto = (index: number, patch: Partial<MedicoContactoSecundario>) => {
@@ -171,7 +173,7 @@ export function MedicoFormPage() {
     const used = new Set(form.locais_trabalho.map((l) => l.entidade_id));
     const nextEntidade = entidadesAtivas.find((e) => !used.has(e.id));
     if (!nextEntidade) {
-      toast.message('Todas as entidades disponíveis já foram adicionadas.');
+      toast.message(t('pages.admin.form.medico.allEntidadesAdded'));
       return;
     }
     setForm((prev) => ({
@@ -205,17 +207,17 @@ export function MedicoFormPage() {
   };
 
   const handleGuardar = async () => {
-    if (!form.nome.trim()) { toast.error('Indique o nome do médico.'); return; }
-    if (!form.email.trim()) { toast.error('Indique o email do médico.'); return; }
+    if (!form.nome.trim()) { toast.error(t('pages.admin.form.medico.nameRequired')); return; }
+    if (!form.email.trim()) { toast.error(t('pages.admin.form.medico.emailRequired')); return; }
 
     setSaving(true);
     try {
       if (editing && id) {
         await medicosApi.update(id, form);
-        toast.success('Médico atualizado.');
+        toast.success(t('pages.admin.form.medico.updated'));
       } else {
         await medicosApi.create(form);
-        toast.success('Médico criado.');
+        toast.success(t('pages.admin.form.medico.created'));
       }
       navigate(listPath);
     } catch (err) {
@@ -230,7 +232,7 @@ export function MedicoFormPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[320px] text-slate-400">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> A carregar médico…
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('pages.admin.form.medico.loading')}
       </div>
     );
   }
@@ -240,16 +242,16 @@ export function MedicoFormPage() {
       <FormPageBody>
         <FormPageHeader
           onBack={() => navigate(listPath)}
-          title={displayName || (editing ? 'Editar médico' : 'Novo médico')}
-          subtitle={editing ? 'Edição de médico' : 'Criação de médico'}
+          title={displayName || (editing ? t('pages.admin.form.medico.edit') : t('pages.admin.form.medico.new'))}
+          subtitle={editing ? t('pages.admin.form.medico.editSubtitle') : t('pages.admin.form.medico.createSubtitle')}
           avatar={<FormAvatarInitials initials={initials} />}
           actions={podeGuardar ? (
             <FormPrimaryButton onClick={() => void handleGuardar()} disabled={saving}>
               <Save className="w-4 h-4" />
-              <span className="hidden sm:inline">{saving ? 'A guardar…' : 'Guardar'}</span>
+              <span className="hidden sm:inline">{saving ? t('form.saving') : t('common.save')}</span>
             </FormPrimaryButton>
           ) : undefined}
-          tabs={TABS}
+          tabs={tabs}
           activeTab={tab}
           onTabChange={setTab}
         />
@@ -257,43 +259,43 @@ export function MedicoFormPage() {
         {tab === 'identificacao' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Identificação" icon={User}>
+              <DetailSection title={t('form.sections.identificacao')} icon={User}>
                 <div className={FORM.fieldRow}>
-                  <FormField label="Nome" required width="2xl">
+                  <FormField label={t('form.fields.nome')} required width="2xl">
                     <FormInput
                       value={form.nome}
                       onChange={(e) => setForm({ ...form, nome: e.target.value })}
                     />
                   </FormField>
-                  <FormField label="Título" width="sm">
+                  <FormField label={t('form.fields.titulo')} width="sm">
                     <FormInput
                       value={form.titulo || ''}
                       onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                      placeholder="Dr., Dra., Prof."
+                      placeholder={t('form.placeholders.titulo')}
                     />
                   </FormField>
-                  <FormField label="Género" width="md">
+                  <FormField label={t('form.fields.genero')} width="md">
                     <FormRadixSelect
                       value={form.genero || 'Feminino'}
                       onChange={(v) => setForm({ ...form, genero: v })}
                       options={[
-                        { value: 'Feminino', label: 'Feminino' },
-                        { value: 'Masculino', label: 'Masculino' },
+                        { value: 'Feminino', label: t('form.gender.feminino') },
+                        { value: 'Masculino', label: t('form.gender.masculino') },
                       ]}
                     />
                   </FormField>
-                  <FormField label="Nº Cédula" width="md">
+                  <FormField label={t('form.fields.numCedula')} width="md">
                     <FormInput
                       className="font-mono tabular-nums"
                       value={form.num_ordem || ''}
                       onChange={(e) => setForm({ ...form, num_ordem: e.target.value })}
                     />
                   </FormField>
-                  <FormField label="Especialidade" width="xl">
+                  <FormField label={t('form.fields.especialidade')} width="xl">
                     <FormInput
                       value={form.especialidade || ''}
                       onChange={(e) => setForm({ ...form, especialidade: e.target.value })}
-                      placeholder="Ex.: Obstetrícia, Medicina Materno-Fetal"
+                      placeholder={t('form.placeholders.especialidade')}
                     />
                   </FormField>
                 </div>
@@ -301,21 +303,21 @@ export function MedicoFormPage() {
 
               <DetailDivider />
 
-              <DetailSection title="Contactos" icon={Phone}>
+              <DetailSection title={t('form.sections.contactos')} icon={Phone}>
                 <div className={FORM.fieldRow}>
-                  <FormField label="Telefone (fixo)" width="lg">
+                  <FormField label={t('form.fields.telefoneFixo')} width="lg">
                     <FormInput
                       value={form.telefone_fixo || ''}
                       onChange={(e) => setForm({ ...form, telefone_fixo: e.target.value })}
                     />
                   </FormField>
-                  <FormField label="Telefone (móvel)" width="lg">
+                  <FormField label={t('form.fields.telefoneMovel')} width="lg">
                     <FormInput
                       value={form.telefone_movel || ''}
                       onChange={(e) => setForm({ ...form, telefone_movel: e.target.value })}
                     />
                   </FormField>
-                  <FormField label="Email" required width="xl">
+                  <FormField label={t('form.fields.email')} required width="xl">
                     <FormInput
                       type="email"
                       value={form.email}
@@ -327,32 +329,32 @@ export function MedicoFormPage() {
 
               <DetailDivider />
 
-              <DetailSection title="Contactos secundários" icon={Phone}>
+              <DetailSection title={t('form.sections.contactosSecundarios')} icon={Phone}>
                 <div className="space-y-4">
                   {form.contactos_secundarios.map((c, index) => (
                     <div key={index} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Contacto {index + 1}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">{t('form.contactN', { n: index + 1 })}</p>
                       <div className={FORM.fieldRow}>
-                        <FormField label="Nome" width="lg">
+                        <FormField label={t('form.fields.nome')} width="lg">
                           <FormInput
                             value={c.nome}
                             onChange={(e) => updateContacto(index, { nome: e.target.value })}
                           />
                         </FormField>
-                        <FormField label="Função" width="lg">
+                        <FormField label={t('form.fields.funcao')} width="lg">
                           <FormInput
                             value={c.funcao}
                             onChange={(e) => updateContacto(index, { funcao: e.target.value })}
                           />
                         </FormField>
-                        <FormField label="Email" width="lg">
+                        <FormField label={t('form.fields.email')} width="lg">
                           <FormInput
                             type="email"
                             value={c.email}
                             onChange={(e) => updateContacto(index, { email: e.target.value })}
                           />
                         </FormField>
-                        <FormField label="Telefone" width="md">
+                        <FormField label={t('form.fields.telefone')} width="md">
                           <FormInput
                             value={c.telefone}
                             onChange={(e) => updateContacto(index, { telefone: e.target.value })}
@@ -366,16 +368,16 @@ export function MedicoFormPage() {
 
               <DetailDivider />
 
-              <DetailSection title="Locais de trabalho" icon={MapPin}>
+              <DetailSection title={t('form.sections.locaisTrabalho')} icon={MapPin}>
                 <div className="space-y-4">
                   <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="grid grid-cols-[auto_1fr_auto] gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                       <span />
-                      <span>Entidade</span>
+                      <span>{t('form.fields.entidade')}</span>
                       <span />
                     </div>
                     {form.locais_trabalho.length === 0 ? (
-                      <div className="px-4 py-6 text-center text-sm text-slate-400">Sem locais de trabalho. Adicione uma entidade.</div>
+                      <div className="px-4 py-6 text-center text-sm text-slate-400">{t('pages.admin.form.medico.noLocais')}</div>
                     ) : (
                       <div className="divide-y divide-slate-100 dark:divide-slate-800">
                         {form.locais_trabalho.map((local, index) => (
@@ -396,7 +398,7 @@ export function MedicoFormPage() {
                   </div>
 
                   <button type="button" onClick={addLocal} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition">
-                    <Plus className="w-4 h-4" /> Adicionar local de trabalho
+                    <Plus className="w-4 h-4" /> {t('pages.admin.form.medico.addLocal')}
                   </button>
                 </div>
               </DetailSection>
@@ -409,7 +411,7 @@ export function MedicoFormPage() {
                     onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
                     className={CHECKBOX_INPUT_CLASS}
                   />
-                  <span>Médico ativo</span>
+                  <span>{t('pages.admin.form.medico.ativo')}</span>
                 </label>
               </div>
             </DetailPanel>
@@ -419,13 +421,13 @@ export function MedicoFormPage() {
         {tab === 'notas' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Notas" icon={StickyNote}>
-                <FormField label="Notas internas" width="3xl">
+              <DetailSection title={t('form.sections.notas')} icon={StickyNote}>
+                <FormField label={t('form.fields.notasInternas')} width="3xl">
                   <FormTextarea
                     className="min-h-[180px]"
                     value={form.notas || ''}
                     onChange={(e) => setForm({ ...form, notas: e.target.value })}
-                    placeholder="Notas internas sobre o médico…"
+                    placeholder={t('pages.admin.form.medico.notasPlaceholder')}
                   />
                 </FormField>
               </DetailSection>
@@ -436,15 +438,15 @@ export function MedicoFormPage() {
         {tab === 'condicoes' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Testes" icon={FlaskConical}>
+              <DetailSection title={t('form.sections.testes')} icon={FlaskConical}>
                 {testesAtivos.length === 0 ? (
-                  <p className="text-sm text-slate-500">Não existem testes ativos na Administração.</p>
+                  <p className="text-sm text-slate-500">{t('pages.admin.form.local.noActiveTests')}</p>
                 ) : (
                   <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <div className="grid grid-cols-[1fr_9rem_9rem] gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                      <span>Nome</span>
-                      <span className="text-right">Comissão</span>
-                      <span className="text-right">Prazo de pagamento</span>
+                      <span>{t('form.fields.nome')}</span>
+                      <span className="text-right">{t('form.fields.comissao')}</span>
+                      <span className="text-right">{t('form.fields.prazoPagamento')}</span>
                     </div>
                     <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[28rem] overflow-y-auto">
                       {form.condicoes_testes.map((c) => {
@@ -473,7 +475,7 @@ export function MedicoFormPage() {
                                 onChange={(e) => updateCondicao(c.teste_id, { prazo_pagamento_dias: e.target.value })}
                                 placeholder="0"
                               />
-                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">dias</span>
+                              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">{t('form.days')}</span>
                             </div>
                           </div>
                         );
@@ -489,7 +491,7 @@ export function MedicoFormPage() {
         {tab === 'relatorios' && (
           <FormTabContent>
             <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 text-center text-slate-500 dark:text-slate-400 text-sm">
-              Esta secção ficará disponível numa fase posterior.
+              {t('pages.admin.form.medico.relatoriosPlaceholder')}
             </div>
           </FormTabContent>
         )}

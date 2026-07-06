@@ -119,6 +119,18 @@ const assertTransicaoValida = (atual, destino) => {
 exports.TRANSICOES_VALIDAS = TRANSICOES_VALIDAS;
 exports.assertTransicaoValida = assertTransicaoValida;
 
+const ESTADOS_TERMINAIS = ['Faturado', 'Cancelado'];
+
+const resolveProcessoStatus = (processo) =>
+  processo?.status_id || processo?.status || null;
+
+const isProcessoAtivo = (processo) => {
+  const status = resolveProcessoStatus(processo);
+  return !!status && !ESTADOS_TERMINAIS.includes(status);
+};
+
+exports.isProcessoAtivo = isProcessoAtivo;
+
 const normalizeStringOrNull = (value) => {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -225,6 +237,8 @@ const mergeInformacaoClinicaIntoProcesso = (processo, info) => {
     ...mapped,
     informacao_clinica: info,
     tipo_gravidez: info.tipo_gravidez || null,
+    origem_conceicao: info.origem_conceicao || null,
+    quer_saber_sexo: !!info.quer_saber_sexo,
     onde_seguida: info.motivo_prescricao || null,
     gestacao_semanas_registo: info.semanas_gravidez ?? null,
     gestacao_dias_registo: info.dias_gravidez ?? null,
@@ -242,6 +256,8 @@ const attachInformacaoClinica = async (processo) => {
 
 const syncInformacaoClinica = async (processoId, data) => {
   const hasInfo = data.tipo_gravidez !== undefined
+    || data.origem_conceicao !== undefined
+    || data.quer_saber_sexo !== undefined
     || data.motivo_prescricao !== undefined
     || data.onde_seguida !== undefined
     || data.semanas_gravidez !== undefined
@@ -255,6 +271,8 @@ const syncInformacaoClinica = async (processoId, data) => {
 
 const buildClinicoSnapshotFromPaciente = (data, paciente) => ({
   tipo_gravidez: data.tipo_gravidez ?? paciente.tipo_gravidez ?? null,
+  origem_conceicao: data.origem_conceicao ?? paciente.origem_conceicao ?? null,
+  quer_saber_sexo: data.quer_saber_sexo ?? paciente.quer_saber_sexo ?? false,
   onde_seguida: data.onde_seguida ?? paciente.onde_seguida ?? null,
   gestacao_semanas_registo: data.gestacao_semanas_registo ?? paciente.gestacao_semanas_registo ?? null,
   gestacao_dias_registo: data.gestacao_dias_registo ?? paciente.gestacao_dias_registo ?? null,
@@ -392,8 +410,8 @@ exports.create = async (data, user) => {
   if (!paciente) throw new Error('Paciente nao encontrado');
 
   const processosExistentes = await processosRepository.findByPaciente(data.paciente_id);
-  const jaTemProcesso = processosExistentes.some((p) => p.status !== 'Cancelado');
-  if (jaTemProcesso) {
+  const jaTemProcessoAtivo = processosExistentes.some((p) => isProcessoAtivo(p));
+  if (jaTemProcessoAtivo) {
     throw new Error('Este contacto ja tem um processo activo. Gerir apenas em Processos.');
   }
 
@@ -484,6 +502,8 @@ exports.create = async (data, user) => {
     medico_id: null,
     teste_id: null,
     tipo_gravidez: null,
+    origem_conceicao: null,
+    quer_saber_sexo: false,
     onde_seguida: null,
     posto_colheita_id: null,
     data_colheita_prevista: null,
@@ -648,6 +668,11 @@ exports.update = async (id, data, user) => {
       && !processo.data_validacao
       && updateData.data_validacao === undefined) {
       updateData.data_validacao = formatCalendarDate(new Date());
+    }
+    if ((statusResultante === 'Faturado' || statusResultante === 'Cancelado') && !processo.data_conclusao) {
+      updateData.data_conclusao = statusResultante === 'Cancelado'
+        ? (updateData.data_anulacao || formatCalendarDate(new Date()))
+        : (updateData.fatura_data_emissao || workflowData.fatura_data_emissao || formatCalendarDate(new Date()));
     }
   }
 

@@ -1,5 +1,5 @@
 import { LucideIcon } from 'lucide-react';
-import { ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { ReactNode, useCallback, useLayoutEffect, useRef, useState, WheelEvent } from 'react';
 import { TAB } from '../../../lib/design-tokens';
 
 export type SlidingTabItem<T extends string> = {
@@ -23,13 +23,27 @@ type SlidingTabsProps<T extends string> = {
 };
 
 type Indicator = { left: number; width: number };
+type ScrollEdges = { left: boolean; right: boolean };
 
 function useSlidingIndicator<T extends string>(active: T | '') {
   const scrollRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef(new Map<T, HTMLButtonElement>());
   const [indicator, setIndicator] = useState<Indicator>({ left: 0, width: 0 });
-  const [overflows, setOverflows] = useState(false);
+  const [scrollEdges, setScrollEdges] = useState<ScrollEdges>({ left: false, right: false });
+
+  const updateScrollEdges = useCallback(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+
+    const { scrollLeft, scrollWidth, clientWidth } = scroll;
+    const hasOverflow = scrollWidth > clientWidth + 1;
+
+    setScrollEdges({
+      left: hasOverflow && scrollLeft > 2,
+      right: hasOverflow && scrollLeft < scrollWidth - clientWidth - 2,
+    });
+  }, []);
 
   const updateIndicator = useCallback(() => {
     const scroll = scrollRef.current;
@@ -37,7 +51,7 @@ function useSlidingIndicator<T extends string>(active: T | '') {
 
     if (!btn) {
       setIndicator({ left: 0, width: 0 });
-      if (scroll) setOverflows(scroll.scrollWidth > scroll.clientWidth + 1);
+      updateScrollEdges();
       return;
     }
 
@@ -46,10 +60,8 @@ function useSlidingIndicator<T extends string>(active: T | '') {
       width: btn.offsetWidth,
     });
 
-    if (scroll) {
-      setOverflows(scroll.scrollWidth > scroll.clientWidth + 1);
-    }
-  }, [active]);
+    updateScrollEdges();
+  }, [active, updateScrollEdges]);
 
   useLayoutEffect(() => {
     updateIndicator();
@@ -86,7 +98,18 @@ function useSlidingIndicator<T extends string>(active: T | '') {
     else tabRefs.current.delete(id);
   }, []);
 
-  return { scrollRef, trackRef, indicator, overflows, setTabRef };
+  const handleWheel = useCallback((event: WheelEvent<HTMLDivElement>) => {
+    const scroll = scrollRef.current;
+    if (!scroll || scroll.scrollWidth <= scroll.clientWidth + 1) return;
+
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (delta === 0) return;
+
+    event.preventDefault();
+    scroll.scrollBy({ left: delta, behavior: 'auto' });
+  }, []);
+
+  return { scrollRef, trackRef, indicator, scrollEdges, setTabRef, handleWheel };
 }
 
 export function SlidingTabs<T extends string>({
@@ -98,7 +121,8 @@ export function SlidingTabs<T extends string>({
   className = '',
   iconOnly = false,
 }: SlidingTabsProps<T>) {
-  const { scrollRef, trackRef, indicator, overflows, setTabRef } = useSlidingIndicator(active);
+  const { scrollRef, trackRef, indicator, scrollEdges, setTabRef, handleWheel } =
+    useSlidingIndicator(active);
 
   const btnPad = iconOnly
     ? 'p-2'
@@ -107,15 +131,24 @@ export function SlidingTabs<T extends string>({
       : 'px-3.5 md:px-4 py-2 text-[13px]';
 
   return (
-    <nav aria-label={ariaLabel} className={`max-w-full ${className}`}>
+    <nav aria-label={ariaLabel} className={`relative max-w-full ${className}`}>
+      {scrollEdges.left && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-0 z-20 w-8 bg-gradient-to-r from-slate-100 via-slate-100/80 to-transparent dark:from-[#0a1018] dark:via-[#0a1018]/85 dark:to-transparent"
+        />
+      )}
+      {scrollEdges.right && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 z-20 w-8 bg-gradient-to-l from-slate-100 via-slate-100/80 to-transparent dark:from-[#0a1018] dark:via-[#0a1018]/85 dark:to-transparent"
+        />
+      )}
+
       <div
         ref={scrollRef}
-        className={[
-          'max-w-full',
-          overflows
-            ? 'overflow-x-auto overflow-y-hidden [scrollbar-width:thin] pb-0.5'
-            : 'overflow-x-hidden',
-        ].join(' ')}
+        onWheel={handleWheel}
+        className="max-w-full overflow-x-auto overflow-y-hidden scrollbar-none"
       >
         <div ref={trackRef} className={TAB.track}>
           <span

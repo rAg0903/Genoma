@@ -607,17 +607,19 @@ exports.search = async (q, user = {}) => {
   const needle = norm(q);
   if (!needle || needle.length < 2) return { grupos: [] };
 
+  const medicoScoped = await isMedicoUser(user);
   const category = resolveSearchCategory(needle);
   const limit = (arr, max = SEARCH_DEFAULT_LIMIT) => sliceResults(arr, max);
   const browse = (arr) => sliceResults(arr, SEARCH_BROWSE_LIMIT);
 
-  const [processos, pacientes, medicosRaw, kits, lotes] = await Promise.all([
+  const [processos, pacientesRaw, medicosRaw, kits, lotes] = await Promise.all([
     LISTINGS.processos.load(user),
-    LISTINGS.pacientes.load(user),
-    listagensRepository.medicosParaPesquisa(),
-    LISTINGS.kits.load(user),
-    LISTINGS.lotes.load(user),
+    pacientesService.listAll(user),
+    medicoScoped ? Promise.resolve([]) : listagensRepository.medicosParaPesquisa(),
+    medicoScoped ? Promise.resolve([]) : LISTINGS.kits.load(user),
+    medicoScoped ? Promise.resolve([]) : LISTINGS.lotes.load(user),
   ]);
+  const pacientes = pacientesRaw.map(mapPaciente);
   const medicos = medicosRaw.map(mapMedico);
 
   const grupos = [];
@@ -678,8 +680,12 @@ exports.search = async (q, user = {}) => {
     }),
   };
 
+  if (medicoScoped && (category === 'medicos' || category === 'kits' || category === 'lotes')) {
+    return { grupos: [] };
+  }
+
   if (category === 'pacientes') {
-    pushGroup('paciente', 'Pacientes', browse(pacientes), mappers.paciente);
+    pushGroup('paciente', 'Contactos', browse(pacientes), mappers.paciente);
     return { grupos, category };
   }
   if (category === 'medicos') {
@@ -705,17 +711,20 @@ exports.search = async (q, user = {}) => {
 
   const matchProc = limit(processos.filter((p) =>
     norm(p.numero).includes(needle) || norm(p.paciente).includes(needle) ||
-    norm(p.medico).includes(needle) || norm(p.kit).includes(needle) || norm(p.teste).includes(needle)));
+    (!medicoScoped && norm(p.medico).includes(needle)) ||
+    norm(p.kit).includes(needle) || norm(p.teste).includes(needle)));
   const resultados = limit(processos.filter((p) => p.data_resultado &&
     (norm(p.numero).includes(needle) || norm(p.paciente).includes(needle))));
-  const matchPac = limit(pacientes.filter((p) => norm(p.nome).includes(needle) || norm(p.nif).includes(needle)));
-  const matchMed = limit(medicos.filter((m) => medicoMatchesSearch(m, needle)));
-  const matchKit = limit(kits.filter((k) => norm(k.codigo).includes(needle) || norm(k.lote).includes(needle)));
-  const matchLote = limit(lotes.filter((l) => norm(l.codigo).includes(needle) || norm(l.fornecedor).includes(needle)));
+  const matchPac = limit(pacientes.filter((p) =>
+    norm(p.nome).includes(needle) || norm(p.nif).includes(needle) ||
+    norm(p.telemovel).includes(needle) || norm(p.email).includes(needle)));
+  const matchMed = medicoScoped ? [] : limit(medicos.filter((m) => medicoMatchesSearch(m, needle)));
+  const matchKit = medicoScoped ? [] : limit(kits.filter((k) => norm(k.codigo).includes(needle) || norm(k.lote).includes(needle)));
+  const matchLote = medicoScoped ? [] : limit(lotes.filter((l) => norm(l.codigo).includes(needle) || norm(l.fornecedor).includes(needle)));
 
   pushGroup('processo', 'Processos', matchProc, mappers.processo);
   pushGroup('resultado', 'Resultados', resultados, mappers.resultado);
-  pushGroup('paciente', 'Pacientes', matchPac, mappers.paciente);
+  pushGroup('paciente', 'Contactos', matchPac, mappers.paciente);
   pushGroup('medico', 'Medicos', matchMed, mappers.medico);
   pushGroup('kit', 'Kits', matchKit, mappers.kit);
   pushGroup('lote', 'Lotes', matchLote, mappers.lote);

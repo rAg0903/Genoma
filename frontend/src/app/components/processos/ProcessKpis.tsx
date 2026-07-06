@@ -1,18 +1,20 @@
-import { FolderOpen, CalendarClock, FlaskConical, BadgeCheck, Wallet, AlertTriangle, Send } from 'lucide-react';
+import { FolderOpen, CalendarClock, FlaskConical, BadgeCheck, Wallet, AlertTriangle, Send, Archive } from 'lucide-react';
 import { Processo } from '../../data/types';
 import { KpiCard } from '../dashboard/KpiCard';
 import { formatNumber, LAYOUT } from '../../../lib/design-tokens';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
-  isAtivo, isAtrasado, isResultadoPorValidar, isRelatorioPorEnviar, isFaturaPorEmitir, tatDias,
+  isAtivo, isAntigo, isAtrasado, isResultadoPorValidar, isRelatorioPorEnviar, isFaturaPorEmitir, tatDias,
 } from '../../../lib/processos';
 
 export type ProcessKpiId =
-  | 'ativos' | 'colheitas_hoje' | 'por_validar' | 'a_faturar' | 'relatorios' | 'atrasados' | 'tat';
+  | 'ativos' | 'antigos' | 'colheitas_hoje' | 'por_validar' | 'a_faturar' | 'relatorios' | 'atrasados' | 'tat';
 
 interface ProcessKpisProps {
   processos: Processo[];
   activeKpi: ProcessKpiId | null;
   onSelect: (id: ProcessKpiId) => void;
+  medicoView?: boolean;
 }
 
 const isHoje = (d?: string) => {
@@ -22,8 +24,10 @@ const isHoje = (d?: string) => {
   return t.getFullYear() === n.getFullYear() && t.getMonth() === n.getMonth() && t.getDate() === n.getDate();
 };
 
-export function ProcessKpis({ processos, activeKpi, onSelect }: ProcessKpisProps) {
+export function ProcessKpis({ processos, activeKpi, onSelect, medicoView = false }: ProcessKpisProps) {
+  const { t } = useLanguage();
   const ativos = processos.filter(isAtivo).length;
+  const antigos = processos.filter(isAntigo).length;
   const colheitasHoje = processos.filter((p) => isHoje(p.data_colheita)).length;
   const porValidar = processos.filter(isResultadoPorValidar).length;
   const aFaturar = processos.filter(isFaturaPorEmitir).length;
@@ -33,15 +37,34 @@ export function ProcessKpis({ processos, activeKpi, onSelect }: ProcessKpisProps
   const tats = processos.map(tatDias).filter((v): v is number => v !== null);
   const tatMedio = tats.length ? Math.round(tats.reduce((a, b) => a + b, 0) / tats.length) : 0;
 
-  const cards = [
-    { id: 'ativos' as const, label: 'Processos ativos', value: formatNumber(ativos), icon: FolderOpen, tone: 'brand' as const, hint: `${processos.length} total` },
-    { id: 'colheitas_hoje' as const, label: 'Colheitas do dia', value: formatNumber(colheitasHoje), icon: CalendarClock, tone: 'info' as const },
-    { id: 'por_validar' as const, label: 'A validar', value: formatNumber(porValidar), icon: FlaskConical, tone: 'violet' as const },
-    { id: 'a_faturar' as const, label: 'A faturar', value: formatNumber(aFaturar), icon: Wallet, tone: 'success' as const },
-    { id: 'relatorios' as const, label: 'Relatorios por enviar', value: formatNumber(relatorios), icon: Send, tone: 'neutral' as const },
-    { id: 'atrasados' as const, label: 'Atrasados (>7d)', value: formatNumber(atrasados), icon: AlertTriangle, tone: atrasados > 0 ? 'danger' as const : 'neutral' as const },
-    { id: 'tat' as const, label: 'TAT medio (dias)', value: formatNumber(tatMedio), icon: BadgeCheck, tone: 'info' as const, hint: 'Colheita -> resultado' },
-  ];
+  const cards = medicoView
+    ? [
+        {
+          id: 'ativos' as const,
+          label: t('pages.processes.kpi.activeProcesses'),
+          value: formatNumber(ativos),
+          icon: FolderOpen,
+          tone: 'brand' as const,
+          hint: t('dashboard.kpi.total', { count: processos.length }),
+        },
+        {
+          id: 'antigos' as const,
+          label: t('pages.processes.kpi.oldProcesses'),
+          value: formatNumber(antigos),
+          icon: Archive,
+          tone: 'neutral' as const,
+          hint: t('pages.processes.kpi.oldProcessesHint'),
+        },
+      ]
+    : [
+        { id: 'ativos' as const, label: 'Processos ativos', value: formatNumber(ativos), icon: FolderOpen, tone: 'brand' as const, hint: `${processos.length} total` },
+        { id: 'colheitas_hoje' as const, label: 'Colheitas do dia', value: formatNumber(colheitasHoje), icon: CalendarClock, tone: 'info' as const },
+        { id: 'por_validar' as const, label: 'A validar', value: formatNumber(porValidar), icon: FlaskConical, tone: 'violet' as const },
+        { id: 'a_faturar' as const, label: 'A faturar', value: formatNumber(aFaturar), icon: Wallet, tone: 'success' as const },
+        { id: 'relatorios' as const, label: 'Relatorios por enviar', value: formatNumber(relatorios), icon: Send, tone: 'neutral' as const },
+        { id: 'atrasados' as const, label: 'Atrasados (>7d)', value: formatNumber(atrasados), icon: AlertTriangle, tone: atrasados > 0 ? 'danger' as const : 'neutral' as const },
+        { id: 'tat' as const, label: 'TAT medio (dias)', value: formatNumber(tatMedio), icon: BadgeCheck, tone: 'info' as const, hint: 'Colheita -> resultado' },
+      ];
 
   return (
     <div className={LAYOUT.kpiGrid}>

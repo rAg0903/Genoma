@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { createPostalCodeAutofillHandlers } from '../../lib/postal-code-pt';
 import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
 import { FORM } from '../../lib/design-tokens';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
@@ -26,14 +27,7 @@ import {
 
 type TabId = 'identificacao' | 'notas';
 
-type EmpresaFormState = Omit<Empresa, 'id'>;
-
-const TABS: { id: TabId; label: string; icon: typeof User }[] = [
-  { id: 'identificacao', label: 'Identificação', icon: User },
-  { id: 'notas', label: 'Notas', icon: StickyNote },
-];
-
-const emptyEmpresa = (): EmpresaFormState => ({
+const emptyEmpresa = (): Omit<Empresa, 'id'> => ({
   nome: '',
   morada: '',
   codigo_postal: '',
@@ -47,7 +41,7 @@ const emptyEmpresa = (): EmpresaFormState => ({
   ativo: true,
 });
 
-const empresaToForm = (e: Empresa): EmpresaFormState => ({
+const empresaToForm = (e: Empresa): Omit<Empresa, 'id'> => ({
   nome: e.nome,
   morada: e.morada,
   codigo_postal: e.codigo_postal || '',
@@ -62,6 +56,7 @@ const empresaToForm = (e: Empresa): EmpresaFormState => ({
 });
 
 export function EmpresaFormPage() {
+  const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const confirmDelete = useConfirmDelete();
@@ -73,9 +68,14 @@ export function EmpresaFormPage() {
 
   const editing = Boolean(id);
   const [tab, setTab] = useState<TabId>('identificacao');
-  const [form, setForm] = useState<EmpresaFormState>(emptyEmpresa);
+  const [form, setForm] = useState<Omit<Empresa, 'id'>>(emptyEmpresa);
   const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
+
+  const tabs = useMemo(() => [
+    { id: 'identificacao' as const, label: t('form.tabs.identificacao'), icon: User },
+    { id: 'notas' as const, label: t('form.tabs.notas'), icon: StickyNote },
+  ], [t]);
 
   const { handleCodigoPostalChange, autofillFromCp } = useMemo(
     () => createPostalCodeAutofillHandlers(setForm),
@@ -90,11 +90,11 @@ export function EmpresaFormPage() {
     setLoading(true);
     void refreshEmpresas()
       .catch(() => {
-        toast.error('Não foi possível carregar a empresa.');
+        toast.error(t('pages.admin.form.empresa.loadError'));
         voltar();
       })
       .finally(() => setLoading(false));
-  }, [id, refreshEmpresas, navigate]);
+  }, [id, refreshEmpresas, navigate, t]);
 
   useEffect(() => {
     if (!id || loading) return;
@@ -103,16 +103,16 @@ export function EmpresaFormPage() {
       setForm(empresaToForm(existing));
       return;
     }
-    toast.error('Empresa não encontrada.');
+    toast.error(t('pages.admin.form.empresa.notFound'));
     voltar();
-  }, [id, loading, empresas, navigate]);
+  }, [id, loading, empresas, navigate, t]);
 
-  const displayName = form.nome.trim() || (editing ? 'Editar empresa' : 'Nova empresa');
+  const displayName = form.nome.trim() || (editing ? t('pages.admin.form.empresa.edit') : t('pages.admin.form.empresa.new'));
   const initials = displayName.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase();
 
   const handleGuardar = async () => {
     if (!form.nome.trim()) {
-      toast.error('Indique o nome.');
+      toast.error(t('form.errors.nameRequired'));
       setTab('identificacao');
       return;
     }
@@ -135,14 +135,14 @@ export function EmpresaFormPage() {
       };
       if (editing && id) {
         await updateEmpresa(id, payload);
-        toast.success('Empresa atualizada.');
+        toast.success(t('pages.admin.form.empresa.updated'));
       } else {
         await addEmpresa(payload);
-        toast.success('Empresa criada.');
+        toast.success(t('pages.admin.form.empresa.created'));
       }
       voltar();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Não foi possível guardar a empresa.');
+      toast.error(e instanceof Error ? e.message : t('pages.admin.form.empresa.saveError'));
     } finally {
       setSaving(false);
     }
@@ -153,17 +153,17 @@ export function EmpresaFormPage() {
     if (!(await confirmDelete(deleteTargetLabel('a empresa', form.nome || 'esta empresa')))) return;
     try {
       await deleteEmpresa(id);
-      toast.success('Empresa eliminada.');
+      toast.success(t('pages.admin.form.empresa.deleted'));
       voltar();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Não foi possível eliminar a empresa.');
+      toast.error(e instanceof Error ? e.message : t('pages.admin.form.empresa.deleteError'));
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[320px] text-slate-400">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> A carregar…
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('common.loading')}
       </div>
     );
   }
@@ -174,15 +174,15 @@ export function EmpresaFormPage() {
         <FormPageHeader
           onBack={voltar}
           title={displayName}
-          subtitle={editing ? 'Edição de empresa' : 'Criação de empresa'}
+          subtitle={editing ? t('pages.admin.form.empresa.editSubtitle') : t('pages.admin.form.empresa.createSubtitle')}
           avatar={<FormAvatarInitials initials={initials} />}
           actions={podeGuardar ? (
             <FormPrimaryButton onClick={() => void handleGuardar()} disabled={saving}>
               <Save className="w-4 h-4" />
-              <span className="hidden sm:inline">{saving ? 'A guardar…' : 'Guardar'}</span>
+              <span className="hidden sm:inline">{saving ? t('form.saving') : t('common.save')}</span>
             </FormPrimaryButton>
           ) : undefined}
-          tabs={TABS}
+          tabs={tabs}
           activeTab={tab}
           onTabChange={setTab}
         />
@@ -190,21 +190,21 @@ export function EmpresaFormPage() {
         {tab === 'identificacao' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Identificação" icon={User}>
+              <DetailSection title={t('form.sections.identificacao')} icon={User}>
                 <div className={FORM.fieldRow}>
-                  <FormField label="Nome" required width="2xl">
+                  <FormField label={t('form.fields.nome')} required width="2xl">
                     <FormInput
                       value={form.nome}
                       onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                      placeholder="Ex.: Genoma"
+                      placeholder={t('pages.admin.form.empresa.nomePlaceholder')}
                     />
                   </FormField>
-                  <FormField label="NIF" width="md">
+                  <FormField label={t('form.fields.nif')} width="md">
                     <FormInput
                       className="font-mono tabular-nums"
                       value={form.nif}
                       onChange={(e) => setForm({ ...form, nif: e.target.value })}
-                      placeholder="123456789"
+                      placeholder={t('form.placeholders.nif')}
                     />
                   </FormField>
                 </div>
@@ -212,69 +212,69 @@ export function EmpresaFormPage() {
 
               <DetailDivider />
 
-              <DetailSection title="Morada" icon={MapPin}>
+              <DetailSection title={t('form.sections.morada')} icon={MapPin}>
                 <div className={FORM.fieldRow}>
-                  <FormField label="Morada" width="3xl">
+                  <FormField label={t('form.fields.morada')} width="3xl">
                     <FormInput
                       value={form.morada}
                       onChange={(e) => setForm({ ...form, morada: e.target.value })}
-                      placeholder="Endereço completo"
+                      placeholder={t('form.placeholders.enderecoCompleto')}
                     />
                   </FormField>
-                  <FormField label="Código postal" width="sm">
+                  <FormField label={t('form.fields.codigoPostal')} width="sm">
                     <FormInput
                       value={form.codigo_postal || ''}
                       onChange={(e) => handleCodigoPostalChange(e.target.value)}
                       onBlur={(e) => void autofillFromCp(e.target.value)}
-                      placeholder="0000-000"
+                      placeholder={t('form.placeholders.codigoPostal')}
                     />
                   </FormField>
-                  <FormField label="Cidade" width="lg">
+                  <FormField label={t('form.fields.cidade')} width="lg">
                     <FormInput
                       value={form.cidade || ''}
                       onChange={(e) => setForm({ ...form, cidade: e.target.value })}
-                      placeholder="Lisboa"
+                      placeholder={t('form.placeholders.cidade')}
                     />
                   </FormField>
-                  <FormField label="Distrito" width="lg">
+                  <FormField label={t('form.fields.distrito')} width="lg">
                     <FormInput
                       value={form.distrito || ''}
                       onChange={(e) => setForm({ ...form, distrito: e.target.value })}
-                      placeholder="Lisboa"
+                      placeholder={t('form.placeholders.cidade')}
                     />
                   </FormField>
-                  <FormField label="País" width="md">
+                  <FormField label={t('form.fields.pais')} width="md">
                     <FormInput
                       value={form.pais || ''}
                       onChange={(e) => setForm({ ...form, pais: e.target.value })}
-                      placeholder="Portugal"
+                      placeholder={t('form.placeholders.pais')}
                     />
                   </FormField>
                 </div>
                 <div className="mt-3">
                   <FormSectionNote>
-                    Distrito, cidade e país podem ser preenchidos automaticamente a partir do código postal.
+                    {t('form.notes.postalAutofill')}
                   </FormSectionNote>
                 </div>
               </DetailSection>
 
               <DetailDivider />
 
-              <DetailSection title="Contactos" icon={Phone}>
+              <DetailSection title={t('form.sections.contactos')} icon={Phone}>
                 <div className={FORM.fieldRow}>
-                  <FormField label="Telefone" width="lg">
+                  <FormField label={t('form.fields.telefone')} width="lg">
                     <FormInput
                       value={form.contacto}
                       onChange={(e) => setForm({ ...form, contacto: e.target.value })}
-                      placeholder="912 345 678"
+                      placeholder={t('form.placeholders.telefone')}
                     />
                   </FormField>
-                  <FormField label="Email" width="xl">
+                  <FormField label={t('form.fields.email')} width="xl">
                     <FormInput
                       type="email"
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      placeholder="contacto@empresa.pt"
+                      placeholder={t('form.placeholders.email')}
                     />
                   </FormField>
                 </div>
@@ -290,7 +290,7 @@ export function EmpresaFormPage() {
                     onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
                     className={CHECKBOX_INPUT_CLASS}
                   />
-                  <span>Empresa ativa</span>
+                  <span>{t('pages.admin.form.empresa.ativo')}</span>
                 </label>
 
                 {editing && canDelete && (
@@ -301,7 +301,7 @@ export function EmpresaFormPage() {
                       className="inline-flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/20 rounded-lg transition"
                     >
                       <Trash2 className="w-4 h-4" />
-                      Eliminar empresa
+                      {t('pages.admin.form.empresa.delete')}
                     </button>
                   </div>
                 )}
@@ -313,13 +313,13 @@ export function EmpresaFormPage() {
         {tab === 'notas' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Notas internas" icon={StickyNote}>
-                <FormField label="Notas" width="3xl">
+              <DetailSection title={t('form.sections.notasInternas')} icon={StickyNote}>
+                <FormField label={t('form.fields.notas')} width="3xl">
                   <FormTextarea
                     className="min-h-[180px]"
                     value={form.notas || ''}
                     onChange={(e) => setForm({ ...form, notas: e.target.value })}
-                    placeholder="Notas internas sobre a empresa…"
+                    placeholder={t('pages.admin.form.empresa.notasPlaceholder')}
                   />
                 </FormField>
               </DetailSection>

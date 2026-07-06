@@ -14,6 +14,7 @@ import {
   User,
 } from 'lucide-react';
 import { useLanguage } from '../../../i18n/LanguageContext';
+import { PANEL } from '../../../lib/design-tokens';
 import { PerfilPermissionBundle } from '../../../lib/perfil-permissions';
 import {
   DefinicoesSubmodule,
@@ -46,7 +47,7 @@ const MODULE_ICONS: Record<PermissionModule, typeof Home> = {
 };
 
 const MODULE_ICON_BOX_CLASS =
-  'flex-shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800';
+  'flex-shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-[#243044]';
 
 const MODULE_ICON_CLASS = 'w-4 h-4 text-slate-600 dark:text-slate-300';
 
@@ -183,12 +184,12 @@ function MatrixCell({ checked = false, disabled = false, na = false, onChange, l
           'inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-150',
           checked
             ? 'border-teal-300 bg-teal-50 text-teal-600 shadow-sm dark:border-teal-700 dark:bg-teal-950/50 dark:text-teal-400'
-            : 'border-slate-200 bg-white text-teal-600 dark:border-slate-700 dark:bg-slate-900',
+            : 'border-slate-200 bg-white text-teal-600 dark:border-[#3d4f6a]/55 dark:bg-[#182338]/95',
           disabled
             ? 'cursor-not-allowed opacity-35'
             : checked
               ? 'hover:border-teal-400 hover:bg-teal-100/80 dark:hover:bg-teal-950/70'
-              : 'cursor-pointer hover:border-teal-300 hover:bg-slate-50 dark:hover:bg-slate-800/60',
+              : 'cursor-pointer hover:border-teal-300 hover:bg-slate-50 dark:hover:bg-[#243044]/60',
         ].join(' ')}
       >
         <Check
@@ -226,10 +227,10 @@ export function PermissionsMatrix({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+    <div className={`${PANEL.table} shadow-sm`}>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] border-collapse">
-          <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
+          <thead className={`sticky top-0 z-10 backdrop-blur-sm ${PANEL.tableHead}`}>
             <tr>
               <th className="min-w-[240px] px-5 py-3.5 text-left">
                 <span className={ADMIN_TH_CLASS}>Módulo</span>
@@ -239,7 +240,7 @@ export function PermissionsMatrix({
                 return (
                   <th key={action} className="w-[72px] px-2 py-3.5 text-center">
                     <div className="flex flex-col items-center gap-1">
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 dark:bg-[#243044] text-slate-500 dark:text-slate-400">
                         <Icon className="w-3.5 h-3.5" strokeWidth={2} />
                       </span>
                       <span className={ADMIN_TH_CLASS}>{ACTION_LABELS[action]}</span>
@@ -265,8 +266,8 @@ export function PermissionsMatrix({
                 <Fragment key={module}>
                   <tr
                     className={[
-                      'group bg-white dark:bg-slate-900 transition-colors',
-                      !isLastModule || submodules.length > 0 ? 'border-b border-slate-100 dark:border-slate-800/80' : '',
+                      'group bg-white dark:bg-[#1f2a3d] transition-colors',
+                      !isLastModule || submodules.length > 0 ? 'border-b border-slate-100 dark:border-[#334155]/55' : '',
                     ].join(' ')}
                   >
                     <td className="px-5 py-3.5 align-middle">
@@ -308,15 +309,15 @@ export function PermissionsMatrix({
                       <tr
                         key={`${module}-${submodule}`}
                         className={[
-                          'bg-slate-50/60 dark:bg-slate-800/25 transition-colors hover:bg-slate-100/70 dark:hover:bg-slate-800/40',
-                          !isLastModule || !isLastSub ? 'border-b border-slate-100 dark:border-slate-800/60' : '',
+                          'bg-slate-50/60 dark:bg-[#151f30]/45 transition-colors hover:bg-slate-100/70 dark:hover:bg-[#243044]/40',
+                          !isLastModule || !isLastSub ? 'border-b border-slate-100 dark:border-[#334155]/45' : '',
                         ].join(' ')}
                       >
                         <td className="px-5 py-2.5 align-middle">
                           <div className="flex items-center gap-2 pl-[18px] min-w-0">
                             <span className="relative flex-shrink-0 w-4 self-stretch flex items-center justify-center">
-                              <span className="absolute left-1/2 top-0 bottom-1/2 w-px -translate-x-1/2 bg-slate-200 dark:bg-slate-700" />
-                              <span className="absolute left-1/2 top-1/2 h-px w-2.5 -translate-y-1/2 bg-slate-200 dark:bg-slate-700" />
+                              <span className="absolute left-1/2 top-0 bottom-1/2 w-px -translate-x-1/2 bg-slate-200 dark:bg-[#3d4f6a]/55" />
+                              <span className="absolute left-1/2 top-1/2 h-px w-2.5 -translate-y-1/2 bg-slate-200 dark:bg-[#3d4f6a]/55" />
                               <span className="relative z-[1] h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
                             </span>
                             <span className="text-xs font-medium text-slate-600 dark:text-slate-300 truncate">
@@ -347,7 +348,7 @@ export function PermissionsMatrix({
         </table>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-3 border-t border-slate-100 dark:border-[#334155]/55 bg-slate-50/50 dark:bg-[#151f30]/80">
         <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Legenda</span>
         <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
           <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-teal-300 bg-teal-50 dark:border-teal-700 dark:bg-teal-950/50">
@@ -356,7 +357,7 @@ export function PermissionsMatrix({
           Permissão ativa
         </span>
         <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900" />
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-200 dark:border-[#3d4f6a]/55 bg-white dark:bg-[#182338]/95" />
           Sem permissão
         </span>
         <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">

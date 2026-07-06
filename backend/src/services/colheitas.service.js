@@ -228,6 +228,7 @@ exports.registarColheita = async (id, data, user) => {
     dataEfetiva,
     postoId: colheita.posto_id,
     laboratorioFinalId: data.laboratorio_final_id || null,
+    utilizadorId: user?.id || null,
   });
 
   if (user) {

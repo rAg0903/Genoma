@@ -1,4 +1,4 @@
-import { clearAuthSession, notifyAuthChanged } from './auth-session';
+import { clearAuthSession, getAuthToken, notifyAuthChanged } from './auth-session';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -65,6 +65,64 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   return response.json() as Promise<T>;
+}
+
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  options: { token?: string } = {},
+): Promise<T> {
+  const { token } = options;
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = text;
+    try {
+      const parsed = JSON.parse(text);
+      message = parsed?.error || parsed?.message || text;
+    } catch {
+      // resposta não-JSON
+    }
+
+    if (response.status === 401) {
+      handleSessionExpired();
+      throw new Error('A sua sessão expirou. Inicie sessão novamente.');
+    }
+
+    throw new Error(message || `Upload failed with status ${response.status}`);
+  }
+
+  if (response.status === 204) {
+    return null as T;
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export async function downloadAnexoFile(anexoId: string, filename: string, token?: string) {
+  const authToken = token ?? getAuthToken();
+  const response = await fetch(`${API_BASE_URL}/anexos/files/${anexoId}`, {
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+  });
+
+  if (!response.ok) {
+    throw new Error('Não foi possível transferir o ficheiro.');
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename || 'anexo';
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export { API_BASE_URL };

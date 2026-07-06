@@ -1,6 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { ProcessFaturacaoData } from '../../../lib/process-form';
 import { getFaturacaoAlert } from '../../../lib/faturacao';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface FaturacaoAlertBannerProps {
   value: ProcessFaturacaoData;
@@ -9,6 +10,7 @@ interface FaturacaoAlertBannerProps {
 }
 
 export function FaturacaoAlertBanner({ value, context = 'contacto', onGoToFaturacao }: FaturacaoAlertBannerProps) {
+  const { t } = useLanguage();
   const alert = getFaturacaoAlert(value, context);
   if (!alert) return null;
 
@@ -26,9 +28,9 @@ export function FaturacaoAlertBanner({ value, context = 'contacto', onGoToFatura
       <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
         <p style={{ fontSize: '13px', fontWeight: 600 }}>
-          {isNaoFacturado ? 'Faturação pendente' : 'Pagamento pendente'}
+          {isNaoFacturado ? t('faturacao.alert.titleNotInvoiced') : t('faturacao.alert.titleNotPaid')}
         </p>
-        <p className="mt-0.5 opacity-90" style={{ fontSize: '13px' }}>{alert.message}</p>
+        <p className="mt-0.5 opacity-90" style={{ fontSize: '13px' }}>{t(alert.messageKey)}</p>
         {onGoToFaturacao && (
           <button
             type="button"
@@ -36,7 +38,7 @@ export function FaturacaoAlertBanner({ value, context = 'contacto', onGoToFatura
             className="mt-2 underline underline-offset-2 hover:opacity-80"
             style={{ fontSize: '12px', fontWeight: 500 }}
           >
-            Ir para Faturação
+            {t('faturacao.alert.goToBilling')}
           </button>
         )}
       </div>

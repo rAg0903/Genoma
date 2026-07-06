@@ -90,7 +90,7 @@ export function ProcessFormPage() {
   const [searchParams] = useSearchParams();
   const {
     contacts, processos, updateProcesso, refreshProcessos, motivosAnulacao,
-    getAnexosByPaciente, addAnexo, deleteAnexo,
+    getAnexosByPaciente, uploadAnexoFile, deleteAnexo,
   } = useData();
   const { hasPermission } = useAuth();
   const { t } = useLanguage();
@@ -542,8 +542,8 @@ export function ProcessFormPage() {
                       disabled={!canUpdate}
                     />
                   </FormField>
-                  <FormField label="Relatório validado" width="md">
-                    <label className={`${FORM.checkboxRow} inline-flex mt-1.5`}>
+                  <FormField label="Relatório validado" width="md" controlClassName="flex items-center">
+                    <label className={`${FORM.checkboxRow} inline-flex`}>
                       <input
                         type="checkbox"
                         checked={!!form.relatorio_validado}
@@ -635,10 +635,11 @@ export function ProcessFormPage() {
           <FormTabContent className="space-y-4">
             <AnexosTab
               pacienteId={form.paciente_id}
+              processoId={processo?.id}
               canUpdate={canUpdate}
               canDelete={canUpdate}
               getAnexos={getAnexosByPaciente}
-              addAnexo={addAnexo}
+              uploadAnexoFile={uploadAnexoFile}
               deleteAnexo={deleteAnexo}
             />
           </FormTabContent>

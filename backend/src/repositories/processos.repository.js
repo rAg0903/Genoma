@@ -268,6 +268,7 @@ exports.update = async (id, data) => {
     if (data.fatura_envio_sms !== undefined) setIfDefined('fatura_envio_sms', data.fatura_envio_sms || null);
     setIfDefined('motivo_anulacao_id', data.motivo_anulacao_id || null);
     setIfDefined('data_anulacao', data.data_anulacao || null);
+    setIfDefined('data_conclusao', data.data_conclusao || null);
 
     if (updates.length === 0) return false;
 

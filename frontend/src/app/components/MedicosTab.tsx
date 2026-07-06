@@ -12,6 +12,7 @@ import { Medico, medicosApi } from '../../lib/api-medicos';
 
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 import { StatusBadge } from './shared/StatusBadge';
 
@@ -45,6 +46,7 @@ export function MedicosTab({ canCreate, canUpdate, canDelete }: { canCreate: boo
 
   const navigate = useNavigate();
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
 
   const [search, setSearch] = useState('');
 
@@ -134,7 +136,7 @@ export function MedicosTab({ canCreate, canUpdate, canDelete }: { canCreate: boo
 
           <button type="button" onClick={() => navigate('/definicoes/medicos/novo')} className={ADD_ACTION_BUTTON_CLASS}>
 
-            <Plus className="w-4 h-4" /> Novo médico
+            <Plus className="w-4 h-4" /> {t('common.create.doctor')}
 
           </button>
 

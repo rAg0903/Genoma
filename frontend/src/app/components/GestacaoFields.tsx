@@ -5,6 +5,7 @@ import {
   formatDataPartoPt,
   parseGestacaoRegistoInput,
 } from '../../lib/gestacao';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { CONTROL, FORM } from '../../lib/design-tokens';
 
 interface GestacaoFieldsProps {
@@ -52,7 +53,9 @@ function MetricPair({
 
   return (
     <div className="min-w-0">
-      <p className={`${FORM.label} ${computed ? 'text-slate-400 dark:text-slate-500' : ''}`}>{label}</p>
+      <div className={FORM.labelArea}>
+        <p className={`${FORM.label} ${computed ? 'text-slate-400 dark:text-slate-500' : ''}`}>{label}</p>
+      </div>
       <div className="mt-1.5 flex items-start gap-3">
         <div>
           <input
@@ -97,6 +100,7 @@ export function GestacaoFields({
   onDiasChange,
   inputClass,
 }: GestacaoFieldsProps) {
+  const { t } = useLanguage();
   const calculos = useMemo(() => {
     const registo = parseGestacaoRegistoInput(semanasRegisto, diasRegisto);
     if (!registo || !dataRegisto) return null;
@@ -109,23 +113,29 @@ export function GestacaoFields({
     <div className="w-full max-w-3xl">
       <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${FORM.metricGroup}`}>
         <MetricPair
-          label="Tempo de gestação (registo)"
+          label={t('form.gestacao.registro')}
           semanas={semanasRegisto}
           dias={diasRegisto}
+          semanasLabel={t('form.units.weeks')}
+          diasLabel={t('form.units.days')}
           editable
           onSemanasChange={onSemanasChange}
           onDiasChange={onDiasChange}
           inputClass={inputClass}
         />
         <MetricPair
-          label="Tempo de gestação (actual)"
+          label={t('form.gestacao.actual')}
           semanas={calculos?.atual ? String(calculos.atual.semanas) : ''}
           dias={calculos?.atual ? String(calculos.atual.dias) : ''}
+          semanasLabel={t('form.units.weeks')}
+          diasLabel={t('form.units.days')}
           inputClass={inputClass}
           computed
         />
         <div className="min-w-0">
-          <p className={`${FORM.label} text-slate-400 dark:text-slate-500`}>Data prevista do parto</p>
+          <div className={FORM.labelArea}>
+            <p className={`${FORM.label} text-slate-400 dark:text-slate-500`}>{t('form.gestacao.dueDate')}</p>
+          </div>
           <input
             readOnly
             tabIndex={-1}
@@ -133,7 +143,7 @@ export function GestacaoFields({
             value={calculos?.parto ? formatDataPartoPt(calculos.parto) : ''}
             placeholder="—"
           />
-          <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-500">Calculada automaticamente</span>
+          <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-500">{t('form.gestacao.autoCalculated')}</span>
         </div>
       </div>
     </div>

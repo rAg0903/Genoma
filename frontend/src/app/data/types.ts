@@ -18,6 +18,8 @@ export interface Contact {
   medico_id?: string;
   teste_id?: string;
   tipo_gravidez?: 'singular' | 'gemelar' | null;
+  origem_conceicao?: 'natural' | 'fiv_ovulos_proprios' | 'fiv_doacao_ovulos' | null;
+  quer_saber_sexo?: boolean;
   gestacao_semanas_registo?: number | null;
   gestacao_dias_registo?: number | null;
   gestacao_registada_em?: string | null;
@@ -104,12 +106,16 @@ export interface Processo {
   /** Snapshot do contacto no momento da conversão */
   onde_seguida?: string;
   tipo_gravidez?: 'singular' | 'gemelar' | null;
+  origem_conceicao?: 'natural' | 'fiv_ovulos_proprios' | 'fiv_doacao_ovulos' | null;
+  quer_saber_sexo?: boolean;
   gestacao_semanas_registo?: number | null;
   gestacao_dias_registo?: number | null;
   gestacao_registada_em?: string | null;
   motivo_anulacao_id?: string | null;
   motivo_anulacao_nome?: string | null;
   data_anulacao?: string | null;
+  /** Data em que o processo foi concluído (faturado ou cancelado). */
+  data_conclusao?: string | null;
 }
 
 export type KitFaseCiclo =

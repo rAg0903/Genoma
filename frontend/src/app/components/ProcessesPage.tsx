@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { LayoutGrid, Table2, FolderOpen, Ban, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -22,7 +22,7 @@ import { TraceView } from './shared/TraceView';
 import {
   EstadoProcesso, PROCESSOS_PAGE_ESTADOS, PROCESS_PIPELINE_COLUMNS, ESTADO_LABEL,
   processoMatchesEstadoFilter, isAtivo, isAtrasado, isResultadoPorValidar,
-  isRelatorioPorEnviar, isFaturaPorEmitir, proximosEstados,
+  isRelatorioPorEnviar, isFaturaPorEmitir, isAntigo, resolveDataConclusao, proximosEstados,
 } from '../../lib/processos';
 import { isProcessoLaboratorio } from '../../lib/contactos';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
@@ -36,6 +36,7 @@ const isHoje = (d?: string) => {
 
 const KPI_PREDICATE: Record<ProcessKpiId, (p: Processo) => boolean> = {
   ativos: isAtivo,
+  antigos: isAntigo,
   colheitas_hoje: (p) => isHoje(p.data_colheita),
   por_validar: isResultadoPorValidar,
   a_faturar: isFaturaPorEmitir,
@@ -46,13 +47,14 @@ const KPI_PREDICATE: Record<ProcessKpiId, (p: Processo) => boolean> = {
 
 export function ProcessesPage() {
   const { processos, updateProcesso, deleteProcesso, refreshProcessos, motivosAnulacao } = useData();
-  const { hasPermission } = useAuth();
+  const { hasPermission, role } = useAuth();
   const { t } = useLanguage();
   const confirmDelete = useConfirmDelete();
   const navigate = useNavigate();
   const canCreate = hasPermission('processos', 'create');
   const canUpdate = hasPermission('processos', 'update');
   const canDelete = hasPermission('processos', 'delete');
+  const isMedico = role === 'Medico';
 
   const [search, setSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState('');
@@ -61,7 +63,14 @@ export function ProcessesPage() {
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [kpiFilter, setKpiFilter] = useState<ProcessKpiId | null>(null);
+  const effectiveKpiFilter = isMedico ? (kpiFilter ?? 'ativos') : kpiFilter;
   const [view, setView] = useState<'table' | 'pipeline'>('pipeline');
+
+  useEffect(() => {
+    if (isMedico && effectiveKpiFilter === 'antigos') {
+      setView('table');
+    }
+  }, [isMedico, effectiveKpiFilter]);
   const [page, setPage] = useState(1);
   const itemsPerPage = 12;
 
@@ -79,17 +88,22 @@ export function ProcessesPage() {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return processosLaboratorio.filter((p) => {
+    const rows = processosLaboratorio.filter((p) => {
       const matchSearch = !q || [p.numero, p.paciente_nome, p.medico, p.kit_codigo, p.teste].some((f) => (f || '').toLowerCase().includes(q));
       const matchEstado = !estadoFilter || processoMatchesEstadoFilter(p.estado, estadoFilter);
       const matchPosto = !postoFilter || p.posto === postoFilter;
       const matchMedico = !medicoFilter || p.medico === medicoFilter;
       const matchInicio = !dataInicio || p.data_entrada >= dataInicio;
       const matchFim = !dataFim || p.data_entrada <= dataFim;
-      const matchKpi = !kpiFilter || KPI_PREDICATE[kpiFilter](p);
+      const matchKpi = !effectiveKpiFilter || KPI_PREDICATE[effectiveKpiFilter](p);
       return matchSearch && matchEstado && matchPosto && matchMedico && matchInicio && matchFim && matchKpi;
     });
-  }, [processosLaboratorio, search, estadoFilter, postoFilter, medicoFilter, dataInicio, dataFim, kpiFilter]);
+
+    if (effectiveKpiFilter === 'antigos') {
+      return [...rows].sort((a, b) => (resolveDataConclusao(b) || '').localeCompare(resolveDataConclusao(a) || ''));
+    }
+    return rows;
+  }, [processosLaboratorio, search, estadoFilter, postoFilter, medicoFilter, dataInicio, dataFim, effectiveKpiFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   const safePage = Math.min(page, totalPages);
@@ -283,7 +297,19 @@ export function ProcessesPage() {
           </div>
         )}
 
-        <ProcessKpis processos={processosLaboratorio} activeKpi={kpiFilter} onSelect={(id) => { setKpiFilter((prev) => (prev === id ? null : id)); resetPage(); }} />
+        <ProcessKpis
+          processos={processosLaboratorio}
+          activeKpi={effectiveKpiFilter}
+          medicoView={isMedico}
+          onSelect={(id) => {
+            if (isMedico) {
+              setKpiFilter(id);
+            } else {
+              setKpiFilter((prev) => (prev === id ? null : id));
+            }
+            resetPage();
+          }}
+        />
       </div>
 
       {canUpdate && (

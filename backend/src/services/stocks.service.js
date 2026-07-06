@@ -633,6 +633,185 @@ exports.createRequisicao = async (data, user) => {
   };
 };
 
+/**
+ * Regista descarte/envio para laboratório final (requisicoes_kits + movimentos Descarte).
+ * Pode correr dentro de uma transacção existente (connection) ou criar a sua própria.
+ */
+exports.registerDescarteForKits = async ({
+  connection = null,
+  kitIds,
+  origem,
+  origemRef,
+  data,
+  labId,
+  labNome,
+  utilizadorId = null,
+  observacoes = null,
+  skipPastDateCheck = false,
+  user = null,
+}) => {
+  if (!kitIds?.length) {
+    throw new Error('Selecione pelo menos um kit utilizado ou expirado');
+  }
+  if (!isValidDate(data)) {
+    throw new Error('Data inválida');
+  }
+  if (!skipPastDateCheck && isPastCalendarDate(data)) {
+    throw new Error('A data do envio não pode ser anterior a hoje');
+  }
+  if (!labId || !labNome) {
+    throw new Error('Laboratório final não encontrado ou inválido');
+  }
+  if (origem !== 'Escritorio' && origem !== 'Posto') {
+    throw new Error('A origem do descarte deve ser uma empresa ou um posto');
+  }
+
+  const run = async (conn) => {
+    const placeholders = kitIds.map(() => '?').join(',');
+    const params = [...kitIds, origem];
+    let sql = `
+      SELECT k.id, k.codigo_barras, k.tracking, k.status, k.data_validade
+      FROM kits k
+      WHERE k.id IN (${placeholders})
+        AND k.localizacao = ?
+        AND (k.fase_ciclo IS NULL OR k.fase_ciclo NOT IN ('em_lab_final', 'em_transito_lab'))
+        AND (
+          k.fase_ciclo = 'aguarda_envio_lab'
+          OR k.status IN ('Utilizado', 'Expirado')
+          OR (k.status = 'Disponivel' AND k.data_validade IS NOT NULL AND k.data_validade < CURDATE())
+        )
+    `;
+    if (origem === 'Escritorio' && origemRef?.empresa_id) {
+      sql += ' AND (k.empresa_id = ? OR k.empresa_id IS NULL)';
+      params.push(origemRef.empresa_id);
+    }
+    if (origem === 'Posto' && origemRef?.posto_id) {
+      sql += ' AND k.posto_id = ?';
+      params.push(origemRef.posto_id);
+    }
+
+    const [kitsElegiveis] = await conn.execute(sql, params);
+    if (kitsElegiveis.length !== kitIds.length) {
+      throw new Error('Um ou mais kits não estão elegíveis para descarte (utilizados/expirados na origem)');
+    }
+
+    const dataDescarte = normalizeDateInput(data);
+    const destinoRef = {
+      localizacao: 'Laboratorio',
+      empresa_id: null,
+      posto_id: null,
+      laboratorio_id: labId,
+      nome: labNome,
+    };
+
+    const requisicao = {
+      numero_envio: await stocksRepository.generateNumeroEnvio(conn),
+      utilizador_id: utilizadorId,
+      data: dataDescarte,
+      origem,
+      destino: 'Laboratorio',
+      origem_empresa_id: origemRef?.empresa_id || null,
+      origem_posto_id: origemRef?.posto_id || null,
+      origem_laboratorio_id: null,
+      destino_empresa_id: null,
+      destino_posto_id: null,
+      destino_laboratorio_id: labId,
+      origem_nome: origemRef?.nome || '',
+      destino_nome: labNome,
+      quantidade: kitsElegiveis.length,
+      status: 'Entregue',
+      tracking_number: deriveTrackingFromKits(kitsElegiveis),
+      transportadora: null,
+      lote_id: null,
+      observacoes: observacoes || null,
+      kit_status: 'Utilizado',
+    };
+
+    const movimentos = kitsElegiveis.map((kit) => ({
+      data: requisicao.data,
+      kit_id: kit.id,
+      origem,
+      destino: 'Laboratorio',
+      motivo: MOTIVOS_MOVIMENTO.DESCARTE,
+      observacoes: observacoes || null,
+    }));
+
+    const created = await stocksRepository.createRequisicaoWithKits({
+      requisicao,
+      kits: kitsElegiveis,
+      movimentos,
+      destinoRef: toDestinoRef(destinoRef),
+      connection: conn,
+    });
+
+    for (const kit of kitsElegiveis) {
+      await conn.execute(
+        `UPDATE processos SET status_id = 'Enviado Laboratorio',
+          laboratorio_final_id = COALESCE(laboratorio_final_id, ?),
+          data_chegada_laboratorio = COALESCE(data_chegada_laboratorio, ?),
+          data_envio_laboratorio = COALESCE(data_envio_laboratorio, ?),
+          data_colheita = COALESCE(
+            data_colheita,
+            (SELECT MIN(mk.data) FROM movimentos_kits mk
+             WHERE mk.kit_id = processos.kit_id AND mk.motivo = 'ConsumoColheita')
+          ),
+          data_entrada = COALESCE(
+            data_entrada,
+            (SELECT MIN(mk.data) FROM movimentos_kits mk
+             WHERE mk.kit_id = processos.kit_id AND mk.motivo = 'ConsumoColheita')
+          )
+         WHERE kit_id = ? AND status_id IN ('Colheita Realizada', 'Enviado Laboratorio')`,
+        [labId, dataDescarte, dataDescarte, kit.id],
+      );
+    }
+
+    return {
+      id: created.id,
+      numero_envio: requisicao.numero_envio,
+      data: toDateString(requisicao.data),
+      origem,
+      destino: 'Laboratorio',
+      origem_nome: origemRef?.nome || '',
+      destino_nome: labNome,
+      destino_laboratorio_id: labId,
+      quantidade: requisicao.quantidade,
+      status: normalizeRequisicaoStatus(requisicao.status),
+      tracking_number: requisicao.tracking_number || '',
+      transportadora: '',
+      lote_codigo: '',
+      utilizador_id: utilizadorId || '',
+      utilizador_nome: '',
+      observacoes: requisicao.observacoes || '',
+    };
+  };
+
+  if (connection) {
+    return run(connection);
+  }
+
+  const pool = require('../config/database');
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const created = await run(conn);
+    await conn.commit();
+    if (user) {
+      await audit(
+        user,
+        `Registou descarte/envio lab ${origemRef?.nome || origem} → ${labNome} (${created.quantidade} kits)`,
+        'requisicoes_kits',
+        created.id,
+      );
+    }
+    return created;
+  } catch (error) {
+    await conn.rollback();
+    throw error;
+  } finally {
+    conn.release();
+  }
+};
+
 exports.createDescarte = async (data, user) => {
   const laboratorioFinalService = require('./laboratorio-final.service');
   const actor = await resolveActor(user);
@@ -705,109 +884,21 @@ exports.createDescarte = async (data, user) => {
     throw new Error('Laboratório final não encontrado ou inválido');
   }
 
-  const destinoRef = {
-    localizacao: 'Laboratorio',
-    empresa_id: null,
-    posto_id: null,
-    laboratorio_id: labId,
-    nome: labNome,
-  };
-  const destino = 'Laboratorio';
-
-  const quantidade = kitsElegiveis.length;
-  const kitStatusDb = 'Utilizado';
-  const dataDescarte = normalizeDateInput(data.data);
-
-  const requisicao = {
-    numero_envio: await stocksRepository.generateNumeroEnvio(),
-    utilizador_id: actor.id,
-    data: normalizeDateInput(data.data),
+  const created = await exports.registerDescarteForKits({
+    kitIds,
     origem,
-    destino,
-    origem_empresa_id: origemRef.empresa_id,
-    origem_posto_id: origemRef.posto_id,
-    origem_laboratorio_id: null,
-    destino_empresa_id: null,
-    destino_posto_id: null,
-    destino_laboratorio_id: labId,
-    origem_nome: origemRef.nome,
-    destino_nome: labNome,
-    quantidade,
-    status: 'Entregue',
-    tracking_number: deriveTrackingFromKits(kitsElegiveis),
-    transportadora: null,
-    lote_id: null,
+    origemRef,
+    data: data.data,
+    labId,
+    labNome,
+    utilizadorId: actor.id,
     observacoes: data.observacoes || null,
-    kit_status: kitStatusDb,
-  };
-
-  const movimentos = kitsElegiveis.map((kit) => ({
-    data: requisicao.data,
-    kit_id: kit.id,
-    origem,
-    destino,
-    motivo: MOTIVOS_MOVIMENTO.DESCARTE,
-    observacoes: data.observacoes || null,
-  }));
-
-  const created = await stocksRepository.createRequisicaoWithKits({
-    requisicao,
-    kits: kitsElegiveis,
-    movimentos,
-    destinoRef: toDestinoRef(destinoRef),
+    user,
   });
 
-  const pool2 = require('../config/database');
-  const conn2 = await pool2.getConnection();
-  try {
-    for (const kit of kitsElegiveis) {
-      await conn2.execute(
-        `UPDATE processos SET status_id = 'Enviado Laboratorio',
-          laboratorio_final_id = COALESCE(laboratorio_final_id, ?),
-          data_chegada_laboratorio = COALESCE(data_chegada_laboratorio, ?),
-          data_envio_laboratorio = COALESCE(data_envio_laboratorio, ?),
-          data_colheita = COALESCE(
-            data_colheita,
-            (SELECT MIN(mk.data) FROM movimentos_kits mk
-             WHERE mk.kit_id = processos.kit_id AND mk.motivo = 'ConsumoColheita')
-          ),
-          data_entrada = COALESCE(
-            data_entrada,
-            (SELECT MIN(mk.data) FROM movimentos_kits mk
-             WHERE mk.kit_id = processos.kit_id AND mk.motivo = 'ConsumoColheita')
-          )
-         WHERE kit_id = ? AND status_id IN ('Colheita Realizada', 'Enviado Laboratorio')`,
-        [labId, dataDescarte, dataDescarte, kit.id],
-      );
-    }
-  } finally {
-    conn2.release();
-  }
-
-  await audit(
-    user,
-    `Registou descarte/envio lab ${origemRef.nome || origem} → ${labNome} (${quantidade} kits)`,
-    'requisicoes_kits',
-    created.id,
-  );
-
   return {
-    id: created.id,
-    numero_envio: requisicao.numero_envio,
-    data: toDateString(requisicao.data),
-    origem,
-    destino,
-    origem_nome: origemRef.nome || '',
-    destino_nome: labNome,
-    destino_laboratorio_id: labId,
-    quantidade,
-    status: normalizeRequisicaoStatus(requisicao.status),
-    tracking_number: requisicao.tracking_number || '',
-    transportadora: '',
-    lote_codigo: '',
-    utilizador_id: actor.id || '',
+    ...created,
     utilizador_nome: actor.nome || '',
-    observacoes: requisicao.observacoes || '',
   };
 };
 
@@ -1003,6 +1094,44 @@ exports.confirmLabArrival = async (kitId, data, user) => {
   await audit(user, `Confirmou recepção do kit no laboratório`, 'kits', kitId);
   const row = await stocksRepository.findKitById(kitId);
   return mapKitRow(row);
+};
+
+exports.revertDescarteForKit = async (kitId, data, user) => {
+  if (!kitId) throw new Error('Kit é obrigatório');
+
+  const pool = require('../config/database');
+  const kitLifecycleService = require('./kit-lifecycle.service');
+  const connection = await pool.getConnection();
+  let result;
+
+  try {
+    await connection.beginTransaction();
+    result = await kitLifecycleService.revertDescarteToOrigin(connection, {
+      kitId,
+      observacoes: data?.observacoes || null,
+      reverterProcesso: data?.reverter_processo !== false,
+    });
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+
+  await audit(
+    user,
+    `Devolveu kit do descarte para ${result.origem_nome || result.origem}`,
+    'kits',
+    kitId,
+  );
+
+  const row = await stocksRepository.findKitById(kitId);
+  return {
+    ...mapKitRow(row),
+    processo_revertido: result.processo_revertido,
+    origem_nome: result.origem_nome,
+  };
 };
 
 exports.getKitTrace = async (kitId) => {

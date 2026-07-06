@@ -131,7 +131,12 @@ export interface StockLocationInventoryResult {
 
 const isKitAguardaDescarte = (k: Kit) =>
   k.fase_ciclo === 'aguarda_envio_lab'
-  || (k.localizacao === 'Posto' && normalize(k.status) === 'utilizado' && k.fase_ciclo !== 'em_lab_final');
+  || (k.localizacao === 'Posto' && normalize(k.status) === 'utilizado' && k.fase_ciclo !== 'em_lab_final')
+  || (
+    (k.localizacao === 'Posto' || k.localizacao === 'Escritorio')
+    && (normalize(k.status) === 'expirado' || validadeEstado(k.data_validade) === 'expirado')
+    && k.fase_ciclo !== 'em_lab_final'
+  );
 
 const isKitAtLabPipeline = (k: Kit) =>
   k.fase_ciclo === 'em_lab_final'
@@ -402,8 +407,8 @@ export const computeStockAlerts = (
     alerts.push({
       id: 'kits-aguarda-descarte',
       nivel: 'aviso',
-      titulo: 'Kits aguardam descarte para laboratório',
-      descricao: 'Kits colhidos ou expirados no posto — envie via Descarte / Lab final',
+      titulo: 'Kits expirados aguardam envio para laboratório',
+      descricao: 'Kits expirados no posto ou empresa — contacte o suporte se persistirem após colheita',
       total: aguardaDescarte.length,
     });
   }

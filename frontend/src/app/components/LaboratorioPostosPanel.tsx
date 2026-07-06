@@ -19,7 +19,7 @@ import {
 import { StatusBadge } from './shared/StatusBadge';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
-import { useConfirmDelete } from '../context/ConfirmDeleteContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 type Props = {
   laboratorioId: string;
@@ -35,6 +35,7 @@ function AtivoBadge({ ativo }: { ativo: boolean }) {
 export function LaboratorioPostosPanel({ laboratorioId, canCreate, canUpdate, canDelete }: Props) {
   const navigate = useNavigate();
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
   const { postos, deletePosto, refreshPostos } = useData();
   const [search, setSearch] = useState('');
 
@@ -72,7 +73,7 @@ export function LaboratorioPostosPanel({ laboratorioId, canCreate, canUpdate, ca
             onClick={() => navigate(`/definicoes/laboratorios/${laboratorioId}/postos/novo`)}
             className={ADD_ACTION_BUTTON_CLASS}
           >
-            <Plus className="w-4 h-4" /> Novo Posto
+            <Plus className="w-4 h-4" /> {t('common.create.posto')}
           </button>
         ) : undefined}
       />

@@ -15,6 +15,7 @@ const MOTIVOS_MOVIMENTO = Object.freeze({
   CONSUMO_COLHEITA: 'ConsumoColheita',
   ENVIO_LAB_FINAL: 'EnvioLabFinal',
   DESCARTE: 'Descarte',
+  DEVOLUCAO_DESCARTE: 'DevolucaoDescarte',
   CANCELAMENTO_RESERVA: 'CancelamentoReserva',
   TRANSFERENCIA: 'Transferencia',
   CONFIRMACAO_LAB: 'ConfirmacaoLab',

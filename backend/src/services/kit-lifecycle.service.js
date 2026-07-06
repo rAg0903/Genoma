@@ -191,6 +191,7 @@ exports.consumeAtColheita = async (connection, {
   postoId,
   dataEfetiva,
   laboratorioFinalId,
+  utilizadorId = null,
 }) => {
   const labId = await laboratorioFinalService.resolveLaboratorioFinal({
     connection,
@@ -222,7 +223,7 @@ exports.consumeAtColheita = async (connection, {
       origem: 'Posto',
       destino: 'Posto',
       motivo: MOTIVOS_MOVIMENTO.CONSUMO_COLHEITA,
-      observacoes: 'Kit consumido na colheita — aguarda envio para laboratório final',
+      observacoes: 'Kit consumido na colheita',
       processoId,
       origemRef,
       destinoRef: { posto_id: effectivePostoId },
@@ -240,6 +241,41 @@ exports.consumeAtColheita = async (connection, {
        WHERE id = ?`,
       [dataColheita, labId, processoId],
     );
+  }
+
+  if (kitId) {
+    let postoNome = '';
+    if (effectivePostoId) {
+      const [postoRows] = await connection.execute(
+        'SELECT nome FROM postos WHERE id = ? LIMIT 1',
+        [effectivePostoId],
+      );
+      postoNome = postoRows[0]?.nome || '';
+    }
+
+    let labNome = '';
+    const [labRows] = await connection.execute(
+      'SELECT nome FROM laboratorios WHERE id = ? AND tipo = \'final\' LIMIT 1',
+      [labId],
+    );
+    labNome = labRows[0]?.nome || '';
+    if (!labNome) {
+      throw new Error('Laboratório final não encontrado ou inválido');
+    }
+
+    const stocksService = require('./stocks.service');
+    await stocksService.registerDescarteForKits({
+      connection,
+      kitIds: [kitId],
+      origem: 'Posto',
+      origemRef: { posto_id: effectivePostoId, nome: postoNome },
+      data: String(dataEfetiva).split('T')[0],
+      labId,
+      labNome,
+      utilizadorId,
+      observacoes: 'Descarte automático na colheita',
+      skipPastDateCheck: true,
+    });
   }
 
   return { laboratorio_final_id: labId };
@@ -317,6 +353,149 @@ exports.confirmLabArrival = async (connection, { kitId, processoId, dataChegada 
       [chegada, chegada, resolvedProcessoId],
     );
   }
+};
+
+/**
+ * Devolve kit do laboratório final para a origem do descarte (posto ou empresa).
+ * Usado quando o kit foi enviado por erro e não foi utilizado.
+ */
+exports.revertDescarteToOrigin = async (connection, {
+  kitId,
+  observacoes = null,
+  reverterProcesso = true,
+}) => {
+  const kit = await getKitRow(connection, kitId, true);
+  if (!kit) throw new Error('Kit não encontrado');
+  if (kit.fase_ciclo !== FASE_CICLO.EM_LAB_FINAL || kit.localizacao !== 'Laboratorio') {
+    throw new Error('O kit não se encontra no laboratório final para devolver.');
+  }
+
+  const [descarteRows] = await connection.execute(
+    `SELECT
+        rk.id AS requisicao_id,
+        rk.origem,
+        rk.origem_empresa_id,
+        rk.origem_posto_id,
+        rk.origem_nome,
+        rk.destino_laboratorio_id,
+        mk.data AS descarte_data
+      FROM movimentos_kits mk
+      INNER JOIN requisicoes_kits rk ON rk.id = mk.requisicao_id
+      WHERE mk.kit_id = ?
+        AND mk.motivo = ?
+        AND rk.destino = 'Laboratorio'
+        AND rk.status = 'Entregue'
+        AND NOT EXISTS (
+          SELECT 1 FROM movimentos_kits rev
+          WHERE rev.kit_id = mk.kit_id
+            AND rev.motivo = ?
+            AND rev.data >= mk.data
+        )
+      ORDER BY mk.data DESC
+      LIMIT 1
+      FOR UPDATE`,
+    [kitId, MOTIVOS_MOVIMENTO.DESCARTE, MOTIVOS_MOVIMENTO.DEVOLUCAO_DESCARTE],
+  );
+
+  const ctx = descarteRows[0];
+  if (!ctx) {
+    throw new Error('Não existe descarte activo para reverter neste kit.');
+  }
+
+  const origem = ctx.origem === 'Posto' ? 'Posto' : 'Escritorio';
+  if (origem === 'Posto' && !ctx.origem_posto_id) {
+    throw new Error('Origem do descarte (posto) não encontrada.');
+  }
+  if (origem === 'Escritorio' && !ctx.origem_empresa_id) {
+    throw new Error('Origem do descarte (empresa) não encontrada.');
+  }
+
+  const faseCiclo = origem === 'Posto' ? FASE_CICLO.EM_POSTO_AGUARDA : FASE_CICLO.EM_EMPRESA;
+  const destinoRef = origem === 'Posto'
+    ? { posto_id: ctx.origem_posto_id, empresa_id: null, laboratorio_id: null }
+    : { empresa_id: ctx.origem_empresa_id, posto_id: null, laboratorio_id: null };
+
+  await connection.execute(
+    `UPDATE kits SET status = 'Disponivel', localizacao = ?,
+      posto_id = ?, empresa_id = ?, laboratorio_id = NULL, fase_ciclo = ?
+     WHERE id = ?`,
+    [
+      origem,
+      destinoRef.posto_id,
+      destinoRef.empresa_id,
+      faseCiclo,
+      kitId,
+    ],
+  );
+
+  let processoId = null;
+  if (reverterProcesso) {
+    const [procRows] = await connection.execute(
+      `SELECT id FROM processos
+       WHERE kit_id = ?
+         AND status_id IN ('Colheita Realizada', 'Enviado Laboratorio', 'Kit Reservado', 'Em Analise')
+       LIMIT 1`,
+      [kitId],
+    );
+    processoId = procRows[0]?.id || null;
+
+    if (processoId) {
+      await connection.execute(
+        `UPDATE processos SET
+          kit_id = NULL,
+          status_id = 'Cancelado',
+          data_colheita = NULL,
+          data_envio_laboratorio = NULL,
+          data_chegada_laboratorio = NULL,
+          laboratorio_final_id = NULL
+         WHERE id = ?`,
+        [processoId],
+      );
+    }
+  }
+
+  await insertMovimento(connection, {
+    data: today(),
+    kitId,
+    origem: 'Laboratorio',
+    destino: origem,
+    motivo: MOTIVOS_MOVIMENTO.DEVOLUCAO_DESCARTE,
+    observacoes: observacoes || 'Devolução — kit enviado para descarte por erro',
+    requisicaoId: ctx.requisicao_id,
+    processoId,
+    origemRef: { laboratorio_id: ctx.destino_laboratorio_id },
+    destinoRef,
+  });
+
+  const [remainingRows] = await connection.execute(
+    `SELECT COUNT(*) AS total
+     FROM requisicao_kits_itens rki
+     INNER JOIN kits k ON k.id = rki.kit_id
+     WHERE rki.requisicao_id = ?
+       AND k.fase_ciclo = ?`,
+    [ctx.requisicao_id, FASE_CICLO.EM_LAB_FINAL],
+  );
+  const remaining = Number(remainingRows[0]?.total || 0);
+
+  if (remaining === 0) {
+    await connection.execute(
+      `UPDATE requisicoes_kits SET status = 'Cancelada' WHERE id = ?`,
+      [ctx.requisicao_id],
+    );
+  } else {
+    await connection.execute(
+      `UPDATE requisicoes_kits SET quantidade = ? WHERE id = ?`,
+      [remaining, ctx.requisicao_id],
+    );
+  }
+
+  return {
+    kit_id: kitId,
+    requisicao_id: ctx.requisicao_id,
+    origem,
+    origem_nome: ctx.origem_nome || '',
+    processo_revertido: Boolean(processoId),
+  };
 };
 
 exports.usarKitAtPosto = async (connection, {

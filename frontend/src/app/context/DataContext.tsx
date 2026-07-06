@@ -1,6 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
+// @refresh reset
+import { useCallback, useContext, useEffect, useState, ReactNode } from 'react';
+import { DataContext } from './data-context-instance';
 import { Contact, Processo, Kit, Lote, Utilizador, Empresa, Teste, TipoKit, MotivoAnulacao, ItemPesquisa, SistemaSaude, Posto, Laboratorio, Entidade, RequisicaoKit, Anexo } from '../data/types';
-import { apiRequest } from '../../lib/api';
+import { apiRequest, apiUpload } from '../../lib/api';
 import { normalizeCalendarDate, todayLocal } from '../../lib/dates';
 import {
   ApiPaciente,
@@ -68,12 +70,15 @@ interface ApiProcesso {
   fatura_envio_sms?: string | null;
   onde_seguida?: string | null;
   tipo_gravidez?: 'singular' | 'gemelar' | null;
+  origem_conceicao?: 'natural' | 'fiv_ovulos_proprios' | 'fiv_doacao_ovulos' | null;
+  quer_saber_sexo?: boolean | null;
   gestacao_semanas_registo?: number | null;
   gestacao_dias_registo?: number | null;
   gestacao_registada_em?: string | null;
   motivo_anulacao_id?: string | null;
   motivo_anulacao_nome?: string | null;
   data_anulacao?: string | null;
+  data_conclusao?: string | null;
 }
 
 interface ApiMedico {
@@ -511,12 +516,15 @@ const mapPedidoToProcesso = (pedido: ApiProcesso): Processo => ({
   fatura_envio_sms: normalizeDate(pedido.fatura_envio_sms) || '',
   onde_seguida: pedido.onde_seguida || '',
   tipo_gravidez: pedido.tipo_gravidez || null,
+  origem_conceicao: pedido.origem_conceicao || null,
+  quer_saber_sexo: !!pedido.quer_saber_sexo,
   gestacao_semanas_registo: pedido.gestacao_semanas_registo ?? null,
   gestacao_dias_registo: pedido.gestacao_dias_registo ?? null,
   gestacao_registada_em: normalizeDate(pedido.gestacao_registada_em) || null,
   motivo_anulacao_id: pedido.motivo_anulacao_id || null,
   motivo_anulacao_nome: pedido.motivo_anulacao_nome || undefined,
   data_anulacao: normalizeDate(pedido.data_anulacao) || null,
+  data_conclusao: normalizeDate(pedido.data_conclusao) || null,
 });
 
 const mapKitStatusFromApi = (status: string | null | undefined): Kit['status'] => {
@@ -617,6 +625,7 @@ export interface DataContextType {
 
   getAnexosByPaciente: (pacienteId: string) => Promise<Anexo[]>;
   addAnexo: (data: { paciente_id?: string; processo_id?: string; tipo: Anexo['tipo']; titulo: string; descricao?: string; url?: string }) => Promise<void>;
+  uploadAnexoFile: (file: File, data: { paciente_id?: string; processo_id?: string }) => Promise<void>;
   deleteAnexo: (id: string) => Promise<void>;
 
   processos: Processo[];
@@ -636,15 +645,6 @@ export interface DataContextType {
 
   requisicoesKits: RequisicaoKit[];
   addRequisicaoKit: (requisicao: Omit<RequisicaoKit, 'id'>) => Promise<void>;
-  addDescarteEnvio: (data: {
-    data: string;
-    observacoes?: string;
-    kit_ids: string[];
-    origem: string;
-    origem_nome?: string;
-    origem_empresa_id?: string | null;
-    origem_posto_id?: string | null;
-  }) => Promise<void>;
   updateRequisicaoKit: (id: string, data: Partial<RequisicaoKit>) => Promise<void>;
   deleteRequisicaoKit: (id: string) => Promise<void>;
 
@@ -699,6 +699,7 @@ export interface DataContextType {
   getPostoKitsDisponiveis: (postoId: string, testeId?: string) => Promise<PostoKitDisponivel[]>;
   marcarKitUtilizado: (kitId: string, options?: { processo_id?: string; posto_id?: string; laboratorio_final_id?: string }) => Promise<void>;
   confirmKitLabArrival: (kitId: string, data?: { processo_id?: string; data_chegada?: string }) => Promise<void>;
+  revertDescarteKit: (kitId: string, data?: { observacoes?: string; reverter_processo?: boolean }) => Promise<void>;
 
   laboratorios: Laboratorio[];
   refreshLaboratorios: () => Promise<void>;
@@ -713,7 +714,6 @@ export interface DataContextType {
   deleteEntidade: (id: string) => Promise<void>;
 }
 
-const DataContext = createContext<DataContextType | null>(null);
 const genId = () => Math.random().toString(36).substr(2, 9);
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -976,6 +976,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await apiRequest('/anexos', { method: 'POST', token, body: data });
   };
 
+  const uploadAnexoFile = async (file: File, data: { paciente_id?: string; processo_id?: string }) => {
+    const token = getAuthToken();
+    if (!token) throw new Error('Sessão expirada');
+    if (!data.paciente_id && !data.processo_id) {
+      throw new Error('Anexo tem de estar associado a um contacto ou processo');
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    if (data.paciente_id) formData.append('paciente_id', data.paciente_id);
+    if (data.processo_id) formData.append('processo_id', data.processo_id);
+    await apiUpload('/anexos/upload', formData, { token });
+  };
+
   const deleteAnexo = async (id: string) => {
     const token = getAuthToken();
     if (!token) return;
@@ -1044,6 +1057,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         data_colheita: data.data_colheita || null,
         data_colheita_prevista: data.data_colheita_prevista || null,
         tipo_gravidez: data.tipo_gravidez || null,
+        origem_conceicao: data.origem_conceicao || null,
+        quer_saber_sexo: !!data.quer_saber_sexo,
         onde_seguida: data.onde_seguida || null,
         gestacao_semanas_registo: data.gestacao_semanas_registo ?? null,
         gestacao_dias_registo: data.gestacao_dias_registo ?? null,
@@ -1347,35 +1362,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
 
     await Promise.all([refreshRequisicoes(), refreshKits(), refreshLotes()]);
-  };
-
-  const addDescarteEnvio = async (data: {
-    data: string;
-    observacoes?: string;
-    kit_ids: string[];
-    origem: string;
-    origem_nome?: string;
-    origem_empresa_id?: string | null;
-    origem_posto_id?: string | null;
-  }) => {
-    const token = getAuthToken();
-    if (!token) throw new Error('Sessão expirada');
-
-    await apiRequest('/stocks/descartes', {
-      method: 'POST',
-      token,
-      body: {
-        data: data.data,
-        observacoes: data.observacoes || null,
-        kit_ids: data.kit_ids,
-        origem: data.origem,
-        origem_nome: data.origem_nome || null,
-        origem_empresa_id: data.origem_empresa_id || null,
-        origem_posto_id: data.origem_posto_id || null,
-      },
-    });
-
-    await Promise.all([refreshRequisicoes(), refreshKits()]);
   };
 
   const updateRequisicaoKit = async (id: string, data: Partial<RequisicaoKit>) => {
@@ -1776,7 +1762,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const token = getAuthToken();
     if (!token || !kitId) return;
     await apiRequest(`/postos/kits/${kitId}/utilizar`, { method: 'POST', token, body: options || {} });
-    await refreshKits();
+    await Promise.all([refreshKits(), refreshRequisicoes()]);
   };
 
   const confirmKitLabArrival = async (kitId: string, data?: { processo_id?: string; data_chegada?: string }) => {
@@ -1786,15 +1772,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await refreshKits();
   };
 
+  const revertDescarteKit = async (
+    kitId: string,
+    data?: { observacoes?: string; reverter_processo?: boolean },
+  ) => {
+    const token = getAuthToken();
+    if (!token || !kitId) throw new Error('Sessão expirada');
+    await apiRequest(`/stocks/kits/${kitId}/reverter-descarte`, {
+      method: 'POST',
+      token,
+      body: data || {},
+    });
+    await Promise.all([refreshKits(), refreshRequisicoes(), refreshProcessos()]);
+  };
+
   return (
     <DataContext.Provider value={{
       refreshProcessos, refreshKits, refreshLotes, refreshRequisicoes,
       contacts, addContact, updateContact, deleteContact,
-      getAnexosByPaciente, addAnexo, deleteAnexo,
+      getAnexosByPaciente, addAnexo, uploadAnexoFile, deleteAnexo,
       processos, addProcesso, updateProcesso, deleteProcesso,
       kits, addKit, updateKit, deleteKit, checkKitDuplicado,
       lotes, addLote, updateLote,
-      requisicoesKits, addRequisicaoKit, addDescarteEnvio, updateRequisicaoKit, deleteRequisicaoKit,
+      requisicoesKits, addRequisicaoKit, updateRequisicaoKit, deleteRequisicaoKit,
       utilizadores, addUtilizador, updateUtilizador, deleteUtilizador,
       empresas, refreshEmpresas, addEmpresa, updateEmpresa, deleteEmpresa,
       testes, refreshTestes, addTeste, updateTeste, deleteTeste, addSubTeste, updateSubTeste, deleteSubTeste,
@@ -1802,7 +1802,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       motivosAnulacao, refreshMotivosAnulacao, addMotivoAnulacao, updateMotivoAnulacao, deleteMotivoAnulacao,
       itensPesquisa, addItemPesquisa, updateItemPesquisa, deleteItemPesquisa,
       sistemasSaude, addSistemaSaude, updateSistemaSaude, deleteSistemaSaude,
-      postos, refreshPostos, addPosto, updatePosto, deletePosto, getPostoStock, getPostoKitsDisponiveis, marcarKitUtilizado, confirmKitLabArrival,
+      postos, refreshPostos, addPosto, updatePosto, deletePosto, getPostoStock, getPostoKitsDisponiveis, marcarKitUtilizado, confirmKitLabArrival, revertDescarteKit,
       laboratorios, refreshLaboratorios, addLaboratorio, updateLaboratorio, deleteLaboratorio,
       entidades, refreshEntidades, addEntidade, updateEntidade, deleteEntidade,
     }}>

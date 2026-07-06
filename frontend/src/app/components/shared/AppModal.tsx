@@ -1,7 +1,7 @@
 import { LucideIcon, X } from 'lucide-react';
 import { ReactNode } from 'react';
 import { ADD_ACTION_BUTTON_CLASS } from '../../../lib/design-system';
-import { CONTROL, FORM, SURFACE, TYPOGRAPHY } from '../../../lib/design-tokens';
+import { CONTROL, FORM, MODAL, SURFACE, TYPOGRAPHY } from '../../../lib/design-tokens';
 
 type AppModalProps = {
   title: string;
@@ -30,14 +30,14 @@ export function AppModal({
 }: AppModalProps) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      className={MODAL.overlay}
       style={{ fontFamily: 'Inter, sans-serif' }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="app-modal-title"
     >
       <div className={`${SURFACE.cardElevated} shadow-2xl w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} overflow-hidden flex flex-col max-h-[90vh]`}>
-        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <div className={`flex items-start justify-between gap-3 px-5 py-4 border-b shrink-0 ${MODAL.headerBorder}`}>
           <div className="min-w-0 flex items-start gap-2.5">
             {Icon ? <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${iconClassName}`} /> : null}
             <div className="min-w-0">
@@ -52,7 +52,7 @@ export function AppModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+            className={MODAL.closeBtn}
             aria-label="Fechar"
           >
             <X className="w-5 h-5" />
@@ -64,7 +64,7 @@ export function AppModal({
         </div>
 
         {footer ? (
-          <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
+          <div className={MODAL.footer}>
             {footer}
           </div>
         ) : null}
@@ -84,11 +84,13 @@ type ModalFieldProps = {
 export function ModalField({ label, required, hint, children }: ModalFieldProps) {
   return (
     <div>
-      <label className={FORM.label}>
-        {label}
-        {required ? <span className="text-rose-500 ml-0.5">*</span> : null}
-      </label>
-      {children}
+      <div className={FORM.labelArea}>
+        <label className={FORM.label}>
+          {label}
+          {required ? <span className="text-rose-500 ml-0.5">*</span> : null}
+        </label>
+      </div>
+      <div className={FORM.fieldControlAlign}>{children}</div>
       {hint ? <p className={FORM.hint}>{hint}</p> : null}
     </div>
   );

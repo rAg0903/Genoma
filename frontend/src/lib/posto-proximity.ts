@@ -122,3 +122,15 @@ export function formatPostoProximidadeMotivo(motivo: PostoProximidadeMotivo): st
       return 'CP próximo';
   }
 }
+
+export function formatPostoOptionLabel(posto: {
+  nome?: string;
+  cidade?: string;
+  codigo_postal?: string;
+}): string {
+  return [
+    posto.nome,
+    posto.cidade ? ` — ${posto.cidade}` : '',
+    posto.codigo_postal ? ` (${posto.codigo_postal})` : '',
+  ].join('');
+}

@@ -63,6 +63,9 @@ const server = app.listen(PORT, () => {
   `);
 });
 
+const kitAutoDescarte = require('./src/services/kit-auto-descarte.service');
+kitAutoDescarte.scheduleAutoDescartes();
+
 // Tratamento de erro de inicialização
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {

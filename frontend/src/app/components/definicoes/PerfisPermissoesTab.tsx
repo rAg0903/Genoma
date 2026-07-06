@@ -13,6 +13,7 @@ import {
   StockSubmodule,
 } from '../../../lib/permissions';
 import { ADD_ACTION_BUTTON_CLASS } from '../../../lib/design-system';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { CONTROL, FORM, SURFACE } from '../../../lib/design-tokens';
 import { AppModal, ModalActions, ModalAlert, ModalField, MODAL_INPUT_CLASS } from '../shared/AppModal';
 import { FormPageHeader, FormPrimaryButton } from '../shared/FormPageChrome';
@@ -35,6 +36,7 @@ type ViewMode = 'list' | 'edit';
 
 export function PerfisPermissoesTab() {
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
   const {
     stockPermissionsSyncStatus,
     refreshStockPermissionsFromBackend,
@@ -191,7 +193,7 @@ export function PerfisPermissoesTab() {
         searchName="search-perfis"
         action={
           <button type="button" onClick={() => setCreateOpen(true)} className={ADD_ACTION_BUTTON_CLASS}>
-            <Plus className="w-4 h-4" /> Inserir novo
+            <Plus className="w-4 h-4" /> {t('common.create.insertNew')}
           </button>
         }
       />
@@ -204,7 +206,7 @@ export function PerfisPermissoesTab() {
         <button
           type="button"
           onClick={() => void refreshStockPermissionsFromBackend()}
-          className="inline-flex items-center gap-1.5 shrink-0 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className={CONTROL.buttonSecondary}
           style={{ fontSize: '13px', fontWeight: 500 }}
         >
           <RefreshCw className="w-4 h-4" /> Sincronizar

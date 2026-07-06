@@ -3,6 +3,7 @@ import { Download, FileSpreadsheet, FileText, FileDown, Loader2 } from 'lucide-r
 import { toast } from 'sonner';
 import { listagensApi, ListingKey, ListingQuery } from '../../../lib/api-listagens';
 import { ADD_ACTION_BUTTON_CLASS } from '../../../lib/design-system';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface ExportMenuProps {
   listing: ListingKey;
@@ -15,6 +16,7 @@ interface ExportMenuProps {
  * (sem paginacao) — CSV, Excel (.xlsx) ou PDF (HTML pronto a imprimir).
  */
 export function ExportMenu({ listing, query, count }: ExportMenuProps) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<'csv' | 'xlsx' | 'pdf' | null>(null);
 
@@ -47,14 +49,14 @@ export function ExportMenu({ listing, query, count }: ExportMenuProps) {
         className={ADD_ACTION_BUTTON_CLASS}
       >
         <Download className="w-4 h-4" />
-        <span className="hidden sm:inline">Exportar</span>
+        <span className="hidden sm:inline">{t('common.export')}</span>
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
           <div className="absolute right-0 mt-2 w-56 z-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl p-1.5">
             <p className="px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-              Exportar {count} registos
+              {t('common.exportRecords', { count })}
             </p>
             {items.map(({ id, label, icon: Icon }) => (
               <button

@@ -19,6 +19,8 @@ export interface ApiPaciente {
   medico_id?: string | null;
   teste_id?: string | null;
   tipo_gravidez?: 'singular' | 'gemelar' | null;
+  origem_conceicao?: 'natural' | 'fiv_ovulos_proprios' | 'fiv_doacao_ovulos' | null;
+  quer_saber_sexo?: boolean | null;
   gestacao_semanas_registo?: number | null;
   gestacao_dias_registo?: number | null;
   gestacao_registada_em?: string | null;
@@ -77,6 +79,8 @@ export const mapApiPacienteToContact = (paciente: ApiPaciente): Contact => ({
   medico_id: paciente.medico_id || undefined,
   teste_id: paciente.teste_id || undefined,
   tipo_gravidez: paciente.tipo_gravidez || null,
+  origem_conceicao: paciente.origem_conceicao || null,
+  quer_saber_sexo: !!paciente.quer_saber_sexo,
   gestacao_semanas_registo: paciente.gestacao_semanas_registo ?? null,
   gestacao_dias_registo: paciente.gestacao_dias_registo ?? null,
   gestacao_registada_em: normalizeCalendarDate(paciente.gestacao_registada_em) || null,
@@ -122,6 +126,8 @@ export const contactToApiBody = (data: Omit<Contact, 'id' | 'created_at'>) => ({
   medico_id: data.medico_id || null,
   teste_id: data.teste_id || null,
   tipo_gravidez: data.tipo_gravidez || null,
+  origem_conceicao: data.origem_conceicao || null,
+  quer_saber_sexo: !!data.quer_saber_sexo,
   gestacao_semanas_registo: data.gestacao_semanas_registo ?? null,
   gestacao_dias_registo: data.gestacao_dias_registo ?? null,
   gestacao_registada_em: data.gestacao_registada_em || null,

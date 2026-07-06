@@ -2,10 +2,12 @@ import { ArrowLeft } from 'lucide-react';
 import { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { ADD_ACTION_BUTTON_CLASS } from '../../../lib/design-system';
 import { CONTROL, FORM, FormFieldWidth, PAGE } from '../../../lib/design-tokens';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
@@ -41,6 +43,7 @@ type FormPageHeaderProps<T extends string> = {
   activeTab?: T;
   onTabChange?: (id: T) => void;
   tabsAriaLabel?: string;
+  backAriaLabel?: string;
 };
 
 /** Cabeçalho de formulário: voltar, avatar, título, acções e tabs deslizantes. */
@@ -54,8 +57,11 @@ export function FormPageHeader<T extends string>({
   tabs,
   activeTab,
   onTabChange,
-  tabsAriaLabel = 'Secções do formulário',
+  tabsAriaLabel,
+  backAriaLabel,
 }: FormPageHeaderProps<T>) {
+  const { t } = useLanguage();
+
   return (
     <header className="space-y-4">
       <div className="flex items-center gap-3">
@@ -63,7 +69,7 @@ export function FormPageHeader<T extends string>({
           type="button"
           onClick={onBack}
           className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0"
-          aria-label="Voltar"
+          aria-label={backAriaLabel ?? t('form.back')}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -87,7 +93,7 @@ export function FormPageHeader<T extends string>({
             items={tabs}
             active={activeTab}
             onChange={onTabChange}
-            ariaLabel={tabsAriaLabel}
+            ariaLabel={tabsAriaLabel ?? t('form.sectionsAria')}
           />
         </SlidingTabsSlot>
       ) : null}
@@ -146,6 +152,7 @@ type FormFieldProps = {
   hint?: string;
   width?: FormFieldWidth;
   className?: string;
+  controlClassName?: string;
   children: ReactNode;
 };
 
@@ -156,16 +163,40 @@ export function FormField({
   hint,
   width = 'md',
   className = '',
+  controlClassName = '',
   children,
 }: FormFieldProps) {
   return (
     <div className={`${FORM.fieldWidth[width]} ${className}`}>
-      <label className={FORM.label}>
-        {label}
-        {required ? <span className="text-rose-500 ml-0.5">*</span> : null}
-      </label>
-      <div className="mt-1.5">{children}</div>
+      <div className={FORM.labelArea}>
+        <label className={FORM.label}>
+          {label}
+          {required ? <span className="text-rose-500 ml-0.5">*</span> : null}
+        </label>
+      </div>
+      <div className={`${FORM.fieldControl} ${controlClassName}`}>{children}</div>
       {hint ? <p className={FORM.hint}>{hint}</p> : null}
+    </div>
+  );
+}
+
+type FormFieldAccessoryProps = {
+  width?: FormFieldWidth;
+  className?: string;
+  children: ReactNode;
+};
+
+/** Botões/checkboxes/alerts na mesma linha que FormField — respeita a área do label. */
+export function FormFieldAccessory({
+  width,
+  className = '',
+  children,
+}: FormFieldAccessoryProps) {
+  const widthClass = width ? FORM.fieldWidth[width] : '';
+  return (
+    <div className={`${widthClass} flex flex-col ${className}`.trim()}>
+      <div className={FORM.labelArea} aria-hidden="true" />
+      <div className={FORM.fieldControlAlign}>{children}</div>
     </div>
   );
 }
@@ -268,6 +299,9 @@ type FormRadixSelectProps = {
   placeholder?: string;
   disabled?: boolean;
   options: { value: string; label: string }[];
+  footer?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /** Select customizado (Radix) — dropdown alinhado ao tema CRM. */
@@ -277,9 +311,18 @@ export function FormRadixSelect({
   placeholder = 'Selecione…',
   disabled,
   options,
+  footer,
+  open,
+  onOpenChange,
 }: FormRadixSelectProps) {
   return (
-    <Select value={value || undefined} onValueChange={onChange} disabled={disabled}>
+    <Select
+      value={value || undefined}
+      onValueChange={onChange}
+      disabled={disabled}
+      open={open}
+      onOpenChange={onOpenChange}
+    >
       <SelectTrigger
         className={cn(
           CONTROL.input,
@@ -296,6 +339,17 @@ export function FormRadixSelect({
             {opt.label}
           </SelectItem>
         ))}
+        {footer ? (
+          <>
+            <SelectSeparator className="my-1 bg-slate-200 dark:bg-slate-700" />
+            <div
+              className="px-1 pb-1"
+              onPointerDown={(event) => event.preventDefault()}
+            >
+              {footer}
+            </div>
+          </>
+        ) : null}
       </SelectContent>
     </Select>
   );

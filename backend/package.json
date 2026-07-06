@@ -13,6 +13,7 @@
     "wipe:crm": "node src/utils/wipe-crm-data.js",
     "reset:crm": "node src/utils/reset-crm.js",
     "export:database": "node src/utils/export-database.js",
+    "jobs:auto-descartes": "node src/utils/run-auto-descartes.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint .",
@@ -40,6 +41,7 @@
     "express-validator": "^7.3.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
     "mysql2": "^3.18.2",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.1"

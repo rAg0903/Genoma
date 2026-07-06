@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Edit, Trash2, Phone, MapPin, User, FileText, Baby, Syringe, Receipt, StickyNote, Paperclip, Plus, Download, Ban } from 'lucide-react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { Edit, Trash2, Phone, MapPin, User, FileText, Baby, Syringe, Receipt, StickyNote, Paperclip, Plus, Download, Ban, Loader2 } from 'lucide-react';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -11,10 +11,15 @@ import { formatCalendarDatePt } from '../../lib/dates';
 import { extractFaturacaoFromContact, resolveFaturacao } from '../../lib/faturacao';
 import { calcularDataPartoPrevista, calcularGestacaoAtual, formatDataPartoPt } from '../../lib/gestacao';
 import { resolveTesteSelecionavelLabel } from '../../lib/testes';
+import { formatOrigemConceicao } from '../../lib/origem-conceicao';
 import { ProcessFaturacaoView } from './shared/ProcessFaturacaoFields';
 import { FaturacaoAlertBanner } from './shared/FaturacaoAlertBanner';
 import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
-import { DETAIL, CONTROL, FORM, FormFieldWidth } from '../../lib/design-tokens';
+import { downloadAnexoFile } from '../../lib/api';
+import { DETAIL, CONTROL, FORM } from '../../lib/design-tokens';
+import { DetailDivider, DetailPanel, DetailSection, InfoField } from './shared/DetailLayout';
+
+export { DetailDivider, DetailPanel, DetailSection, InfoField, Section } from './shared/DetailLayout';
 import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton, FormTabContent } from './shared/FormPageChrome';
 
 interface ContactDetailProps {
@@ -71,7 +76,7 @@ const TABS: { id: TabId; label: string; icon: typeof User }[] = [
 const formatDate = (value?: string) => formatCalendarDatePt(value);
 
 export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = true, canDelete = true }: ContactDetailProps) {
-  const { processos, testes, postos, motivosAnulacao, getAnexosByPaciente, addAnexo, deleteAnexo } = useData();
+  const { processos, testes, postos, motivosAnulacao, getAnexosByPaciente, uploadAnexoFile, deleteAnexo } = useData();
   const { t } = useLanguage();
   const [tab, setTab] = useState<TabId>('identificacao');
   const contactProcessos = processos.filter((p) => p.paciente_id === contact.id && isProcessoLaboratorio(p.estado));
@@ -158,7 +163,7 @@ export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = t
             canUpdate={canUpdate}
             canDelete={canDelete}
             getAnexos={getAnexosByPaciente}
-            addAnexo={addAnexo}
+            uploadAnexoFile={uploadAnexoFile}
             deleteAnexo={deleteAnexo}
           />
         )}
@@ -167,66 +172,6 @@ export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = t
   );
 }
 
-export function Section({ title, icon: Icon, children }: { title: string; icon: typeof User; children: React.ReactNode }) {
-  return (
-    <div className={DETAIL.card}>
-      <div className={DETAIL.sectionTitle}>
-        <span className={DETAIL.sectionIconBadge}>
-          <Icon className={DETAIL.sectionIcon} />
-        </span>
-        <span>{title}</span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-export function DetailPanel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`${DETAIL.panel} ${className}`}>{children}</div>;
-}
-
-export function DetailSection({ title, icon: Icon, children }: { title: string; icon: typeof User; children: React.ReactNode }) {
-  return (
-    <div className={DETAIL.section}>
-      <div className={DETAIL.sectionTitle}>
-        <span className={DETAIL.sectionIconBadge}>
-          <Icon className={DETAIL.sectionIcon} />
-        </span>
-        <span>{title}</span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-export function DetailDivider() {
-  return <div className={DETAIL.divider} role="separator" />;
-}
-
-export function InfoField({
-  label,
-  value,
-  mono,
-  width,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-  width?: FormFieldWidth;
-}) {
-  const empty = !value || value === '—';
-  return (
-    <div className={width ? FORM.fieldWidth[width] : undefined}>
-      <div className={DETAIL.label}>{label}</div>
-      <div
-        className={[DETAIL.value, empty ? DETAIL.valueEmpty : ''].join(' ')}
-        style={{ fontFamily: mono ? 'monospace' : undefined }}
-      >
-        {value || '—'}
-      </div>
-    </div>
-  );
-}
 
 function IdentificacaoTab({ contact, motivoAnulacaoNome }: { contact: Contact; motivoAnulacaoNome: string }) {
   const { t } = useLanguage();
@@ -310,6 +255,8 @@ function GravidezTab({ contact, testeNome, processos }: { contact: Contact; test
             <div className={FORM.fieldRow}>
               <InfoField label={t('pages.contacts.form.pack')} value={testeNome} width="lg" />
               <InfoField label="Tipo de gravidez" value={contact.tipo_gravidez === 'gemelar' ? 'Gemelar' : contact.tipo_gravidez === 'singular' ? 'Singular' : ''} width="md" />
+              <InfoField label="Origem da conceção" value={formatOrigemConceicao(contact.origem_conceicao)} width="xl" />
+              <InfoField label="Quer saber o sexo" value={contact.quer_saber_sexo ? 'Sim' : 'Não'} width="sm" />
               <InfoField label="Onde é seguida" value={contact.onde_seguida || ''} width="2xl" />
               {contact.gestacao_semanas_registo != null && (
                 <InfoField
@@ -392,7 +339,7 @@ function FaturacaoTab({ faturacao }: { faturacao: ReturnType<typeof extractFatur
     <FormTabContent>
       <DetailPanel>
         <DetailSection title="Faturação" icon={Receipt}>
-          <ProcessFaturacaoView value={faturacao} />
+          <ProcessFaturacaoView value={faturacao} showMultibancoEnvio={false} />
         </DetailSection>
       </DetailPanel>
     </FormTabContent>
@@ -431,20 +378,27 @@ function NotasTab({ contact, processos }: { contact: Contact; processos: { id: s
 }
 
 export function AnexosTab({
-  pacienteId, canUpdate, canDelete, getAnexos, addAnexo, deleteAnexo,
+  pacienteId,
+  processoId,
+  canUpdate,
+  canDelete,
+  getAnexos,
+  uploadAnexoFile,
+  deleteAnexo,
 }: {
   pacienteId: string;
+  processoId?: string;
   canUpdate: boolean;
   canDelete: boolean;
   getAnexos: (id: string) => Promise<Anexo[]>;
-  addAnexo: (data: { paciente_id?: string; tipo: Anexo['tipo']; titulo: string; descricao?: string; url?: string }) => Promise<void>;
+  uploadAnexoFile: (file: File, data: { paciente_id?: string; processo_id?: string }) => Promise<void>;
   deleteAnexo: (id: string) => Promise<void>;
 }) {
   const confirmDelete = useConfirmDelete();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [anexos, setAnexos] = useState<Anexo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<{ tipo: Anexo['tipo']; titulo: string; descricao: string; url: string }>({ tipo: 'Documento', titulo: '', descricao: '', url: '' });
+  const [uploading, setUploading] = useState(false);
 
   const reload = async () => {
     setLoading(true);
@@ -455,15 +409,40 @@ export function AnexosTab({
 
   useEffect(() => { void reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [pacienteId]);
 
-  const handleAdd = async () => {
-    if (!form.titulo.trim()) { toast.error('Título é obrigatório.'); return; }
+  const handleFilesSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (files.length === 0) return;
+
+    setUploading(true);
     try {
-      await addAnexo({ paciente_id: pacienteId, tipo: form.tipo, titulo: form.titulo, descricao: form.descricao, url: form.url });
-      toast.success('Anexo adicionado.');
-      setForm({ tipo: 'Documento', titulo: '', descricao: '', url: '' });
-      setShowForm(false);
+      for (const file of files) {
+        await uploadAnexoFile(file, {
+          paciente_id: pacienteId,
+          ...(processoId ? { processo_id: processoId } : {}),
+        });
+      }
+      toast.success(files.length === 1 ? 'Anexo carregado.' : `${files.length} anexos carregados.`);
       await reload();
-    } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao adicionar anexo.'); }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao carregar anexo.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownload = async (anexo: Anexo) => {
+    if (anexo.url?.startsWith('uploads/')) {
+      try {
+        await downloadAnexoFile(anexo.id, anexo.titulo);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Falha ao transferir ficheiro.');
+      }
+      return;
+    }
+    if (anexo.url) {
+      window.open(anexo.url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const handleDelete = async (id: string, titulo: string) => {
@@ -472,61 +451,73 @@ export function AnexosTab({
     catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao remover.'); }
   };
 
-  const input = `${CONTROL.input} text-sm`;
-
   return (
     <FormTabContent>
       <DetailPanel>
         <DetailSection title="Anexos" icon={Paperclip}>
       {canUpdate && (
         <div className="mb-4">
-          {!showForm ? (
-            <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50" style={{ fontSize: '12px', fontWeight: 500 }}>
-              <Plus className="w-3.5 h-3.5" /> Adicionar anexo
-            </button>
-          ) : (
-            <div className="space-y-3 p-4 bg-gray-50 dark:bg-slate-800/25 rounded-lg">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <select className={input} value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as Anexo['tipo'] })}>
-                  <option value="Documento">Documento</option>
-                  <option value="Email">E-mail (enviado/recebido)</option>
-                  <option value="Outro">Outro</option>
-                </select>
-                <input className={input} placeholder="Título" value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
-              </div>
-              <input className={input} placeholder="URL / referência (opcional)" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
-              <textarea className={input} rows={2} placeholder="Descrição (opcional)" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setShowForm(false)} className="px-3 py-1.5 text-sm rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">Cancelar</button>
-                <button onClick={() => void handleAdd()} className={ADD_ACTION_BUTTON_CLASS}>Guardar</button>
-              </div>
-            </div>
-          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            multiple
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.txt,.eml,.msg,application/pdf,image/*"
+            onChange={(e) => void handleFilesSelected(e)}
+          />
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+            className={`${ADD_ACTION_BUTTON_CLASS} disabled:opacity-60`}
+            style={{ fontSize: '12px', fontWeight: 500 }}
+          >
+            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+            {uploading ? 'A carregar…' : 'Adicionar anexo'}
+          </button>
         </div>
       )}
 
       {loading ? (
-        <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '13px' }}>A carregar…</p>
+        <p className="text-slate-400 dark:text-slate-500" style={{ fontSize: '13px' }}>A carregar…</p>
       ) : anexos.length === 0 ? (
         <div className="py-8 text-center">
-          <FileText className="w-8 h-8 text-gray-200 dark:text-gray-700 mx-auto mb-2" />
-          <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '13px' }}>Sem anexos (documentos ou registo de e-mails).</p>
+          <FileText className="w-8 h-8 text-slate-200 dark:text-slate-700 mx-auto mb-2" />
+          <p className="text-slate-400 dark:text-slate-500" style={{ fontSize: '13px' }}>Sem anexos (documentos ou registo de e-mails).</p>
         </div>
       ) : (
         <div className="space-y-2">
           {anexos.map((a) => (
-            <div key={a.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800/30 rounded-lg">
+            <div key={a.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-[#151f30]/50 rounded-lg border border-slate-100 dark:border-[#334155]/45">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200">{a.tipo}</span>
-                  <span className="text-gray-900 dark:text-gray-100 truncate" style={{ fontSize: '13px', fontWeight: 500 }}>{a.titulo}</span>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-200 dark:bg-[#243044] text-slate-700 dark:text-slate-200">{a.tipo}</span>
+                  <span className="text-slate-900 dark:text-slate-100 truncate" style={{ fontSize: '13px', fontWeight: 500 }}>{a.titulo}</span>
                 </div>
-                {a.descricao && <p className="text-gray-500 dark:text-gray-400 mt-1 truncate" style={{ fontSize: '12px' }}>{a.descricao}</p>}
-                <span className="text-gray-400 dark:text-gray-500" style={{ fontSize: '11px' }}>{formatDate(a.created_at)}</span>
+                {a.descricao && <p className="text-slate-500 dark:text-slate-400 mt-1 truncate" style={{ fontSize: '12px' }}>{a.descricao}</p>}
+                <span className="text-slate-400 dark:text-slate-500" style={{ fontSize: '11px' }}>{formatDate(a.created_at)}</span>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                {a.url && <a href={a.url} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20" title="Abrir"><Download className="w-4 h-4" /></a>}
-                {canDelete && <button onClick={() => void handleDelete(a.id, a.titulo)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" title="Remover"><Trash2 className="w-4 h-4" /></button>}
+                {a.url && (
+                  <button
+                    type="button"
+                    onClick={() => void handleDownload(a)}
+                    className="p-1.5 rounded-lg text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-900/20"
+                    title="Transferir"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(a.id, a.titulo)}
+                    className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    title="Remover"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

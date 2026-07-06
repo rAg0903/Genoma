@@ -8,6 +8,7 @@ import type { MotivoAnulacao } from '../data/types';
 import { MOTIVO_CONTEXTO_LABEL } from '../../lib/motivos-anulacao';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { MotivoAnulacaoContexto } from '../../lib/motivos-anulacao';
 import { AppModal, ModalActions, ModalCheckbox, ModalField, MODAL_INPUT_CLASS } from './shared/AppModal';
 import {
@@ -24,6 +25,7 @@ import {
 
 export function MotivosAnulacaoTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
   const [motivos, setMotivos] = useState<MotivoAnulacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -102,7 +104,7 @@ export function MotivosAnulacaoTab({ canCreate, canUpdate, canDelete }: { canCre
         searchName="search-motivos-anulacao"
         action={canCreate ? (
           <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}>
-            <Plus className="w-4 h-4" /> Inserir novo
+            <Plus className="w-4 h-4" /> {t('common.create.insertNew')}
           </button>
         ) : undefined}
       />

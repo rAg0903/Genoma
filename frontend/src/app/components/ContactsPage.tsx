@@ -248,7 +248,7 @@ export function ContactsPage() {
               {canCreate && (
                 <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}>
                   <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Novo Contacto</span>
+                  <span className="hidden sm:inline">{t('common.create.contact')}</span>
                 </button>
               )}
             </div>

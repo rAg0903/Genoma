@@ -169,3 +169,9 @@ export const isFaturaPorEmitir = (p: Processo): boolean => p.estado === 'Validad
 export const isFaturaPorPagar = (p: Processo): boolean => !!p.fatura_emitida && !p.pagamento_data;
 
 export const isAtivo = (p: Processo): boolean => p.estado !== 'Faturado' && p.estado !== 'Cancelado';
+
+export const isAntigo = (p: Processo): boolean => !isAtivo(p);
+
+/** Data de referência para ordenar processos concluídos. */
+export const resolveDataConclusao = (p: Processo): string | undefined =>
+  p.data_conclusao || p.data_anulacao || p.fatura_data_emissao || p.data_validacao || p.data_entrada;

@@ -169,6 +169,7 @@ exports.usarKit = async (kitId, user, options = {}) => {
     processoId: options.processo_id || null,
     postoId: options.posto_id || null,
     laboratorioFinalId: options.laboratorio_final_id || null,
+    utilizadorId: user?.id || null,
   });
   if (!ok) throw new Error('Kit não encontrado');
   await audit(user, 'Kit utilizado em colheita', kitId);

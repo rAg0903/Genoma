@@ -1,5 +1,5 @@
 import { Processo } from '../app/data/types';
-import { todayLocal } from './dates';
+import { maxCalendarDate, normalizeCalendarDate, todayLocal } from './dates';
 import { resolveProcessoKitCodigo } from './processos';
 
 export type ProcessFormData = Omit<Processo, 'id'>;
@@ -137,13 +137,29 @@ export const buildFaturacaoPayload = (data: ProcessFaturacaoData): Partial<Proce
   fatura_emitida: !!(data.fatura_numero?.trim() || data.fatura_data_emissao),
 });
 
+export const isDocumentoFaturaCompleto = (data: ProcessFaturacaoData): boolean =>
+  !!(
+    data.fatura_numero?.trim() &&
+    data.fatura_data_emissao &&
+    Number(data.valor_final ?? 0) > 0
+  );
+
 export const validateFaturacaoData = (data: ProcessFaturacaoData): string | null => {
   const faturaEmitida = !!(data.fatura_numero?.trim() || data.fatura_data_emissao);
   if (faturaEmitida && !data.fatura_data_emissao) {
     return 'Preencha a data de emissão da fatura.';
   }
+  if (data.pago && !isDocumentoFaturaCompleto(data)) {
+    return 'Preencha o documento de fatura antes de marcar como pago.';
+  }
   if (data.pagamento_data && !data.recibo_numero?.trim()) {
     return 'Preencha o número de recibo ao marcar a fatura como paga.';
+  }
+  if (data.pago && data.pagamento_data) {
+    const paymentMin = maxCalendarDate(todayLocal(), data.fatura_data_emissao);
+    if (normalizeCalendarDate(data.pagamento_data) < paymentMin) {
+      return 'A data de pagamento não pode ser anterior à data de hoje nem à data da fatura.';
+    }
   }
   return null;
 };

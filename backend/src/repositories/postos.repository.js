@@ -146,7 +146,7 @@ exports.countKitsDisponiveis = async (id, testeId = null) => {
 };
 
 // Marca um kit como Utilizado e regista o movimento interno (auditoria).
-exports.usarKit = async (kitId, { processoId = null, postoId = null, laboratorioFinalId = null } = {}) => {
+exports.usarKit = async (kitId, { processoId = null, postoId = null, laboratorioFinalId = null, utilizadorId = null } = {}) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -165,6 +165,7 @@ exports.usarKit = async (kitId, { processoId = null, postoId = null, laboratorio
       postoId: postoId || rows[0].posto_id,
       dataEfetiva: new Date().toISOString(),
       laboratorioFinalId,
+      utilizadorId,
     });
 
     await connection.commit();

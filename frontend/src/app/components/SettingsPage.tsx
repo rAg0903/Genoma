@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { Plus, Edit, Trash2, X, Users, Building2, FlaskConical, ShieldCheck, Package, Stethoscope, Ban, Landmark, type LucideIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Users, Building2, FlaskConical, ShieldCheck, Package, Stethoscope, Ban, Landmark, LayoutGrid, type LucideIcon } from 'lucide-react';
 import { PerfisPermissoesTab } from './definicoes/PerfisPermissoesTab';
+import { AdminModuleCards, type AdminModuleCardDef, type AdminModuleCardId } from './definicoes/AdminModuleCards';
 import { MedicosTab } from './MedicosTab';
 import { MotivosAnulacaoTab } from './MotivosAnulacaoTab';
 import { useData } from '../context/DataContext';
@@ -17,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { AppModal, ModalActions, ModalAlert, ModalCheckbox, ModalField, MODAL_INPUT_CLASS } from './shared/AppModal';
 import { ReadOnlyNotice } from './shared/ReadOnlyNotice';
+import { AccessDeniedState } from './shared/AccessDeniedState';
 import { DefinicoesSubmodule } from '../../lib/permissions';
 import { perfisApi, Perfil } from '../../lib/api-perfis';
 import { isAdminPerfilNome, isMedicoPerfilNome } from '../../lib/perfil-utils';
@@ -37,23 +39,26 @@ import {
   AdminTableHeadCell,
 } from './definicoes/admin-tab-ui';
 
-type Tab = 'utilizadores' | 'permissoes' | 'empresas' | 'testes' | 'tipos_kit' | 'entidades' | 'laboratorios' | 'medicos' | 'motivos_anulacao';
+type Tab = 'inicio' | 'utilizadores' | 'permissoes' | 'empresas' | 'testes' | 'tipos_kit' | 'entidades' | 'laboratorios' | 'medicos' | 'motivos_anulacao';
 
-const SETTINGS_TABS: Tab[] = ['utilizadores', 'permissoes', 'empresas', 'testes', 'tipos_kit', 'entidades', 'laboratorios', 'medicos', 'motivos_anulacao'];
+const SETTINGS_TABS: Tab[] = ['inicio', 'utilizadores', 'permissoes', 'empresas', 'testes', 'tipos_kit', 'entidades', 'laboratorios', 'medicos', 'motivos_anulacao'];
+const SETTINGS_CONTENT_TABS = SETTINGS_TABS.filter((tab): tab is Exclude<Tab, 'inicio'> => tab !== 'inicio');
 
-const getValidSettingsTab = (tab: string | null, isAdmin: boolean, allowedTabs: Tab[]): Tab => {
-  const fallbackTab = allowedTabs[0] ?? 'utilizadores';
+const getValidSettingsTab = (tab: string | null, isAdmin: boolean, allowedTabs: Exclude<Tab, 'inicio'>[]): Tab => {
+  if (!tab || tab === 'inicio') {
+    return 'inicio';
+  }
 
-  if (!tab || !SETTINGS_TABS.includes(tab as Tab)) {
-    return fallbackTab;
+  if (!SETTINGS_TABS.includes(tab as Tab)) {
+    return 'inicio';
   }
 
   if (!isAdmin && tab === 'permissoes') {
-    return fallbackTab;
+    return 'inicio';
   }
 
-  if (!allowedTabs.includes(tab as Tab)) {
-    return fallbackTab;
+  if (!allowedTabs.includes(tab as Exclude<Tab, 'inicio'>)) {
+    return 'inicio';
   }
 
   return tab as Tab;
@@ -73,8 +78,17 @@ export function SettingsPage() {
     hasPermission,
     hasDefinicoesSubmodulePermission,
   } = useAuth();
+  const {
+    utilizadores,
+    empresas,
+    testes,
+    tiposKit,
+    entidades,
+    laboratorios,
+    motivosAnulacao,
+  } = useData();
   const isAdmin = isAdministrator;
-  const allowedSettingsTabs = SETTINGS_TABS.filter((tab) => {
+  const allowedSettingsTabs = SETTINGS_CONTENT_TABS.filter((tab) => {
     if (tab === 'permissoes') {
       return isAdmin;
     }
@@ -92,7 +106,7 @@ export function SettingsPage() {
   useEffect(() => {
     const rawTab = searchParams.get('tab');
     const normalizedTab = getValidSettingsTab(rawTab, isAdmin, allowedSettingsTabs);
-    const expected = normalizedTab === 'utilizadores' ? null : normalizedTab;
+    const expected = normalizedTab === 'inicio' ? null : normalizedTab;
 
     if ((rawTab ?? null) !== expected) {
       const params = new URLSearchParams(searchParams);
@@ -109,7 +123,7 @@ export function SettingsPage() {
     const normalizedTab = getValidSettingsTab(nextTab, isAdmin, allowedSettingsTabs);
 
     const params = new URLSearchParams(searchParams);
-    if (normalizedTab === 'utilizadores') {
+    if (normalizedTab === 'inicio') {
       params.delete('tab');
     } else {
       params.set('tab', normalizedTab);
@@ -118,7 +132,20 @@ export function SettingsPage() {
     setSearchParams(params, { replace: true });
   };
 
+  const moduleToneByTab: Partial<Record<AdminModuleCardId, AdminModuleCardDef['tone']>> = {
+    utilizadores: 'brand',
+    permissoes: 'violet',
+    empresas: 'info',
+    testes: 'success',
+    tipos_kit: 'warning',
+    entidades: 'neutral',
+    laboratorios: 'info',
+    medicos: 'violet',
+    motivos_anulacao: 'danger',
+  };
+
   const allTabs: { id: Tab; labelKey: string; icon: LucideIcon }[] = [
+    { id: 'inicio', labelKey: 'navSub.inicio', icon: LayoutGrid },
     { id: 'utilizadores', labelKey: 'navSub.utilizadores', icon: Users },
     { id: 'permissoes', labelKey: 'navSub.permissoes', icon: ShieldCheck },
     { id: 'empresas', labelKey: 'navSub.empresas', icon: Building2 },
@@ -132,10 +159,54 @@ export function SettingsPage() {
 
   const tabs = allTabs
     .filter((tab) => {
+      if (tab.id === 'inicio') return true;
       if (tab.id === 'permissoes' && !isAdmin) return false;
-      return allowedSettingsTabs.includes(tab.id);
+      return allowedSettingsTabs.includes(tab.id as Exclude<Tab, 'inicio'>);
     })
     .map((tab) => ({ ...tab, label: t(tab.labelKey) }));
+
+  const moduleCards = useMemo<AdminModuleCardDef[]>(() => {
+    const counts: Partial<Record<AdminModuleCardId, number | undefined>> = {
+      utilizadores: utilizadores.length,
+      empresas: empresas.length,
+      testes: getTestesPrincipais(testes).length,
+      tipos_kit: tiposKit.length,
+      entidades: entidades.length,
+      laboratorios: laboratorios.length,
+      motivos_anulacao: motivosAnulacao.length,
+    };
+
+    return allTabs
+      .filter((tab) => tab.id !== 'inicio')
+      .filter((tab) => {
+        if (tab.id === 'permissoes') return isAdmin;
+        return allowedSettingsTabs.includes(tab.id as Exclude<Tab, 'inicio'>);
+      })
+      .map((tab) => {
+        const id = tab.id as AdminModuleCardId;
+        return {
+          id,
+          label: t(tab.labelKey),
+          description: t(`pages.admin.modules.${id}`),
+          icon: tab.icon,
+          tone: moduleToneByTab[id],
+          ...(id === 'medicos'
+            ? { countFromApi: 'medicos' as const }
+            : { count: counts[id] }),
+        };
+      });
+  }, [
+    allowedSettingsTabs,
+    empresas.length,
+    entidades.length,
+    isAdmin,
+    laboratorios.length,
+    motivosAnulacao.length,
+    t,
+    testes,
+    tiposKit.length,
+    utilizadores.length,
+  ]);
 
   if (!canRead) {
     return <AccessDeniedState message="O perfil atual nao tem permissao para aceder ao modulo de Administracao." />;
@@ -156,10 +227,19 @@ export function SettingsPage() {
           onTabChange={handleChangeTab}
         />
 
-        {!canCreate && !canUpdate && !canDelete && (
+        {!canCreate && !canUpdate && !canDelete && activeTab !== 'inicio' && (
           <ReadOnlyNotice message="Este perfil pode consultar a administracao, mas nao pode criar, editar ou eliminar registos." />
         )}
 
+        {activeTab === 'inicio' && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('pages.admin.overviewHint')}</p>
+            <AdminModuleCards
+              modules={moduleCards}
+              onSelect={(id) => handleChangeTab(id)}
+            />
+          </div>
+        )}
         {activeTab === 'utilizadores' && <UtilizadoresTab canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete} />}
         {activeTab === 'permissoes' && isAdmin && <PerfisPermissoesTab />}
         {activeTab === 'empresas' && <EmpresasTab canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete} />}
@@ -178,6 +258,7 @@ export function SettingsPage() {
 function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const navigate = useNavigate();
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
   const { utilizadores, addUtilizador, updateUtilizador, deleteUtilizador } = useData();
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -267,7 +348,7 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
         searchName="search-utilizadores"
         action={canCreate ? (
           <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}>
-            <Plus className="w-4 h-4" /> Novo Utilizador
+            <Plus className="w-4 h-4" /> {t('common.create.user')}
           </button>
         ) : undefined}
       />
@@ -372,6 +453,7 @@ function UtilizadoresTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
 function EmpresasTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const navigate = useNavigate();
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
   const { empresas, deleteEmpresa } = useData();
   const [search, setSearch] = useState('');
 
@@ -395,7 +477,7 @@ function EmpresasTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
         placeholder="Pesquisar empresas..."
         searchName="search-empresas"
         action={canCreate ? (
-          <button type="button" onClick={() => navigate('/definicoes/empresas/novo')} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> Nova Empresa</button>
+          <button type="button" onClick={() => navigate('/definicoes/empresas/novo')} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> {t('common.create.company')}</button>
         ) : undefined}
       />
       <AdminTabPanel>
@@ -435,6 +517,7 @@ function EmpresasTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
 function TestesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const navigate = useNavigate();
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
   const { testes, deleteTeste } = useData();
   const [search, setSearch] = useState('');
 
@@ -459,7 +542,7 @@ function TestesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; ca
         placeholder="Pesquisar testes..."
         searchName="search-testes"
         action={canCreate ? (
-          <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> Novo Teste</button>
+          <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> {t('common.create.test')}</button>
         ) : undefined}
       />
       <AdminTabPanel>
@@ -495,6 +578,7 @@ function TestesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; ca
 /* =========== TIPOS DE KIT =========== */
 function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
   const { tiposKit, addTipoKit, updateTipoKit, deleteTipoKit } = useData();
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -527,7 +611,7 @@ function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
         placeholder="Pesquisar tipos de kit..."
         searchName="search-tipos-kit"
         action={canCreate ? (
-          <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> Novo Tipo de Kit</button>
+          <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> {t('common.create.kitType')}</button>
         ) : undefined}
       />
       <AdminTabPanel>
@@ -578,6 +662,7 @@ function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
 function EntidadesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const navigate = useNavigate();
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
   const { entidades, deleteEntidade } = useData();
   const [search, setSearch] = useState('');
 
@@ -597,7 +682,7 @@ function EntidadesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean;
         placeholder="Pesquisar entidades..."
         searchName="search-entidades"
         action={canCreate ? (
-          <button type="button" onClick={() => navigate('/definicoes/entidades/novo')} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> Nova Entidade</button>
+          <button type="button" onClick={() => navigate('/definicoes/entidades/novo')} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> {t('common.create.entity')}</button>
         ) : undefined}
       />
       <AdminTabPanel>
@@ -634,6 +719,7 @@ function EntidadesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean;
 function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const navigate = useNavigate();
   const confirmDelete = useConfirmDelete();
+  const { t } = useLanguage();
   const { laboratorios, deleteLaboratorio } = useData();
   const [search, setSearch] = useState('');
 
@@ -698,8 +784,8 @@ function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
         searchName="search-laboratorios"
         action={canCreate ? (
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => navigate('/definicoes/laboratorios/novo')} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> Laboratório operacional</button>
-            <button type="button" onClick={() => navigate('/definicoes/laboratorios/final/novo')} className={`${ADD_ACTION_BUTTON_CLASS} bg-indigo-600 hover:bg-indigo-700`}><Plus className="w-4 h-4" /> Laboratório final</button>
+            <button type="button" onClick={() => navigate('/definicoes/laboratorios/novo')} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> {t('common.create.operationalLab')}</button>
+            <button type="button" onClick={() => navigate('/definicoes/laboratorios/final/novo')} className={`${ADD_ACTION_BUTTON_CLASS} bg-indigo-600 hover:bg-indigo-700`}><Plus className="w-4 h-4" /> {t('common.create.finalLab')}</button>
           </div>
         ) : undefined}
       />

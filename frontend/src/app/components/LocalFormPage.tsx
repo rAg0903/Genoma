@@ -30,6 +30,7 @@ import {
 import { getTestesSelecionaveis } from '../../lib/testes';
 import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
 import { FORM } from '../../lib/design-tokens';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export type LocalKind = 'posto' | 'laboratorio' | 'entidade';
 
@@ -87,47 +88,13 @@ const emptyForm = (): LocalFormState => ({
   ativo: true,
 });
 
-const KIND_CONFIG: Record<LocalKind, {
-  title: string;
-  createSubtitle: string;
-  editSubtitle: string;
-  listTab: string;
-  nomePlaceholder: string;
-  codigoPlaceholder: string;
-  iconLabel: string;
-  notasPlaceholder: string;
-}> = {
-  posto: {
-    title: 'Posto',
-    createSubtitle: 'Criação de posto',
-    editSubtitle: 'Edição de posto',
-    listTab: 'postos',
-    nomePlaceholder: 'Ex.: Posto Centro',
-    codigoPlaceholder: 'PST-001',
-    iconLabel: 'Novo posto',
-    notasPlaceholder: 'Notas internas sobre o posto…',
-  },
-  laboratorio: {
-    title: 'Laboratório',
-    createSubtitle: 'Criação de laboratório',
-    editSubtitle: 'Edição de laboratório',
-    listTab: 'laboratorios',
-    nomePlaceholder: 'Ex.: Laboratório Central',
-    codigoPlaceholder: 'LCL-001',
-    iconLabel: 'Novo laboratório',
-    notasPlaceholder: 'Notas internas sobre o laboratório…',
-  },
-  entidade: {
-    title: 'Entidade',
-    createSubtitle: 'Criação de entidade',
-    editSubtitle: 'Edição de entidade',
-    listTab: 'entidades',
-    nomePlaceholder: 'Ex.: Entidade Norte',
-    codigoPlaceholder: 'ENT-001',
-    iconLabel: 'Nova entidade',
-    notasPlaceholder: 'Notas internas sobre a entidade…',
-  },
+const KIND_LIST_TAB: Record<LocalKind, string> = {
+  posto: 'postos',
+  laboratorio: 'laboratorios',
+  entidade: 'entidades',
 };
+
+const kindTranslationPrefix = (kind: LocalKind) => `pages.admin.form.local.${kind}` as const;
 
 const toFormState = (item: Posto | Laboratorio | Entidade): LocalFormState => ({
   nome: item.nome,
@@ -156,6 +123,7 @@ type LocalFormPageProps = {
 };
 
 export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacional' }: LocalFormPageProps) {
+  const { t } = useLanguage();
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -176,7 +144,9 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
     refreshEntidades,
   } = useData();
 
-  const config = KIND_CONFIG[kind];
+  const kindPrefix = kindTranslationPrefix(kind);
+  const kindTitle = t(`${kindPrefix}.title`);
+  const listTab = KIND_LIST_TAB[kind];
   const editing = Boolean(id);
   const canCreate = hasPermission('definicoes', 'create');
   const canUpdate = hasPermission('definicoes', 'update');
@@ -187,8 +157,8 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
     if (kind === 'posto' && laboratorioId) {
       return `/definicoes/laboratorios/${laboratorioId}/editar?tab=postos`;
     }
-    return `/definicoes?tab=${config.listTab}`;
-  }, [config.listTab, kind, laboratorioId]);
+    return `/definicoes?tab=${listTab}`;
+  }, [listTab, kind, laboratorioId]);
 
   const initialTab = searchParams.get('tab');
   const [tab, setTab] = useState<TabId>(() => {
@@ -301,26 +271,28 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
 
   useEffect(() => {
     if (!editing || loading || existing) return;
-    toast.error(`${config.title} não encontrado.`);
+    toast.error(t(`${kindPrefix}.notFound`));
     navigate(backPath);
-  }, [backPath, config.title, editing, existing, loading, navigate]);
+  }, [backPath, kindPrefix, editing, existing, loading, navigate, t]);
 
-  const displayName = form.nome.trim() || (editing ? `Editar ${config.title.toLowerCase()}` : config.iconLabel);
+  const displayName = form.nome.trim() || (
+    editing ? t('pages.admin.form.local.editKind', { kind: kindTitle.toLowerCase() }) : t(`${kindPrefix}.iconLabel`)
+  );
   const initials = displayName.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase();
 
   const tabs: { id: TabId; label: string; icon: typeof User }[] = useMemo(() => {
     const base: { id: TabId; label: string; icon: typeof User }[] = [
-      { id: 'identificacao', label: 'Identificação', icon: User },
+      { id: 'identificacao', label: t('form.tabs.identificacao'), icon: User },
     ];
     if (kind === 'laboratorio' && !isLabFinal) {
-      base.push({ id: 'postos', label: 'Postos', icon: MapPin });
+      base.push({ id: 'postos', label: t('form.tabs.postos'), icon: MapPin });
     }
     if (!isLabFinal) {
-      base.push({ id: 'condicoes', label: 'Condições comerciais', icon: Receipt });
+      base.push({ id: 'condicoes', label: t('form.tabs.condicoes'), icon: Receipt });
     }
-    base.push({ id: 'notas', label: 'Notas', icon: StickyNote });
+    base.push({ id: 'notas', label: t('form.tabs.notas'), icon: StickyNote });
     return base;
-  }, [kind, isLabFinal]);
+  }, [kind, isLabFinal, t]);
 
   const updateContacto = (index: number, patch: Partial<ContactoSecundario>) => {
     setForm((prev) => {
@@ -341,7 +313,7 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
 
   const handleGuardar = async () => {
     if (!form.nome.trim()) {
-      toast.error('Indique o nome.');
+      toast.error(t('form.errors.nameRequired'));
       setTab('identificacao');
       return;
     }
@@ -376,17 +348,17 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
         if (kind === 'posto') await updatePosto(id, payload);
         else if (kind === 'laboratorio') await updateLaboratorio(id, payload);
         else await updateEntidade(id, payload);
-        toast.success(`${config.title} atualizado.`);
+        toast.success(t(`${kindPrefix}.updated`));
         if (kind !== 'laboratorio') {
           navigate(backPath);
         }
       } else if (kind === 'posto') {
         await addPosto(payload);
-        toast.success('Posto criado.');
+        toast.success(t(`${kindPrefix}.created`));
         navigate(backPath);
       } else if (kind === 'laboratorio') {
         const newId = await addLaboratorio(payload);
-        toast.success(isLabFinal ? 'Laboratório final criado.' : 'Laboratório criado.');
+        toast.success(t(isLabFinal ? `${kindPrefix}.createdFinal` : `${kindPrefix}.created`));
         if (newId && !isLabFinal) {
           navigate(`/definicoes/laboratorios/${newId}/editar?tab=postos`);
         } else if (newId) {
@@ -396,11 +368,11 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
         }
       } else {
         await addEntidade(payload);
-        toast.success('Entidade criada.');
+        toast.success(t(`${kindPrefix}.created`));
         navigate(backPath);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : `Não foi possível guardar o ${config.title.toLowerCase()}.`);
+      toast.error(err instanceof Error ? err.message : t('pages.admin.form.local.saveError', { kind: kindTitle.toLowerCase() }));
     } finally {
       setSaving(false);
     }
@@ -409,7 +381,7 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[320px] text-slate-400">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" /> A carregar…
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('common.loading')}
       </div>
     );
   }
@@ -421,13 +393,13 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
           onBack={() => navigate(backPath)}
           title={displayName}
           subtitle={editing
-            ? (isLabFinal ? 'Edição de laboratório final (processamento)' : config.editSubtitle)
-            : (isLabFinal ? 'Criação de laboratório final para descarte de kits' : config.createSubtitle)}
+            ? (isLabFinal ? t('pages.admin.form.local.labFinalEditSubtitle') : t(`${kindPrefix}.editSubtitle`))
+            : (isLabFinal ? t('pages.admin.form.local.labFinalCreateSubtitle') : t(`${kindPrefix}.createSubtitle`))}
           avatar={<FormAvatarInitials initials={initials} />}
           actions={podeGuardar && tab !== 'postos' ? (
             <FormPrimaryButton onClick={() => void handleGuardar()} disabled={saving}>
               <Save className="w-4 h-4" />
-              <span className="hidden sm:inline">{saving ? 'A guardar…' : 'Guardar'}</span>
+              <span className="hidden sm:inline">{saving ? t('form.saving') : t('common.save')}</span>
             </FormPrimaryButton>
           ) : undefined}
           tabs={tabs}
@@ -445,7 +417,7 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
             />
           ) : (
             <div className="max-w-3xl rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-6 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-              Guarde o laboratório primeiro para gerir os postos associados.
+              {t('pages.admin.form.local.saveLabFirst')}
             </div>
           )
         )}
@@ -453,22 +425,22 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
         {tab === 'identificacao' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Identificação" icon={User}>
+              <DetailSection title={t('form.sections.identificacao')} icon={User}>
                 <div className={FORM.fieldRow}>
-                  <FormField label="Nome" required width="2xl">
+                  <FormField label={t('form.fields.nome')} required width="2xl">
                     <FormInput
                       value={form.nome}
                       onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                      placeholder={config.nomePlaceholder}
+                      placeholder={t(`${kindPrefix}.nomePlaceholder`)}
                     />
                   </FormField>
                   {kind === 'posto' && (
-                    <FormField label="Código" width="md">
+                    <FormField label={t('form.fields.codigo')} width="md">
                       <FormInput
                         className="font-mono tabular-nums"
                         value={form.codigo}
                         onChange={(e) => setForm({ ...form, codigo: e.target.value })}
-                        placeholder={config.codigoPlaceholder}
+                        placeholder={t(`${kindPrefix}.codigoPlaceholder`)}
                       />
                     </FormField>
                   )}
@@ -476,14 +448,14 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
                 {kind === 'laboratorio' && !isLabFinal && (
                   <div className="mt-3">
                     <FormSectionNote>
-                      As moradas são definidas em cada posto do laboratório (separador Postos).
+                      {t('pages.admin.form.local.labOperacionalNote')}
                     </FormSectionNote>
                   </div>
                 )}
                 {kind === 'laboratorio' && isLabFinal && (
                   <div className="mt-3">
                     <FormSectionNote>
-                      Laboratório final: destino de kits após colheita/descarte. Não tem postos associados — associe-o a cada teste em Administração → Testes.
+                      {t('pages.admin.form.local.labFinalNote')}
                     </FormSectionNote>
                   </div>
                 )}
@@ -492,49 +464,49 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
               {(kind !== 'laboratorio' || isLabFinal) && (
                 <>
                   <DetailDivider />
-                  <DetailSection title="Morada" icon={MapPin}>
+                  <DetailSection title={t('form.sections.morada')} icon={MapPin}>
                     <div className={FORM.fieldRow}>
-                      <FormField label="Morada" width="3xl">
+                      <FormField label={t('form.fields.morada')} width="3xl">
                         <FormInput
                           value={form.morada}
                           onChange={(e) => setForm({ ...form, morada: e.target.value })}
-                          placeholder="Endereço completo"
+                          placeholder={t('form.placeholders.enderecoCompleto')}
                         />
                       </FormField>
-                      <FormField label="Código postal" width="sm">
+                      <FormField label={t('form.fields.codigoPostal')} width="sm">
                         <FormInput
                           className="font-mono tabular-nums"
                           value={form.codigo_postal}
                           onChange={(e) => handleCodigoPostalChange(e.target.value)}
                           onBlur={(e) => void autofillFromCp(e.target.value)}
-                          placeholder="0000-000"
+                          placeholder={t('form.placeholders.codigoPostal')}
                         />
                       </FormField>
-                      <FormField label="Cidade" width="lg">
+                      <FormField label={t('form.fields.cidade')} width="lg">
                         <FormInput
                           value={form.cidade}
                           onChange={(e) => setForm({ ...form, cidade: e.target.value })}
-                          placeholder="Lisboa"
+                          placeholder={t('form.placeholders.cidade')}
                         />
                       </FormField>
-                      <FormField label="Distrito" width="lg">
+                      <FormField label={t('form.fields.distrito')} width="lg">
                         <FormInput
                           value={form.distrito}
                           onChange={(e) => setForm({ ...form, distrito: e.target.value })}
-                          placeholder="Lisboa"
+                          placeholder={t('form.placeholders.cidade')}
                         />
                       </FormField>
-                      <FormField label="País" width="md">
+                      <FormField label={t('form.fields.pais')} width="md">
                         <FormInput
                           value={form.pais}
                           onChange={(e) => setForm({ ...form, pais: e.target.value })}
-                          placeholder="Portugal"
+                          placeholder={t('form.placeholders.pais')}
                         />
                       </FormField>
                     </div>
                     <div className="mt-3">
                       <FormSectionNote>
-                        Distrito, cidade e país podem ser preenchidos automaticamente a partir do código postal.
+                        {t('form.notes.postalAutofill')}
                       </FormSectionNote>
                     </div>
                   </DetailSection>
@@ -543,21 +515,21 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
 
               <DetailDivider />
 
-              <DetailSection title="Contactos" icon={Phone}>
+              <DetailSection title={t('form.sections.contactos')} icon={Phone}>
                 <div className={FORM.fieldRow}>
-                  <FormField label="Telefone" width="lg">
+                  <FormField label={t('form.fields.telefone')} width="lg">
                     <FormInput
                       value={form.contacto}
                       onChange={(e) => setForm({ ...form, contacto: e.target.value })}
-                      placeholder="912 345 678"
+                      placeholder={t('form.placeholders.telefone')}
                     />
                   </FormField>
-                  <FormField label="Email" width="xl">
+                  <FormField label={t('form.fields.email')} width="xl">
                     <FormInput
                       type="email"
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      placeholder="contacto@empresa.pt"
+                      placeholder={t('form.placeholders.email')}
                     />
                   </FormField>
                 </div>
@@ -565,7 +537,7 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
 
               <DetailDivider />
 
-              <DetailSection title="Contactos secundários" icon={Phone}>
+              <DetailSection title={t('form.sections.contactosSecundarios')} icon={Phone}>
                 <div className="space-y-4">
                   {form.contactos_secundarios.map((contacto, index) => (
                     <div
@@ -573,29 +545,29 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
                       className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 space-y-3"
                     >
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Contacto {index + 1}
+                        {t('form.contactN', { n: index + 1 })}
                       </p>
                       <div className={FORM.fieldRow}>
-                        <FormField label="Nome" width="lg">
+                        <FormField label={t('form.fields.nome')} width="lg">
                           <FormInput
                             value={contacto.nome}
                             onChange={(e) => updateContacto(index, { nome: e.target.value })}
                           />
                         </FormField>
-                        <FormField label="Função" width="lg">
+                        <FormField label={t('form.fields.funcao')} width="lg">
                           <FormInput
                             value={contacto.funcao}
                             onChange={(e) => updateContacto(index, { funcao: e.target.value })}
                           />
                         </FormField>
-                        <FormField label="Email" width="lg">
+                        <FormField label={t('form.fields.email')} width="lg">
                           <FormInput
                             type="email"
                             value={contacto.email}
                             onChange={(e) => updateContacto(index, { email: e.target.value })}
                           />
                         </FormField>
-                        <FormField label="Telefone" width="lg">
+                        <FormField label={t('form.fields.telefone')} width="lg">
                           <FormInput
                             value={contacto.telefone}
                             onChange={(e) => updateContacto(index, { telefone: e.target.value })}
@@ -615,7 +587,7 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
                     onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
                     className={CHECKBOX_INPUT_CLASS}
                   />
-                  <span>{config.title} ativo</span>
+                  <span>{t('pages.admin.form.local.ativo', { kind: kindTitle })}</span>
                 </label>
               </div>
             </DetailPanel>
@@ -626,19 +598,19 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
           <FormTabContent>
             {inheritsFromLaboratorio && (
               <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-                Condições comerciais herdadas do laboratório <strong>{parentLaboratorio?.nome}</strong>. Para alterar, edite o laboratório.
+                {t('pages.admin.form.local.inheritedConditions', { name: parentLaboratorio?.nome ?? '' })}
               </p>
             )}
             <DetailPanel>
-              <DetailSection title="Testes" icon={FlaskConical}>
+              <DetailSection title={t('form.sections.testes')} icon={FlaskConical}>
               {testesAtivos.length === 0 ? (
-                <p className="text-sm text-slate-500">Não existem testes ativos na Administração.</p>
+                <p className="text-sm text-slate-500">{t('pages.admin.form.local.noActiveTests')}</p>
               ) : (
                 <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                   <div className="grid grid-cols-[1fr_9rem_9rem] gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                    <span>Nome</span>
-                    <span className="text-right">Comissão</span>
-                    <span className="text-right">Prazo de pagamento</span>
+                    <span>{t('form.fields.nome')}</span>
+                    <span className="text-right">{t('form.fields.comissao')}</span>
+                    <span className="text-right">{t('form.fields.prazoPagamento')}</span>
                   </div>
                   <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[28rem] overflow-y-auto">
                     {(inheritsFromLaboratorio ? inheritedCondicoes : form.condicoes_testes).map((c) => {
@@ -673,7 +645,7 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
                               style={{ fontSize: '13px' }}
                               readOnly={inheritsFromLaboratorio}
                             />
-                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">dias</span>
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">{t('form.days')}</span>
                           </div>
                         </div>
                       );
@@ -689,13 +661,13 @@ export function LocalFormPage({ kind, laboratorioId, defaultLabTipo = 'operacion
         {tab === 'notas' && (
           <FormTabContent>
             <DetailPanel>
-              <DetailSection title="Notas internas" icon={StickyNote}>
-                <FormField label="Notas" width="3xl">
+              <DetailSection title={t('form.sections.notasInternas')} icon={StickyNote}>
+                <FormField label={t('form.fields.notas')} width="3xl">
                   <FormTextarea
                     className="min-h-[180px]"
                     value={form.notas}
                     onChange={(e) => setForm({ ...form, notas: e.target.value })}
-                    placeholder={config.notasPlaceholder}
+                    placeholder={t(`${kindPrefix}.notasPlaceholder`)}
                   />
                 </FormField>
               </DetailSection>
