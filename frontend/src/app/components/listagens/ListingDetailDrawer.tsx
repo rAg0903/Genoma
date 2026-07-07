@@ -29,15 +29,52 @@ const TRACE: Partial<Record<ListingKey, { tipo: TraceTipo; idKey: string }>> = {
 };
 
 const MODULE_ROUTE: Partial<Record<ListingKey, string>> = {
-  painel_bordo: '/processos',
-  processos: '/processos',
-  resultados: '/processos',
-  faturacao: '/processos',
-  colheitas: '/processos',
   kits: '/stocks',
   lotes: '/stocks',
   pacientes: '/contactos',
+  medicos: '/definicoes/medicos',
 };
+
+const PROCESS_LISTINGS = new Set<ListingKey>(['painel_bordo', 'processos', 'resultados', 'faturacao']);
+
+const str = (row: ListingRow, key: string) => (row[key] != null && String(row[key]).trim() !== '' ? String(row[key]) : '');
+
+/** Rota concreta no módulo correspondente (ex.: /processos/:id). */
+function resolveModuleNavigation(listing: ListingKey, row: ListingRow): string | null {
+  if (PROCESS_LISTINGS.has(listing)) {
+    const id = str(row, 'id');
+    return id ? `/processos/${id}` : null;
+  }
+  if (listing === 'colheitas') {
+    const id = str(row, 'processo_id');
+    return id ? `/processos/${id}` : null;
+  }
+  if (listing === 'kits') {
+    const codigo = str(row, 'codigo');
+    return codigo ? `/stocks?tab=kits&q=${encodeURIComponent(codigo)}` : '/stocks';
+  }
+  if (listing === 'lotes') {
+    const codigo = str(row, 'codigo');
+    return codigo ? `/stocks?tab=lotes&q=${encodeURIComponent(codigo)}` : '/stocks';
+  }
+  if (listing === 'pacientes') {
+    const id = str(row, 'id');
+    return id ? `/contactos/${id}` : null;
+  }
+  if (listing === 'medicos') {
+    const id = str(row, 'id');
+    return id ? `/definicoes/medicos/${id}/editar` : null;
+  }
+  return MODULE_ROUTE[listing] ?? null;
+}
+
+function moduleActionLabel(listing: ListingKey, t: (key: string) => string): string {
+  if (PROCESS_LISTINGS.has(listing) || listing === 'colheitas') return t('listingsPage.openProcess');
+  if (listing === 'kits' || listing === 'lotes') return t('listingsPage.openStocks');
+  if (listing === 'pacientes') return t('listingsPage.openContact');
+  if (listing === 'medicos') return t('listingsPage.openDoctor');
+  return t('listingsPage.openModule');
+}
 
 const fmtValue = (def: ListingDef, key: string, value: ListingRow[string]) => {
   if (value === null || value === undefined || value === '') return '—';
@@ -69,17 +106,28 @@ export function ListingDetailDrawer({ listing, row, columns, def, onClose, onNav
   const title = String(row[titleKey] ?? 'Detalhe');
 
   const quickLinks: { label: string; onClick: () => void }[] = [];
-  const str = (k: string) => (row[k] != null ? String(row[k]) : '');
-  if (listing === 'resultados' || listing === 'faturacao' || listing === 'colheitas') {
-    if (str('numero')) quickLinks.push({ label: `Ver processo: ${str('numero')}`, onClick: () => onNavigateTab('painel_bordo', str('numero')) });
-    if (listing === 'colheitas' && str('kit')) quickLinks.push({ label: `Ver kit: ${str('kit')}`, onClick: () => onNavigateTab('kits', str('kit')) });
+  const processId = PROCESS_LISTINGS.has(listing)
+    ? str(row, 'id')
+    : listing === 'colheitas'
+      ? str(row, 'processo_id')
+      : '';
+  if ((listing === 'resultados' || listing === 'faturacao' || listing === 'colheitas') && processId) {
+    quickLinks.push({
+      label: t('listingsPage.quickViewProcess', { numero: str(row, 'numero') || str(row, 'processo') }),
+      onClick: () => { onClose(); navigate(`/processos/${processId}`); },
+    });
+  } else if ((listing === 'resultados' || listing === 'faturacao' || listing === 'colheitas') && str(row, 'numero')) {
+    quickLinks.push({ label: `Ver processo: ${str(row, 'numero')}`, onClick: () => onNavigateTab('painel_bordo', str(row, 'numero')) });
+  }
+  if (listing === 'colheitas' && str(row, 'kit')) {
+    quickLinks.push({ label: `Ver kit: ${str(row, 'kit')}`, onClick: () => onNavigateTab('kits', str(row, 'kit')) });
   } else if (listing === 'kits') {
-    if (str('lote')) quickLinks.push({ label: `Ver lote: ${str('lote')}`, onClick: () => onNavigateTab('lotes', str('lote')) });
+    if (str(row, 'lote')) quickLinks.push({ label: `Ver lote: ${str(row, 'lote')}`, onClick: () => onNavigateTab('lotes', str(row, 'lote')) });
   } else if (listing === 'lotes') {
-    if (str('codigo')) quickLinks.push({ label: 'Ver kits deste lote', onClick: () => onNavigateTab('kits', str('codigo')) });
+    if (str(row, 'codigo')) quickLinks.push({ label: 'Ver kits deste lote', onClick: () => onNavigateTab('kits', str(row, 'codigo')) });
   }
 
-  const moduleRoute = MODULE_ROUTE[listing];
+  const moduleRoute = resolveModuleNavigation(listing, row);
 
   return (
     <DetailDrawer<DrawerTabId>
@@ -122,11 +170,12 @@ export function ListingDetailDrawer({ listing, row, columns, def, onClose, onNav
 
           {moduleRoute && (
             <button
-              onClick={() => navigate(moduleRoute)}
+              type="button"
+              onClick={() => { onClose(); navigate(moduleRoute); }}
               className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/40 transition"
             >
               <ExternalLink className="w-4 h-4" />
-              Abrir no módulo {moduleRoute.replace('/', '')}
+              {moduleActionLabel(listing, t)}
             </button>
           )}
         </div>

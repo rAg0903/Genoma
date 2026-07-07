@@ -7,7 +7,6 @@ export type AdminModuleCardId =
   | 'utilizadores'
   | 'permissoes'
   | 'empresas'
-  | 'testes'
   | 'tipos_kit'
   | 'entidades'
   | 'laboratorios'

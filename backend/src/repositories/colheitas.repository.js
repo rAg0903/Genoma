@@ -18,6 +18,7 @@ const baseSelect = `
     pr.kit_id,
     k.codigo_barras AS kit_codigo,
     pa.nome AS paciente_nome,
+    pa.telemovel AS paciente_telemovel,
     pr.paciente_id AS paciente_id,
     COALESCE(po.nome, pr.posto) AS posto_nome
   FROM colheitas c
@@ -90,6 +91,7 @@ exports.findAll = async (filters = {}) => {
         NULL                                          AS kit_id,
         NULL                                          AS kit_codigo,
         p.nome                                        AS paciente_nome,
+        p.telemovel                                   AS paciente_telemovel,
         p.id                                          AS paciente_id,
         po.nome                                       AS posto_nome
       FROM pacientes p

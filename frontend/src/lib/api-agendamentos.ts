@@ -13,6 +13,7 @@ export interface Agendamento {
   numero_processo: string;
   processo_status: string;
   paciente_nome: string;
+  paciente_telemovel?: string | null;
   paciente_id?: string | null;
   posto_id: string | null;
   posto_nome: string;

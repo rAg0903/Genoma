@@ -1,19 +1,26 @@
 import { Calendar, Users } from 'lucide-react';
 import { Contact } from '../../data/types';
 import {
-  CONTACTO_PAGE_ESTADOS, CONTACTO_PIPELINE_COLORS, CONTACTO_PIPELINE_LABEL, getContactoPipelineEstado,
+  CONTACTO_PAGE_ESTADOS, CONTACTO_PIPELINE_COLORS, CONTACTO_PIPELINE_LABEL,
+  getContactoPipelineEstado, type ContactoPipelineEstado,
 } from '../../../lib/contactos';
 import { formatCalendarDatePt } from '../../../lib/dates';
 import { PANEL } from '../../../lib/design-tokens';
 import { EmptyState } from '../shared/EmptyState';
 
+type PipelineEstado = ContactoPipelineEstado;
+
 interface ContactPipelineProps {
   contacts: Contact[];
   onOpen: (c: Contact) => void;
   onEdit: (c: Contact) => void;
+  /** Quando definido, mostra apenas a(s) coluna(s) do estado seleccionado. */
+  visibleEstados?: PipelineEstado[];
 }
 
-export function ContactPipeline({ contacts, onOpen, onEdit }: ContactPipelineProps) {
+export function ContactPipeline({ contacts, onOpen, onEdit, visibleEstados }: ContactPipelineProps) {
+  const estados = visibleEstados?.length ? visibleEstados : CONTACTO_PAGE_ESTADOS;
+
   if (contacts.length === 0) {
     return (
       <div className={PANEL.table}>
@@ -24,11 +31,12 @@ export function ContactPipeline({ contacts, onOpen, onEdit }: ContactPipelinePro
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
-      {CONTACTO_PAGE_ESTADOS.map((estado) => {
+      {estados.map((estado) => {
         const items = contacts.filter((c) => getContactoPipelineEstado(c) === estado);
         const color = CONTACTO_PIPELINE_COLORS[estado];
+        const singleColumn = estados.length === 1;
         return (
-          <div key={estado} className="flex-shrink-0 w-72">
+          <div key={estado} className={singleColumn ? 'flex-1 min-w-0 max-w-xl' : 'flex-shrink-0 w-72'}>
             <div className="flex items-center justify-between mb-2 px-1">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />

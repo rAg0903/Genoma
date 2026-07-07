@@ -271,6 +271,7 @@ export interface ItemPesquisa {
 export interface TipoKit {
   id: string;
   nome: string;
+  descricao?: string;
   ativo?: boolean;
 }
 

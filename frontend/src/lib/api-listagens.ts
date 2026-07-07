@@ -3,7 +3,7 @@ import { getAuthToken } from './api-processos';
 
 export type ListingKey =
   | 'painel_bordo' | 'processos' | 'resultados' | 'faturacao' | 'pacientes' | 'medicos'
-  | 'kits' | 'lotes' | 'colheitas' | 'auditoria';
+  | 'kits' | 'lotes' | 'colheitas';
 
 export interface ListingColumn {
   key: string;

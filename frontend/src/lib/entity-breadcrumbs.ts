@@ -71,7 +71,17 @@ export function getContactBreadcrumbItems(
     const nome = resolveContactNome(contacts, id);
     return [
       contactList(t),
-      { path: `/contactos/${id}/editar`, label: nome },
+      { path: `/contactos/${id}`, label: nome },
+      { path: pathname, label: t('breadcrumb.editContact') },
+    ];
+  }
+
+  const viewMatch = pathname.match(/^\/contactos\/([^/]+)$/);
+  if (viewMatch) {
+    const id = viewMatch[1];
+    return [
+      contactList(t),
+      { path: pathname, label: resolveContactNome(contacts, id) },
     ];
   }
 

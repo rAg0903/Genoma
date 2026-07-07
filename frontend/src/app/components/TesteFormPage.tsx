@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { Teste } from '../data/types';
 import { filterLaboratoriosFinais } from '../../lib/stock-locations';
 import { findTestePrincipal, getTestesPrincipais, sortTestesByCodigo } from '../../lib/testes';
+import { resolveTipoKitEditPath, TIPOS_KIT_LIST_PATH } from '../../lib/tipo-kit-navigation';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
@@ -121,7 +122,10 @@ export function TesteFormPage() {
     [parentTeste],
   );
 
-  const voltar = () => navigate('/definicoes?tab=testes');
+  const voltar = () => {
+    const tipoKitPath = resolveTipoKitEditPath(tiposKit, form.tipo_kit, 'testes');
+    navigate(tipoKitPath ?? TIPOS_KIT_LIST_PATH);
+  };
   const podeGuardar = editing ? canUpdate : canCreate;
 
   const empresasAtivas = useMemo(
@@ -151,6 +155,14 @@ export function TesteFormPage() {
     () => laboratoriosFinais.map((l) => ({ value: l.id, label: l.nome })),
     [laboratoriosFinais],
   );
+
+  useEffect(() => {
+    if (id) return;
+    const tipoKitParam = searchParams.get('tipo_kit')?.trim();
+    if (tipoKitParam) {
+      setForm((f) => ({ ...f, tipo_kit: tipoKitParam }));
+    }
+  }, [id, searchParams]);
 
   useEffect(() => {
     if (!id) return;

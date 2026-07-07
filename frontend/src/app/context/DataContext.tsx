@@ -792,6 +792,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTiposKit((response?.data || []).map((t) => ({
       id: t.id,
       nome: t.nome || '',
+      descricao: t.descricao || '',
       ativo: t.ativo !== false,
     })));
   }, []);
@@ -1125,18 +1126,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const estadoMudou = data.estado !== undefined && data.estado !== processoAtual.estado;
+
     await apiRequest(`/processos/${id}`, {
       method: 'PUT',
       token,
       body: {
-        ...(data.estado !== undefined ? { status: mapEstadoToApi(data.estado) } : {}),
+        ...(estadoMudou ? { status: mapEstadoToApi(data.estado!) } : {}),
         ...(data.observacoes !== undefined ? { notas_clinicas: data.observacoes } : {}),
         ...(data.numero !== undefined && data.numero.trim()
           ? { numero_processo: data.numero.trim() }
           : {}),
         ...(data.data_entrada !== undefined ? { data_entrada: data.data_entrada || null } : {}),
         ...(data.kit_codigo !== undefined ? { kit_codigo: data.kit_codigo || null } : {}),
-        ...(data.estado !== undefined && kitResultante && !processoAtual.kit_codigo?.trim()
+        ...(estadoMudou && kitResultante && !processoAtual.kit_codigo?.trim()
           ? { kit_codigo: kitResultante }
           : {}),
         ...(data.data_chegada_laboratorio !== undefined ? { data_chegada_laboratorio: data.data_chegada_laboratorio || null } : {}),
@@ -1578,7 +1581,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await refreshTestes();
   };
 
-  interface ApiTipoKit { id: string; nome?: string | null; ativo?: boolean | null }
+  interface ApiTipoKit { id: string; nome?: string | null; descricao?: string | null; ativo?: boolean | null }
   interface ApiMotivoAnulacao {
     id: string;
     nome?: string | null;
@@ -1593,7 +1596,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setTiposKit((prev) => [...prev, { ...data, id: genId() }]);
       return;
     }
-    await apiRequest('/tipos-kit', { method: 'POST', token, body: { nome: data.nome, ativo: data.ativo !== false } });
+    await apiRequest('/tipos-kit', { method: 'POST', token, body: { nome: data.nome, descricao: data.descricao || null, ativo: data.ativo !== false } });
     await refreshTiposKit();
   };
 
@@ -1608,6 +1611,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       token,
       body: {
         ...(data.nome !== undefined ? { nome: data.nome } : {}),
+        ...(data.descricao !== undefined ? { descricao: data.descricao } : {}),
         ...(data.ativo !== undefined ? { ativo: data.ativo } : {}),
       },
     });

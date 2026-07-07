@@ -12,7 +12,11 @@ exports.create = async (data, user) => {
   const existente = await tiposKitRepository.findByNome(nome);
   if (existente) throw new Error('Já existe um tipo de kit com este nome');
 
-  const created = await tiposKitRepository.create({ nome, ativo: data.ativo });
+  const created = await tiposKitRepository.create({
+    nome,
+    ativo: data.ativo,
+    ...(data.descricao !== undefined ? { descricao: data.descricao } : {}),
+  });
 
   if (user) {
     await logService.log({
@@ -41,6 +45,7 @@ exports.update = async (id, data, user) => {
 
   await tiposKitRepository.update(id, {
     ...(data.nome !== undefined ? { nome: String(data.nome).trim() } : {}),
+    ...(data.descricao !== undefined ? { descricao: data.descricao } : {}),
     ...(data.ativo !== undefined ? { ativo: !!data.ativo } : {}),
   });
 

@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { mapProcessDrawerTabToFormTab, withRecordQuery } from '../../lib/record-tabs';
 import { LayoutGrid, Table2, FolderOpen, Ban, ArrowRight } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -130,9 +131,10 @@ export function ProcessesPage() {
     navigate(`/processos/${p.id}`);
   };
 
-  const openEdit = (p: Processo) => {
+  const openEdit = (p: Processo, drawerTab?: string) => {
     setDrawerProcesso(null);
-    navigate(`/processos/${p.id}/editar`);
+    const formTab = drawerTab ? mapProcessDrawerTabToFormTab(drawerTab) : undefined;
+    navigate(withRecordQuery(`/processos/${p.id}`, { tab: formTab, edit: true }));
   };
 
   const handleDelete = async (p: Processo) => {

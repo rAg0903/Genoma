@@ -4,7 +4,7 @@ exports.findAll = async () => {
   const connection = await pool.getConnection();
   try {
     const [rows] = await connection.execute(
-      'SELECT id, nome, ativo FROM tipos_kit ORDER BY nome ASC'
+      'SELECT id, nome, descricao, ativo FROM tipos_kit ORDER BY nome ASC'
     );
     return rows;
   } finally {
@@ -16,7 +16,7 @@ exports.findById = async (id) => {
   const connection = await pool.getConnection();
   try {
     const [rows] = await connection.execute(
-      'SELECT id, nome, ativo FROM tipos_kit WHERE id = ? LIMIT 1',
+      'SELECT id, nome, descricao, ativo FROM tipos_kit WHERE id = ? LIMIT 1',
       [id]
     );
     return rows[0] || null;
@@ -29,7 +29,7 @@ exports.findByNome = async (nome) => {
   const connection = await pool.getConnection();
   try {
     const [rows] = await connection.execute(
-      'SELECT id, nome, ativo FROM tipos_kit WHERE nome = ? LIMIT 1',
+      'SELECT id, nome, descricao, ativo FROM tipos_kit WHERE nome = ? LIMIT 1',
       [nome.trim()]
     );
     return rows[0] || null;
@@ -45,13 +45,16 @@ exports.create = async (data) => {
     const id = uuidv4();
     const nome = String(data.nome || '').trim();
     const ativo = data.ativo === undefined || data.ativo === null ? true : !!data.ativo;
+    const descricao = data.descricao !== undefined && data.descricao !== null
+      ? String(data.descricao).trim() || null
+      : null;
 
     await connection.execute(
-      'INSERT INTO tipos_kit (id, nome, ativo) VALUES (?, ?, ?)',
-      [id, nome, ativo]
+      'INSERT INTO tipos_kit (id, nome, descricao, ativo) VALUES (?, ?, ?, ?)',
+      [id, nome, descricao, ativo]
     );
 
-    return { id, nome, ativo };
+    return { id, nome, descricao, ativo };
   } finally {
     connection.release();
   }
@@ -66,6 +69,10 @@ exports.update = async (id, data) => {
     if (data.nome !== undefined) {
       updates.push('nome = ?');
       values.push(String(data.nome).trim());
+    }
+    if (data.descricao !== undefined) {
+      updates.push('descricao = ?');
+      values.push(data.descricao === null || data.descricao === '' ? null : String(data.descricao).trim());
     }
     if (data.ativo !== undefined) {
       updates.push('ativo = ?');

@@ -50,9 +50,20 @@ Os seguintes elementos devem ser completados pelo autor antes da entrega final:
 - `BASE_DE_DADOS.md` — Schema completo (29 tabelas)
 - `backend/ARCHITECTURE.md` — Arquitectura do backend
 
-## Últimas actualizações (Junho 2026)
+## Últimas actualizações (Julho 2026)
 
 Implementações documentadas nesta fase:
+
+| Área | Descrição | Ficheiros principais |
+|---|---|---|
+| **Edição inline** | Processos e contactos: header/tabs estáticos; edição só no separador activo (`?edit=1`) | `ProcessViewPage.tsx`, `ContactViewPage.tsx`, `useProcessRecordEdit.ts`, `record-tabs.ts` |
+| **Validação contactos** | Campos opcionais vazios aceites; erros por campo na UI | `validators.js`, `pacientes.ts`, `api.ts` |
+| **Pipeline contactos** | Filtro por estado mostra coluna única no Kanban | `ContactPipeline.tsx`, `ContactsPage.tsx` |
+| **Colheitas hoje** | Vista `/colheitas-hoje`; registo na ficha do contacto (tab Colheita) | `ColheitasDoDiaPage.tsx`, `api-agendamentos.ts` |
+| **RBAC backend** | `requireAdmin` em rotas sensíveis; testes Jest | `authorization.middleware.js`, `middleware.*.test.js` |
+| **Tipos de kit** | Campo descrição (mig. 064); formulário dedicado | `064_tipos_kit_descricao.js`, `TipoKitFormPage.tsx` |
+
+### Actualizações anteriores (Junho 2026)
 
 | Área | Descrição | Ficheiros principais |
 |---|---|---|
@@ -82,4 +93,4 @@ Get-ChildItem -Path relatorio_final -Filter *.md | Sort-Object Name
 
 ---
 
-*Documentação gerada com base no código-fonte do CRM Genoma — Junho de 2026.*
+*Documentação gerada com base no código-fonte do CRM Genoma — Julho de 2026.*

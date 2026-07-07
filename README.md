@@ -29,7 +29,7 @@ Lote → Kit → Agendamento → Colheita → Processo → Resultado → Relató
 | **Triagem e workflow** | Pipeline clínico com estados validados (Agendado → Colheita → Análise → Validação → Faturação) |
 | **Sequenciação e resultados** | Registo de resultados genéticos por cromossoma, upload de PDFs e validação clínica |
 | **Colheitas do dia** | Calendário operacional para postos e tablet; registo de colheita na ficha do contacto (reserva de kit via API `/agendamentos`) |
-| **Faturação** | Emissão de faturas com numeração, descontos e referências multibanco |
+| **Faturação** | Emissão de faturas com numeração e descontos decimais |
 | **Rastreabilidade** | Cadeia completa lote ↔ kit ↔ processo ↔ resultado, em ambos os sentidos |
 | **Listagens e exportação** | Consultas avançadas com exportação para Excel, CSV e PDF |
 | **Painel médico** | Dashboard dedicado ao perfil Médico, com KPIs e dados isolados por prescritor |
@@ -184,8 +184,8 @@ A aplicação fica disponível em `http://localhost:5173`. A API REST responde e
 | Módulo | Rota | Funcionalidade |
 |---|---|---|
 | Dashboard | `/` | KPIs e alertas; painel dedicado para perfil **Médico** (`MedicoDashboard`) |
-| Contactos | `/contactos` | Pacientes e conversão em processo (filtrado por médico quando aplicável) |
-| Processos | `/processos` | Pipeline clínico-laboratorial (Kanban) |
+| Contactos | `/contactos`, `/contactos/:id` | Pipeline Kanban; ficha com separadores; edição inline (`?edit=1`) sem sair da vista |
+| Processos | `/processos`, `/processos/:id` | Pipeline clínico-laboratorial (Kanban); vista read-only com edição inline por separador |
 | Stocks | `/stocks` | Lotes, kits, requisições e movimentos |
 | Listagens | `/listagens` | Consultas, filtros e exportações |
 | Administração | `/definicoes` | Utilizadores (incl. médicos), perfis, empresas, testes, postos, laboratórios |
@@ -229,16 +229,20 @@ Este projecto integra o **Projeto Final de Curso (PFC)** da ISLA. A documentaç�
 
 ---
 
-## Evolução recente (Junho 2026)
+## Evolução recente (Julho 2026)
 
 | Área | Melhoria |
 |------|----------|
-| **Design system** | Paleta slate/teal unificada; checkboxes e toggles (`accent-teal-600`); tokens em `design-tokens.ts` e `design-system.ts` |
-| **Notificações** | Filtros por categoria; alertas de faturação; mensagens com referência ao utilizador (Dr./Dra.); preferências em Definições e no sino |
-| **Navegação** | Breadcrumbs com número de processo; painel «Últimos processos» abre detalhe read-only |
-| **Administração** | Formulário dedicado de empresas (`/definicoes/empresas`); parâmetros Maternity alinhados com matriz de permissões |
-| **Integridade de dados** | Snapshot de colheita preservado ao guardar processo (migração 058); `data_envio_laboratorio` separada (057) |
-| **Base de dados** | 59 migrações versionadas (`backend/src/migrations/`) |
+| **Edição inline** | Processos e contactos: header e separadores estáticos; só o conteúdo do tab activo passa a edição (`?edit=1` na URL) |
+| **Rotas de ficha** | `/contactos/:id` (nova vista dedicada); `/contactos/:id/editar` redirecciona para `?edit=1`; helper `record-tabs.ts` |
+| **Validação contactos** | Campos opcionais (NIF, data nascimento) aceitam vazio; mensagens de erro por campo; `checkFalsy` no backend |
+| **Pipeline contactos** | Filtros Criado/Agendado/Cancelado mostram só a coluna seleccionada; removido KPI «Com processos» |
+| **Colheitas hoje** | Calendário operacional `/colheitas-hoje`; registo de colheita na ficha do contacto (tab Colheita) |
+| **Dashboard médico** | Saudação personalizada; KPI «Contactos registados»; colheitas do dia com telemóvel |
+| **Processos** | Guardar sem alterações de estado; desconto decimal em faturação; removido multibanco |
+| **Tipos de kit** | Campo descrição (migração 064); formulário dedicado em Administração |
+| **Robustez API** | RBAC em rotas sensíveis; testes Jest (auth, validators, kit auto-descarte); CI GitHub Actions |
+| **Base de dados** | 64 migrações versionadas (`backend/src/migrations/`) |
 
 ---
 

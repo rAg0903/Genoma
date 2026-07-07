@@ -45,17 +45,24 @@ export function getAdminBreadcrumbItems(pathname: string, t: Translate): Breadcr
     return [root, adminSection(t, 'empresas', 'navSub.empresas'), adminPage(pathname, t, 'breadcrumb.editCompany')];
   }
 
+  if (pathname === '/definicoes/tipos-kit/novo') {
+    return [root, adminSection(t, 'tipos_kit', 'navSub.tipos_kit'), adminPage(pathname, t, 'breadcrumb.newKitType')];
+  }
+  if (/^\/definicoes\/tipos-kit\/[^/]+\/editar$/.test(pathname)) {
+    return [root, adminSection(t, 'tipos_kit', 'navSub.tipos_kit'), adminPage(pathname, t, 'breadcrumb.editKitType')];
+  }
+
   if (pathname === '/definicoes/testes/novo') {
-    return [root, adminSection(t, 'testes', 'navSub.testes'), adminPage(pathname, t, 'nav.newTest')];
+    return [root, adminSection(t, 'tipos_kit', 'navSub.tipos_kit'), adminPage(pathname, t, 'nav.newTest')];
   }
   if (/^\/definicoes\/testes\/[^/]+\/editar$/.test(pathname)) {
-    return [root, adminSection(t, 'testes', 'navSub.testes'), adminPage(pathname, t, 'breadcrumb.editTest')];
+    return [root, adminSection(t, 'tipos_kit', 'navSub.tipos_kit'), adminPage(pathname, t, 'breadcrumb.editTest')];
   }
   if (/^\/definicoes\/testes\/[^/]+\/sub-testes\/novo$/.test(pathname)) {
-    return [root, adminSection(t, 'testes', 'navSub.testes'), adminPage(pathname, t, 'breadcrumb.newSubTest')];
+    return [root, adminSection(t, 'tipos_kit', 'navSub.tipos_kit'), adminPage(pathname, t, 'breadcrumb.newSubTest')];
   }
   if (/^\/definicoes\/testes\/[^/]+\/sub-testes\/[^/]+\/editar$/.test(pathname)) {
-    return [root, adminSection(t, 'testes', 'navSub.testes'), adminPage(pathname, t, 'breadcrumb.editSubTest')];
+    return [root, adminSection(t, 'tipos_kit', 'navSub.tipos_kit'), adminPage(pathname, t, 'breadcrumb.editSubTest')];
   }
 
   if (pathname === '/definicoes/medicos/novo') {

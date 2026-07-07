@@ -6,7 +6,6 @@ export const LISTINGS_NAV_ORDER = [
   'colheitas',
   'kits',
   'lotes',
-  'auditoria',
 ] as const;
 
 export type ListingsNavKey = (typeof LISTINGS_NAV_ORDER)[number];

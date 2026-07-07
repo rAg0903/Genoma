@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { CheckCircle2, Loader2, MapPin, CalendarClock, Clock } from 'lucide-react';
+import { CheckCircle2, Loader2, MapPin, CalendarClock, Clock, Phone } from 'lucide-react';
 import { agendamentosApi, Agendamento } from '../../lib/api-agendamentos';
 import { AgendaCalendar } from './agendamentos/AgendaCalendar';
 import { PageHeader } from './shared/PageHeader';
@@ -11,6 +11,7 @@ import { PAGE, PANEL, SURFACE } from '../../lib/design-tokens';
 import { formatCalendarDatePt } from '../../lib/dates';
 import { useData } from '../context/DataContext';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { withRecordQuery } from '../../lib/record-tabs';
 import { notifyError } from '../../lib/toast';
 
 const todayIso = () => {
@@ -24,13 +25,24 @@ function resolvePacienteId(ag: Agendamento): string | null {
   return null;
 }
 
+function resolvePacienteTelemovel(
+  ag: Agendamento,
+  contacts: { id: string; telemovel?: string | null }[],
+): string | null {
+  if (ag.paciente_telemovel?.trim()) return ag.paciente_telemovel.trim();
+  const pacienteId = resolvePacienteId(ag);
+  if (!pacienteId) return null;
+  const telemovel = contacts.find((c) => c.id === pacienteId)?.telemovel;
+  return telemovel?.trim() || null;
+}
+
 const podeRegistarColheita = (ag: Agendamento) =>
   ag.processo_status === 'Kit Reservado' || ag.processo_status === 'Agendado';
 
 export function ColheitasDoDiaPage() {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { postos, processos } = useData();
+  const { postos, processos, contacts } = useData();
 
   const today = todayIso();
   const [month, setMonth] = useState(() => new Date());
@@ -84,7 +96,7 @@ export function ColheitasDoDiaPage() {
       ?? null;
 
     if (pacienteId) {
-      navigate(`/contactos/${pacienteId}/editar?tab=colheita`);
+      navigate(withRecordQuery(`/contactos/${pacienteId}`, { tab: 'colheita', edit: true }));
       return;
     }
     if (ag.processo_id) {
@@ -173,41 +185,67 @@ export function ColheitasDoDiaPage() {
                 />
               ) : (
                 <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {agendamentos.map((ag) => (
-                    <li key={ag.id} className="px-4 py-3 flex items-start gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  {agendamentos.map((ag) => {
+                    const telemovel = resolvePacienteTelemovel(ag, contacts);
+                    const metaSecundaria = [ag.kit_codigo, ag.numero_processo].filter(Boolean);
+                    return (
+                    <li
+                      key={ag.id}
+                      className="px-4 py-3.5 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4"
+                    >
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                          <p className="text-[15px] sm:text-base font-semibold text-slate-900 dark:text-slate-100 truncate max-w-full">
                             {ag.paciente_nome}
-                          </span>
+                          </p>
                           <StatusBadge
                             status={ag.processo_status}
                             map={PROCESS_STATUS_STYLES}
-                            className="text-[11px] px-1.5 py-0.5"
+                            className="text-[11px] px-1.5 py-0.5 flex-shrink-0"
                           />
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                          {telemovel && (
+                            <a
+                              href={`tel:${telemovel.replace(/\s/g, '')}`}
+                              className="inline-flex items-center gap-1 rounded-md bg-teal-50 dark:bg-teal-900/35 border border-teal-200/70 dark:border-teal-700/45 px-2 py-0.5 text-xs font-semibold text-teal-800 dark:text-teal-200 tabular-nums hover:bg-teal-100 dark:hover:bg-teal-900/55 transition-colors"
+                            >
+                              <Phone className="w-3 h-3 flex-shrink-0" />
+                              {telemovel}
+                            </a>
+                          )}
+                          {telemovel && (ag.posto_nome || ag.periodo) && (
+                            <span className="hidden sm:inline text-slate-300 dark:text-slate-600" aria-hidden>
+                              ·
+                            </span>
+                          )}
                           {ag.posto_nome && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {ag.posto_nome}
+                            <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 min-w-0">
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">{ag.posto_nome}</span>
                             </span>
                           )}
                           {ag.periodo && (
-                            <span className="flex items-center gap-1">
+                            <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 flex-shrink-0">
                               <Clock className="w-3 h-3" />
                               {ag.periodo}
                             </span>
                           )}
-                          {ag.kit_codigo && (
-                            <span className="font-mono text-teal-600 dark:text-teal-400">
-                              Kit: {ag.kit_codigo}
-                            </span>
-                          )}
-                          {ag.numero_processo && (
-                            <span className="font-mono text-slate-500">#{ag.numero_processo}</span>
-                          )}
                         </div>
+
+                        {metaSecundaria.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+                            {ag.kit_codigo && (
+                              <span className="font-mono text-teal-600 dark:text-teal-400">
+                                Kit: {ag.kit_codigo}
+                              </span>
+                            )}
+                            {ag.numero_processo && (
+                              <span className="font-mono">#{ag.numero_processo}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {podeRegistarColheita(ag) && (
@@ -215,14 +253,15 @@ export function ColheitasDoDiaPage() {
                           type="button"
                           title={t('ux.colheitasHoje.registar')}
                           onClick={() => goToColheitaContacto(ag)}
-                          className={`${ADD_ACTION_BUTTON_CLASS} flex-shrink-0`}
+                          className={`${ADD_ACTION_BUTTON_CLASS} w-full sm:w-auto flex-shrink-0 px-3 py-1.5 text-xs sm:text-sm sm:self-center`}
                         >
                           <CheckCircle2 className="w-4 h-4" />
                           <span>{t('ux.colheitasHoje.registar')}</span>
                         </button>
                       )}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </div>

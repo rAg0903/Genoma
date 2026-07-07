@@ -14,6 +14,7 @@ import { getAuthToken } from '../lib/auth-session';
 const DashboardPage = lazy(() => import('./components/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const ContactsPage = lazy(() => import('./components/ContactsPage').then((m) => ({ default: m.ContactsPage })));
 const ContactFormPage = lazy(() => import('./components/ContactFormPage').then((m) => ({ default: m.ContactFormPage })));
+const ContactViewPage = lazy(() => import('./components/ContactViewPage').then((m) => ({ default: m.ContactViewPage })));
 const ProcessesPage = lazy(() => import('./components/ProcessesPage').then((m) => ({ default: m.ProcessesPage })));
 const ProcessFormPage = lazy(() => import('./components/ProcessFormPage').then((m) => ({ default: m.ProcessFormPage })));
 const ProcessViewPage = lazy(() => import('./components/ProcessViewPage').then((m) => ({ default: m.ProcessViewPage })));
@@ -28,6 +29,7 @@ const EntidadeFormPage = lazy(() => import('./components/LocalFormPage').then((m
 const EmpresaFormPage = lazy(() => import('./components/EmpresaFormPage').then((m) => ({ default: m.EmpresaFormPage })));
 const TesteFormPage = lazy(() => import('./components/TesteFormPage').then((m) => ({ default: m.TesteFormPage })));
 const SubTesteFormPage = lazy(() => import('./components/SubTesteFormPage').then((m) => ({ default: m.SubTesteFormPage })));
+const TipoKitFormPage = lazy(() => import('./components/TipoKitFormPage').then((m) => ({ default: m.TipoKitFormPage })));
 const ProfilePage = lazy(() => import('./components/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const NotificationsPage = lazy(() => import('./components/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -156,6 +158,14 @@ export const router = createBrowserRouter([
         Component: () => withSuspense(
           <ProtectedRoute module="contactos">
             <ContactFormPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'contactos/:id',
+        Component: () => withSuspense(
+          <ProtectedRoute module="contactos">
+            <ContactViewPage />
           </ProtectedRoute>
         ),
       },
@@ -320,6 +330,22 @@ export const router = createBrowserRouter([
         Component: () => withSuspense(
           <ProtectedRoute module="definicoes">
             <LaboratorioFormPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'definicoes/tipos-kit/novo',
+        Component: () => withSuspense(
+          <ProtectedRoute module="definicoes">
+            <TipoKitFormPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'definicoes/tipos-kit/:id/editar',
+        Component: () => withSuspense(
+          <ProtectedRoute module="definicoes">
+            <TipoKitFormPage />
           </ProtectedRoute>
         ),
       },

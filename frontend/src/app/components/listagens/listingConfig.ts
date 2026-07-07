@@ -1,6 +1,6 @@
 import {
   Activity, FlaskConical, Receipt, Users, Stethoscope,
-  Package, Boxes, CalendarDays, ShieldCheck, LayoutDashboard, LucideIcon,
+  Package, Boxes, CalendarDays, LayoutDashboard, LucideIcon,
 } from 'lucide-react';
 import { ListingKey } from '../../../lib/api-listagens';
 import { LISTINGS_NAV_ORDER } from '../../../lib/listings-nav';
@@ -61,7 +61,7 @@ export const LISTINGS: Record<ListingKey, ListingDef> = {
       data_relatorio: 'date',
       envio_relatorio: 'date',
     },
-    filters: ['data', 'estado', 'medico', 'empresa', 'teste'],
+    filters: ['data', 'estado', 'medico', 'posto', 'empresa', 'teste'],
   },
   processos: {
     key: 'processos',
@@ -143,21 +143,13 @@ export const LISTINGS: Record<ListingKey, ListingDef> = {
     statusKey: 'estado',
     filters: ['data', 'posto', 'estado'],
   },
-  auditoria: {
-    key: 'auditoria',
-    label: 'Auditoria',
-    icon: ShieldCheck,
-    searchPlaceholder: 'Pesquisar utilizador, ação, tabela...',
-    defaultSort: { key: 'data', dir: 'desc' },
-    formats: { data: 'datetime', registro_id: 'mono' },
-    filters: ['data'],
-  },
 };
 
 export const LISTING_ORDER: ListingKey[] = [...LISTINGS_NAV_ORDER];
 
 export const ESTADO_OPTIONS: Record<string, string[]> = {
   painel_bordo: PROCESS_ESTADOS,
+  processos: PROCESS_ESTADOS,
   resultados: PROCESS_ESTADOS,
   colheitas: PROCESS_ESTADOS,
   kits: KIT_ESTADOS,

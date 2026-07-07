@@ -1,6 +1,6 @@
 # Genoma CRM — Ponto de Situação e Perguntas ao Cliente
 
-**Data:** 11 de junho de 2026
+**Data:** 7 de julho de 2026
 **Para:** Equipa Genoma
 **Assunto:** O que já está feito no novo sistema e o que precisamos de confirmar convosco
 
@@ -38,14 +38,19 @@ Abaixo, ponto a ponto, o que já foi realizado.
   num quadro de post-its por coluna (Agendado, Em análise, Resultado, Validado, etc.).
 - O sistema **só permite avançar para fases válidas** — deixou de ser possível "saltar"
   etapas por engano. Isto reduz erros humanos.
-- Cada processo abre num **painel lateral** com separadores: Resumo, Fluxo de trabalho,
+- Cada processo abre numa **vista dedicada** (`/processos/:id`) com separadores: Resumo, Fluxo de trabalho,
   Resultado, Relatório, Faturação, Rastreabilidade e Histórico.
+- Ao clicar **Editar**, o cabeçalho e os separadores **permanecem estáticos** — só o conteúdo do separador activo muda para edição, sem recarregar a página.
 - **Correção recente:** a **data de entrada** do processo passa a aparecer no dia correto
   (ex.: dia 12 e não dia 11), alinhada com a data guardada nos contactos. O problema era
   técnico (fuso horário) e já está corrigido no backend e no ecrã de edição.
 
 ### 2. Módulo de Contactos e conversão em processo
 - O fluxo de **criar contacto → associar kit → gerar processo** está operacional.
+- Cada contacto abre numa **ficha dedicada** (`/contactos/:id`) com separadores (Dados, Colheita, Processos, etc.).
+- Ao clicar **Editar**, o cabeçalho e os separadores **mantêm-se no mesmo sítio** — só o conteúdo do separador activo passa a modo de edição, sem mudar de página.
+- O **pipeline Kanban** permite filtrar por estado (Criado, Agendado, Cancelado) para ver apenas a coluna relevante.
+- A validação ao guardar aceita campos opcionais vazios (NIF, data de nascimento) sem mostrar erros enganadores.
 - A data de entrada do processo é definida no **dia da conversão** (calendário local),
   em linha com a data efetiva da colheita quando aplicável.
 - Após editar o perfil do utilizador, o **nome atualizado** reflete-se na barra lateral
@@ -63,7 +68,7 @@ Abaixo, ponto a ponto, o que já foi realizado.
 
 ### 4. Colheitas do dia (operacional nos postos)
 - A vista **`/colheitas-hoje`** concentra o calendário de colheitas e a lista do dia (filtro por posto, cores de carga).
-- Ao **registar colheita**, o operador é enviado para a **ficha do contacto**, separador **Colheita**, para confirmar data efectiva e kit — não se regista directamente a partir da lista.
+- Ao **registar colheita**, o operador é enviado para a **ficha do contacto** (`/contactos/:id`), separador **Colheita**, para confirmar data efectiva e kit — não se regista directamente a partir da lista.
 - A API de agendamentos (`/api/agendamentos`) mantém a **reserva automática de kit** ao criar agendamento a partir do contacto.
 - A antiga entrada de menu **Agendamentos** foi removida; o URL `/agendamentos` redirecciona para `/colheitas-hoje`.
 

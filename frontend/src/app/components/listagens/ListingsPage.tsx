@@ -1,16 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { FlaskConical, Receipt, Package, Boxes, BadgeCheck } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
-import { useGlobalSearch } from '../../context/GlobalSearchContext';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { PageHeader } from '../shared/PageHeader';
 import { PageTabsRow } from '../shared/PageToolbar';
 import { TabsBar } from '../shared/TabsBar';
 import { FilterBar } from '../shared/FilterBar';
 import { KpiCard } from '../dashboard/KpiCard';
-import { CONTROL, formatEUR, LAYOUT, PAGE } from '../../../lib/design-tokens';
+import { LAYOUT, PAGE } from '../../../lib/design-tokens';
 import {
   listagensApi, ListingKey, ListingColumn, ListingRow, ListingPagination, ListingQuery,
 } from '../../../lib/api-listagens';
@@ -23,12 +22,145 @@ import { AdvancedFilters, AdvancedFilterState, countActiveFilters } from './Adva
 
 const PAGE_SIZE = 25;
 
+type ListingSnapshot = {
+  columns: ListingColumn[];
+  rows: ListingRow[];
+  pagination: ListingPagination | null;
+  search: string;
+  advanced: AdvancedFilterState;
+  sort: string;
+  dir: 'asc' | 'desc';
+  page: number;
+};
+
+type ListingTabContentProps = {
+  tab: ListingKey;
+  snapshot?: ListingSnapshot;
+  onSnapshot: (tab: ListingKey, data: ListingSnapshot) => void;
+  onRowClick: (row: ListingRow) => void;
+};
+
+function ListingTabContent({ tab, snapshot, onSnapshot, onRowClick }: ListingTabContentProps) {
+  const { t } = useLanguage();
+  const def = LISTINGS[tab];
+
+  const [search, setSearch] = useState(snapshot?.search ?? '');
+  const [advanced, setAdvanced] = useState<AdvancedFilterState>(snapshot?.advanced ?? {});
+  const [sort, setSort] = useState(snapshot?.sort ?? def.defaultSort?.key ?? '');
+  const [dir, setDir] = useState<'asc' | 'desc'>(snapshot?.dir ?? def.defaultSort?.dir ?? 'desc');
+  const [page, setPage] = useState(snapshot?.page ?? 1);
+
+  const [columns, setColumns] = useState<ListingColumn[]>(snapshot?.columns ?? []);
+  const [rows, setRows] = useState<ListingRow[]>(snapshot?.rows ?? []);
+  const [pagination, setPagination] = useState<ListingPagination | null>(snapshot?.pagination ?? null);
+  const [loading, setLoading] = useState(!snapshot?.rows?.length);
+  const [error, setError] = useState(false);
+
+  const loadSeqRef = useRef(0);
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+
+  const query: ListingQuery = useMemo(() => ({
+    q: search || undefined,
+    sort: sort || undefined,
+    dir,
+    page,
+    limit: PAGE_SIZE,
+    ...advanced,
+  }), [search, sort, dir, page, advanced]);
+
+  const load = useCallback(async () => {
+    const seq = ++loadSeqRef.current;
+    const hasRows = rowsRef.current.length > 0;
+    if (!hasRows) setLoading(true);
+    setError(false);
+
+    try {
+      const res = await listagensApi.list(tab, query);
+      if (seq !== loadSeqRef.current) return;
+
+      setColumns(res.columns);
+      setRows(res.data);
+      setPagination(res.pagination);
+      onSnapshot(tab, {
+        columns: res.columns,
+        rows: res.data,
+        pagination: res.pagination,
+        search,
+        advanced,
+        sort,
+        dir,
+        page,
+      });
+    } catch {
+      if (seq !== loadSeqRef.current) return;
+      setError(true);
+      if (!hasRows) {
+        setRows([]);
+        setPagination(null);
+      }
+    } finally {
+      if (seq === loadSeqRef.current) setLoading(false);
+    }
+  }, [tab, query, search, advanced, sort, dir, page, onSnapshot]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => { void load(); }, search ? 250 : 0);
+    return () => clearTimeout(handle);
+  }, [load, search]);
+
+  const handleSort = (key: string) => {
+    if (sort === key) {
+      setDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSort(key);
+      setDir('asc');
+    }
+    setPage(1);
+  };
+
+  const advancedCount = countActiveFilters(advanced);
+  const searchPlaceholderKey = `listingsPage.searchPlaceholder.${tab}`;
+  const searchPlaceholder = t(searchPlaceholderKey) !== searchPlaceholderKey
+    ? t(searchPlaceholderKey)
+    : def.searchPlaceholder;
+
+  return (
+    <>
+      <FilterBar
+        searchValue={search}
+        onSearchChange={(v) => { setSearch(v); setPage(1); }}
+        searchPlaceholder={searchPlaceholder}
+        advanced={def.filters.length > 0 ? (
+          <AdvancedFilters def={def} value={advanced} onChange={(next) => { setAdvanced(next); setPage(1); }} />
+        ) : undefined}
+        advancedCount={advancedCount}
+        onClearAdvanced={() => { setAdvanced({}); setPage(1); }}
+      />
+
+      <ListingTable
+        def={def}
+        columns={columns}
+        rows={rows}
+        pagination={pagination}
+        loading={loading}
+        error={error}
+        sort={sort}
+        dir={dir}
+        onSort={handleSort}
+        onPageChange={setPage}
+        onRowClick={onRowClick}
+      />
+    </>
+  );
+}
+
 export function ListingsPage() {
   const { t } = useLanguage();
-  const { openSearch } = useGlobalSearch();
   const { hasListingsSubmodulePermission } = useAuth();
   const { processos, kits, lotes } = useData();
   const [searchParams, setSearchParams] = useSearchParams();
+  const tabCacheRef = useRef<Partial<Record<ListingKey, ListingSnapshot>>>({});
 
   const visibleTabs = useMemo(
     () => LISTING_ORDER.filter((key) => hasListingsSubmodulePermission(key as ListingsSubmodule)),
@@ -52,78 +184,19 @@ export function ListingsPage() {
   }, [activeTab, searchParams, setSearchParams, tabParam, visibleTabs]);
 
   const def: ListingDef = LISTINGS[activeTab];
-
-  const [search, setSearch] = useState('');
-  const [advanced, setAdvanced] = useState<AdvancedFilterState>({});
-  const [sort, setSort] = useState<string>(def.defaultSort?.key ?? '');
-  const [dir, setDir] = useState<'asc' | 'desc'>(def.defaultSort?.dir ?? 'desc');
-  const [page, setPage] = useState(1);
-
-  const [columns, setColumns] = useState<ListingColumn[]>([]);
-  const [rows, setRows] = useState<ListingRow[]>([]);
-  const [pagination, setPagination] = useState<ListingPagination | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
   const [selected, setSelected] = useState<ListingRow | null>(null);
 
-  // Reset per-tab state when switching listing.
-  useEffect(() => {
-    setSearch('');
-    setAdvanced({});
-    setSort(def.defaultSort?.key ?? '');
-    setDir(def.defaultSort?.dir ?? 'desc');
-    setPage(1);
-  }, [activeTab, def.defaultSort?.key, def.defaultSort?.dir]);
-
-  const query: ListingQuery = useMemo(() => ({
-    q: search || undefined,
-    sort: sort || undefined,
-    dir,
-    page,
-    limit: PAGE_SIZE,
-    ...advanced,
-  }), [search, sort, dir, page, advanced]);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      const res = await listagensApi.list(activeTab, query);
-      setColumns(res.columns);
-      setRows(res.data);
-      setPagination(res.pagination);
-    } catch {
-      setError(true);
-      setRows([]);
-      setPagination(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeTab, query]);
-
-  // Debounce search; immediate for other changes.
-  useEffect(() => {
-    const handle = setTimeout(() => { void load(); }, search ? 250 : 0);
-    return () => clearTimeout(handle);
-  }, [load, search]);
-
   const changeTab = (key: ListingKey) => {
+    setSelected(null);
     const params = new URLSearchParams(searchParams);
     if (key === 'painel_bordo') params.delete('tab');
     else params.set('tab', key);
     setSearchParams(params, { replace: true });
   };
 
-  const handleSort = (key: string) => {
-    if (sort === key) {
-      setDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSort(key);
-      setDir('asc');
-    }
-    setPage(1);
-  };
+  const handleSnapshot = useCallback((tab: ListingKey, data: ListingSnapshot) => {
+    tabCacheRef.current[tab] = data;
+  }, []);
 
   const kpis = useMemo(() => {
     const resultados = processos.filter((p) => ['Resultado Disponivel', 'Validado', 'Faturado'].includes(p.estado)).length;
@@ -138,60 +211,45 @@ export function ListingsPage() {
     };
   }, [processos, kits, lotes]);
 
-  const advancedCount = countActiveFilters(advanced);
-
-  const searchPlaceholderKey = `listingsPage.searchPlaceholder.${activeTab}`;
-  const searchPlaceholder = t(searchPlaceholderKey) !== searchPlaceholderKey
-    ? t(searchPlaceholderKey)
-    : def.searchPlaceholder;
+  const exportQuery: ListingQuery = useMemo(() => {
+    const snap = tabCacheRef.current[activeTab];
+    return {
+      q: snap?.search || undefined,
+      sort: snap?.sort || def.defaultSort?.key || undefined,
+      dir: snap?.dir ?? def.defaultSort?.dir ?? 'desc',
+      page: snap?.page ?? 1,
+      limit: PAGE_SIZE,
+      ...(snap?.advanced ?? {}),
+    };
+  }, [activeTab, def.defaultSort?.dir, def.defaultSort?.key]);
 
   return (
     <div className={PAGE.shell}>
       <div className={PAGE.body}>
         <PageHeader title={t('pages.listings.title')} subtitle={t('pages.listings.subtitle')}>
           <PageTabsRow
-            actions={<ExportMenu listing={activeTab} query={query} count={pagination?.totalRecords ?? 0} />}
+            actions={(
+              <ExportMenu
+                listing={activeTab}
+                query={exportQuery}
+                count={tabCacheRef.current[activeTab]?.pagination?.totalRecords ?? 0}
+              />
+            )}
           >
             <TabsBar
               active={activeTab}
               onChange={changeTab}
+              instant
               items={visibleTabs.map((k) => ({ id: k, label: t(`listings.${k}`), icon: LISTINGS[k].icon }))}
             />
           </PageTabsRow>
         </PageHeader>
 
-        <FilterBar
-          searchValue={search}
-          onSearchChange={(v) => { setSearch(v); setPage(1); }}
-          searchPlaceholder={searchPlaceholder}
-          advanced={def.filters.length > 0 ? (
-            <AdvancedFilters def={def} value={advanced} onChange={(next) => { setAdvanced(next); setPage(1); }} />
-          ) : undefined}
-          advancedCount={advancedCount}
-          onClearAdvanced={() => { setAdvanced({}); setPage(1); }}
-          right={(
-            <button
-              type="button"
-              onClick={openSearch}
-              className={CONTROL.buttonSecondary}
-            >
-              {t('listingsPage.globalSearch')}
-              <kbd className="hidden sm:inline text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">Ctrl K</kbd>
-            </button>
-          )}
-        />
-
-        <ListingTable
-          def={def}
-          columns={columns}
-          rows={rows}
-          pagination={pagination}
-          loading={loading}
-          error={error}
-          sort={sort}
-          dir={dir}
-          onSort={handleSort}
-          onPageChange={setPage}
+        <ListingTabContent
+          key={activeTab}
+          tab={activeTab}
+          snapshot={tabCacheRef.current[activeTab]}
+          onSnapshot={handleSnapshot}
           onRowClick={setSelected}
         />
 
@@ -207,12 +265,25 @@ export function ListingsPage() {
       <ListingDetailDrawer
         listing={activeTab}
         row={selected}
-        columns={columns}
+        columns={tabCacheRef.current[activeTab]?.columns ?? []}
         def={def}
         onClose={() => setSelected(null)}
         onNavigateTab={(key, q) => {
           changeTab(key);
-          if (q !== undefined) setSearch(q);
+          if (q !== undefined) {
+            tabCacheRef.current[key] = {
+              ...(tabCacheRef.current[key] ?? {
+                columns: [],
+                rows: [],
+                pagination: null,
+                advanced: {},
+                sort: LISTINGS[key].defaultSort?.key ?? '',
+                dir: LISTINGS[key].defaultSort?.dir ?? 'desc',
+                page: 1,
+              }),
+              search: q,
+            };
+          }
           setSelected(null);
         }}
       />

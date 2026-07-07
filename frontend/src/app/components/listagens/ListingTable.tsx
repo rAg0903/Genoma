@@ -1,8 +1,7 @@
-import { ArrowUp, ArrowDown, ChevronRight, ChevronLeft, Loader2, Search, AlertTriangle } from 'lucide-react';
+import { ArrowUp, ArrowDown, ChevronRight, ChevronLeft, Loader2, Search, AlertTriangle, type LucideIcon } from 'lucide-react';
 import { ListingColumn, ListingRow, ListingPagination } from '../../../lib/api-listagens';
 import { CellFormat, ListingDef } from './listingConfig';
 import { StatusBadge } from '../shared/StatusBadge';
-import { EmptyState } from '../shared/EmptyState';
 import { formatEUR, formatNumber, PANEL } from '../../../lib/design-tokens';
 import { formatCalendarDatePt } from '../../../lib/dates';
 import { useLanguage } from '../../../i18n/LanguageContext';
@@ -44,6 +43,33 @@ const renderCell = (row: ListingRow, key: string, format: CellFormat, def: Listi
   }
 };
 
+/** Altura fixa partilhada — evita salto entre «A carregar» e «Nenhum registo encontrado». */
+const LISTING_PLACEHOLDER_CLASS = 'flex h-[220px] flex-col items-center justify-center px-6 text-center';
+
+function ListingTablePlaceholder({
+  icon: Icon,
+  title,
+  description,
+  spinning = false,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description?: string;
+  spinning?: boolean;
+}) {
+  return (
+    <div className={LISTING_PLACEHOLDER_CLASS}>
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+        <Icon className={`h-6 w-6 text-slate-400 dark:text-slate-500${spinning ? ' animate-spin' : ''}`} />
+      </div>
+      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{title}</p>
+      {description ? (
+        <p className="mt-1 max-w-sm text-xs text-slate-400 dark:text-slate-500">{description}</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function ListingTable({
   def, columns, rows, pagination, loading, error, sort, dir, onSort, onPageChange, onRowClick,
 }: ListingTableProps) {
@@ -59,17 +85,34 @@ export function ListingTable({
 
   return (
     <div className={PANEL.table}>
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-slate-400">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('listingsPage.table.loading', { label: listingLabel.toLowerCase() })}
-        </div>
-      ) : error ? (
-        <EmptyState icon={AlertTriangle} title={t('listingsPage.table.errorTitle')} description={t('listingsPage.table.errorDescription')} />
+      {error && rows.length === 0 ? (
+        <ListingTablePlaceholder
+          icon={AlertTriangle}
+          title={t('listingsPage.table.errorTitle')}
+          description={t('listingsPage.table.errorDescription')}
+        />
+      ) : rows.length === 0 && loading ? (
+        <ListingTablePlaceholder
+          icon={Loader2}
+          title={t('common.loading')}
+          description={t('listingsPage.table.loading', { label: listingLabel.toLowerCase() })}
+          spinning
+        />
       ) : rows.length === 0 ? (
-        <EmptyState icon={Search} title={t('listingsPage.table.emptyTitle')} description={t('listingsPage.table.emptyDescription')} />
+        <ListingTablePlaceholder
+          icon={Search}
+          title={t('listingsPage.table.emptyTitle')}
+          description={t('listingsPage.table.emptyDescription')}
+        />
       ) : (
         <>
-          <div className="overflow-x-auto">
+          <div className="relative">
+            {loading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/55 dark:bg-slate-900/55 backdrop-blur-[1px]">
+                <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+              </div>
+            )}
+            <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                 <tr>
@@ -114,6 +157,7 @@ export function ListingTable({
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
 
           {pagination && (

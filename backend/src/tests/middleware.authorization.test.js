@@ -9,7 +9,7 @@ jest.mock('../repositories/perfis.repository');
 jest.mock('../services/perfil_stock_submodulos.service');
 
 const perfisRepository = require('../repositories/perfis.repository');
-const { requireAdmin } = require('../middleware/authorization.middleware');
+const { requireAdmin, requireSelfOrAdminForUtilizador } = require('../middleware/authorization.middleware');
 
 const mockReq = (perfilId = null) => ({
   user: { role: perfilId, perfil_id: perfilId },
@@ -71,5 +71,45 @@ describe('requireAdmin', () => {
     await requireAdmin(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(403);
+  });
+});
+
+describe('requireSelfOrAdminForUtilizador', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  test('permite médico aceder ao próprio registo', async () => {
+    perfisRepository.findById.mockResolvedValue({ id: 'p-medico', nome: 'Medico' });
+    const req = { user: { id: 'user-1', perfil_id: 'p-medico' }, params: { id: 'user-1' } };
+    const res = mockRes();
+    const next = jest.fn();
+
+    await requireSelfOrAdminForUtilizador(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  test('nega médico aceder a outro utilizador', async () => {
+    perfisRepository.findById.mockResolvedValue({ id: 'p-medico', nome: 'Medico' });
+    const req = { user: { id: 'user-1', perfil_id: 'p-medico' }, params: { id: 'user-2' } };
+    const res = mockRes();
+    const next = jest.fn();
+
+    await requireSelfOrAdminForUtilizador(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('permite administrador aceder a qualquer utilizador', async () => {
+    perfisRepository.findById.mockResolvedValue({ id: 'p-admin', nome: 'Administrador' });
+    const req = { user: { id: 'admin-1', perfil_id: 'p-admin' }, params: { id: 'user-2' } };
+    const res = mockRes();
+    const next = jest.fn();
+
+    await requireSelfOrAdminForUtilizador(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 });

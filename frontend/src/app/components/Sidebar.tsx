@@ -16,7 +16,6 @@ type MenuSubItemId =
   | 'lotes'
   | 'requisicoes'
   | 'descartes'
-  | 'auditoria'
   | 'exames'
   | 'painel_bordo'
   | 'processos'
@@ -28,7 +27,6 @@ type MenuSubItemId =
   | 'inicio'
   | 'permissoes'
   | 'empresas'
-  | 'testes'
   | 'tipos_kit'
   | 'entidades'
   | 'laboratorios'
@@ -88,7 +86,6 @@ const menuItemDefs: MenuItem[] = [
       { id: 'utilizadores', labelKey: 'navSub.utilizadores', path: '/definicoes?tab=utilizadores' },
       { id: 'permissoes', labelKey: 'navSub.permissoes', path: '/definicoes?tab=permissoes' },
       { id: 'empresas', labelKey: 'navSub.empresas', path: '/definicoes?tab=empresas' },
-      { id: 'testes', labelKey: 'navSub.testes', path: '/definicoes?tab=testes' },
       { id: 'tipos_kit', labelKey: 'navSub.tipos_kit', path: '/definicoes?tab=tipos_kit' },
       { id: 'entidades', labelKey: 'navSub.entidades', path: '/definicoes?tab=entidades' },
       { id: 'laboratorios', labelKey: 'navSub.laboratorios', path: '/definicoes?tab=laboratorios' },
@@ -137,6 +134,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (item.module === 'definicoes') {
       return item.subItems.filter((subItem) => {
         if (subItem.id === 'inicio') return true;
+        if (subItem.id === 'tipos_kit') {
+          return hasDefinicoesSubmodulePermission('tipos_kit') || hasDefinicoesSubmodulePermission('testes');
+        }
         return hasDefinicoesSubmodulePermission(subItem.id as DefinicoesSubmodule);
       });
     }

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   Save, User, MapPin, Baby, Syringe, Receipt, StickyNote, Paperclip,
   AlertTriangle, CheckCircle2, Package, X, Loader2, Ban, CalendarDays,
@@ -40,10 +40,23 @@ import { Medico, medicosApi } from '../../lib/api-medicos';
 import { parseGestacaoRegistoInput } from '../../lib/gestacao';
 import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
 import { CONTROL, FORM } from '../../lib/design-tokens';
+import { CONTACT_TAB_IDS, withRecordQuery, type ContactTabId } from '../../lib/record-tabs';
 
-type TabId = 'identificacao' | 'gravidez' | 'colheita' | 'faturacao' | 'notas' | 'anexos';
+export type ContactFormEditHandle = {
+  save: () => Promise<boolean>;
+  cancel: () => void;
+};
 
-const CONTACT_TAB_IDS = new Set<TabId>(['identificacao', 'gravidez', 'colheita', 'faturacao', 'notas', 'anexos']);
+type ContactFormPageProps = {
+  embedded?: boolean;
+  contactId?: string;
+  activeTab?: ContactTabId;
+  onSaveComplete?: () => void;
+  editRef?: MutableRefObject<ContactFormEditHandle | null>;
+  onTabChangeRequest?: (tab: ContactTabId) => void;
+};
+
+type TabId = ContactTabId;
 
 const emptyForm: Omit<Contact, 'id' | 'created_at'> = {
   nome: '', data_nascimento: '', genero: 'Feminino', nif: '', telemovel: '', email: '', morada: '',
@@ -63,10 +76,19 @@ interface KitOpcao { id: string; codigo_barras: string; tracking: string; tipo_k
 
 const inputClass = CONTROL.input;
 
-export function ContactFormPage() {
-  const { id } = useParams();
+export function ContactFormPage({
+  embedded = false,
+  contactId: contactIdProp,
+  activeTab: activeTabProp,
+  onSaveComplete,
+  editRef,
+  onTabChangeRequest,
+}: ContactFormPageProps = {}) {
+  const { id: routeId } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const id = embedded ? contactIdProp : routeId;
   const { t, localeTag } = useLanguage();
   const {
     contacts, addContact, updateContact, processos, addProcesso, updateProcesso,
@@ -79,7 +101,13 @@ export function ContactFormPage() {
   const canUpdateProcesso = hasPermission('processos', 'update');
 
   const editing = Boolean(id);
-  const [tab, setTab] = useState<TabId>('identificacao');
+  const [internalTab, setInternalTab] = useState<TabId>('identificacao');
+  const tab = embedded ? (activeTabProp ?? 'identificacao') : internalTab;
+
+  const focusTab = (next: TabId) => {
+    if (embedded && onTabChangeRequest) onTabChangeRequest(next);
+    else setInternalTab(next);
+  };
 
   const tabs = useMemo(() => [
     { id: 'identificacao' as const, label: t('form.tabs.identificacao'), icon: User },
@@ -99,11 +127,18 @@ export function ContactFormPage() {
   );
 
   useEffect(() => {
+    if (embedded) return;
     const requested = searchParams.get('tab');
     if (requested && CONTACT_TAB_IDS.has(requested as TabId)) {
-      setTab(requested as TabId);
+      setInternalTab(requested as TabId);
     }
-  }, [searchParams]);
+  }, [embedded, searchParams]);
+
+  const handleTabChange = (next: TabId) => {
+    if (embedded) return;
+    setInternalTab(next);
+    setSearchParams(next === 'identificacao' ? {} : { tab: next }, { replace: true });
+  };
 
   const [form, setForm] = useState<Omit<Contact, 'id' | 'created_at'>>(emptyForm);
   const [savedContactId, setSavedContactId] = useState<string | null>(id ?? null);
@@ -271,7 +306,7 @@ export function ContactFormPage() {
     setLinked(null);
     setContactFaturacao(emptyProcessFaturacao());
     setAnulacao({ anulado: false, motivo_anulacao_id: '' });
-    setTab('identificacao');
+    setInternalTab('identificacao');
   }, [id]);
 
   // Contacto ja convertido em processo → redirecionar para ficha de consulta
@@ -425,8 +460,8 @@ export function ContactFormPage() {
   }, [form.codigo_postal, savedContactId, autofillFromCp]);
 
   const validarIdentificacao = (): boolean => {
-    if (!form.nome.trim()) { toast.error(t('pages.contacts.form.toast.nameRequired')); setTab('identificacao'); return false; }
-    if (!form.telemovel.trim()) { toast.error(t('pages.contacts.form.toast.phoneRequired')); setTab('identificacao'); return false; }
+    if (!form.nome.trim()) { toast.error(t('pages.contacts.form.toast.nameRequired')); focusTab('identificacao'); return false; }
+    if (!form.telemovel.trim()) { toast.error(t('pages.contacts.form.toast.phoneRequired')); focusTab('identificacao'); return false; }
     return true;
   };
 
@@ -458,19 +493,19 @@ export function ContactFormPage() {
     }
   };
 
-  const handleGuardar = async () => {
-    if (!validarIdentificacao()) return;
+  const handleGuardar = async (): Promise<boolean> => {
+    if (!validarIdentificacao()) return false;
     if (anulacao.anulado && !anulacao.motivo_anulacao_id) {
       toast.error(t('pages.contacts.form.voidReasonRequired'));
-      setTab('identificacao');
-      return;
+      focusTab('identificacao');
+      return false;
     }
     if (!anulacao.anulado) {
       const fatErr = validateFaturacaoData(contactFaturacao);
       if (fatErr) {
         toast.error(fatErr);
-        setTab('faturacao');
-        return;
+        focusTab('faturacao');
+        return false;
       }
     }
     setSaving(true);
@@ -494,16 +529,32 @@ export function ContactFormPage() {
 
       toast.success(isNew ? t('pages.contacts.form.toast.created') : t('pages.contacts.form.toast.updated'));
 
-      if (isNew && saved.id) {
+      if (isNew && saved.id && !embedded) {
         hydratedIdRef.current = saved.id;
-        navigate(`/contactos/${saved.id}/editar`, { replace: true });
+        navigate(withRecordQuery(`/contactos/${saved.id}`, { edit: true }), { replace: true });
+      } else if (embedded && onSaveComplete) {
+        onSaveComplete();
       }
+      return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('pages.contacts.form.toast.saveError'));
+      return false;
     } finally {
       setSaving(false);
     }
   };
+
+  const cancelEdit = () => {
+    if (!id) return;
+    const fromList = contacts.find((x) => x.id === id);
+    if (fromList) applyContactToForm(fromList);
+  };
+
+  useEffect(() => {
+    if (!editRef) return;
+    editRef.current = { save: handleGuardar, cancel: cancelEdit };
+    return () => { editRef.current = null; };
+  });
 
   // Ao preencher a Data Efetiva → abrir modal de seleção de kit
   const handleDataEfetiva = async (value: string) => {
@@ -517,7 +568,7 @@ export function ContactFormPage() {
     if (!colheita.posto_id) { toast.error(t('pages.contacts.form.toast.selectPostoFirst')); return; }
     if (!gravidez.medico_id || !gravidez.teste_id) {
       toast.error(t('pages.contacts.form.selectPackGravidez'));
-      setTab('gravidez');
+      focusTab('gravidez');
       return;
     }
     const contactId = await ensureSaved();
@@ -611,25 +662,8 @@ export function ContactFormPage() {
     linked ? t('pages.contacts.form.header.processLinked', { processo: linked.processo }) : '',
   ].filter(Boolean);
 
-  return (
-    <FormPageShell>
-      <FormPageBody>
-        <FormPageHeader
-          onBack={() => navigate('/contactos')}
-          title={form.nome || (editing ? t('pages.contacts.form.header.editContact') : t('pages.contacts.form.header.newContact'))}
-          subtitle={subtitleParts.join(' · ')}
-          avatar={<FormAvatarInitials initials={initials || t('pages.contacts.form.header.initialsFallback')} />}
-          actions={podeGuardar ? (
-            <FormPrimaryButton onClick={handleGuardar} disabled={saving}>
-              <Save className="w-4 h-4" />
-              <span className="hidden sm:inline">{saving ? t('form.saving') : t('form.save')}</span>
-            </FormPrimaryButton>
-          ) : undefined}
-          tabs={tabs}
-          activeTab={tab}
-          onTabChange={setTab}
-        />
-
+  const tabPanels = (
+    <>
         <FormTabContent>
           {anulacao.anulado ? (
             <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-900 dark:text-rose-200/90">
@@ -643,7 +677,7 @@ export function ContactFormPage() {
             <FaturacaoAlertBanner
               value={contactFaturacao}
               context="contacto"
-              onGoToFaturacao={() => setTab('faturacao')}
+              onGoToFaturacao={() => handleTabChange('faturacao')}
             />
           )}
         </FormTabContent>
@@ -1132,8 +1166,11 @@ export function ContactFormPage() {
             )}
           </FormTabContent>
         )}
-      </FormPageBody>
+    </>
+  );
 
+  const modals = (
+    <>
       {/* Modal de seleção de kit */}
       {kitModal.open && (
         <AppModal title={t('pages.contacts.form.kit.modalSelectTitle')} onClose={() => { setKitModal({ open: false, loading: false, kits: [] }); setLabPreview(null); }}>
@@ -1227,6 +1264,51 @@ export function ContactFormPage() {
           </dl>
         </AppModal>
       )}
+    </>
+  );
+
+  if (!embedded && routeId) {
+    return (
+      <Navigate
+        to={withRecordQuery(`/contactos/${routeId}`, {
+          tab: searchParams.get('tab'),
+          edit: true,
+        })}
+        replace
+      />
+    );
+  }
+
+  if (embedded) {
+    return (
+      <>
+        {tabPanels}
+        {modals}
+      </>
+    );
+  }
+
+  return (
+    <FormPageShell>
+      <FormPageBody>
+        <FormPageHeader
+          onBack={() => navigate('/contactos')}
+          title={form.nome || (editing ? t('pages.contacts.form.header.editContact') : t('pages.contacts.form.header.newContact'))}
+          subtitle={subtitleParts.join(' · ')}
+          avatar={<FormAvatarInitials initials={initials || t('pages.contacts.form.header.initialsFallback')} />}
+          actions={podeGuardar ? (
+            <FormPrimaryButton onClick={() => { void handleGuardar(); }} disabled={saving}>
+              <Save className="w-4 h-4" />
+              <span className="hidden sm:inline">{saving ? t('form.saving') : t('form.save')}</span>
+            </FormPrimaryButton>
+          ) : undefined}
+          tabs={tabs}
+          activeTab={tab}
+          onTabChange={handleTabChange}
+        />
+        {tabPanels}
+      </FormPageBody>
+      {modals}
     </FormPageShell>
   );
 }

@@ -67,7 +67,7 @@ export function FilterBar({
           {showAdvanced && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setShowAdvanced(false)} />
-              <div className="absolute right-0 mt-2 w-80 z-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl p-4 space-y-3">
+              <div className="absolute right-0 mt-2 w-[min(22rem,92vw)] max-h-[min(28rem,70vh)] overflow-y-auto z-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Filtros avançados</span>
                   {onClearAdvanced && advancedCount > 0 && (

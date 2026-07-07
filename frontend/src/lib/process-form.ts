@@ -168,6 +168,40 @@ export const validateFaturacaoData = (data: ProcessFaturacaoData): string | null
 export const computeValorFinal = (valorBase: number, descontoPercentual: number) =>
   Number((Number(valorBase || 0) * (1 - Number(descontoPercentual || 0) / 100)).toFixed(2));
 
+/** Permite digitar decimais com vírgula ou ponto (ex.: «12,55»), até 2 casas decimais. */
+export function sanitizeDecimalInput(raw: string, maxDecimals = 2): string {
+  let out = '';
+  let sepSeen = false;
+  let decimals = 0;
+  for (const ch of raw) {
+    if (ch >= '0' && ch <= '9') {
+      if (sepSeen) {
+        if (decimals >= maxDecimals) continue;
+        decimals += 1;
+      }
+      out += ch;
+    } else if ((ch === ',' || ch === '.') && !sepSeen) {
+      out += ch;
+      sepSeen = true;
+    }
+  }
+  return out;
+}
+
+export function parseDecimalInput(raw: string): number {
+  const normalized = raw.replace(',', '.').trim();
+  if (!normalized || normalized === '.') return 0;
+  const n = Number(normalized);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+export function formatDecimalInput(value: number | undefined | null): string {
+  if (value == null || Number.isNaN(value)) return '0';
+  const rounded = Math.round(value * 100) / 100;
+  return String(rounded).replace('.', ',');
+}
+
 export const validateProcessForm = (
   formData: ProcessFormData,
   processos: Processo[],

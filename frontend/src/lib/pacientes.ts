@@ -61,6 +61,12 @@ export const mapGeneroToApi = (genero: string): string => {
   return 'F';
 };
 
+const emptyToNull = (value: string | null | undefined): string | null => {
+  if (value == null) return null;
+  const trimmed = String(value).trim();
+  return trimmed === '' ? null : trimmed;
+};
+
 export const mapApiPacienteToContact = (paciente: ApiPaciente): Contact => ({
   id: paciente.id,
   nome: paciente.nome,
@@ -110,17 +116,17 @@ export const mapApiPacienteToContact = (paciente: ApiPaciente): Contact => ({
 });
 
 export const contactToApiBody = (data: Omit<Contact, 'id' | 'created_at'>) => ({
-  nome: data.nome,
-  data_nascimento: data.data_nascimento,
+  nome: data.nome.trim(),
+  data_nascimento: emptyToNull(data.data_nascimento),
   genero: mapGeneroToApi(data.genero),
-  nif: data.nif || null,
-  telemovel: data.telemovel || null,
-  email: data.email || null,
-  morada: data.morada || null,
-  codigo_postal: data.codigo_postal || null,
-  pais: data.pais || null,
-  distrito: data.distrito || null,
-  cidade: data.cidade || null,
+  nif: emptyToNull(data.nif),
+  telemovel: emptyToNull(data.telemovel),
+  email: emptyToNull(data.email),
+  morada: emptyToNull(data.morada),
+  codigo_postal: emptyToNull(data.codigo_postal),
+  pais: emptyToNull(data.pais),
+  distrito: emptyToNull(data.distrito),
+  cidade: emptyToNull(data.cidade),
   altura: data.altura === '' ? null : data.altura,
   peso: data.peso === '' ? null : data.peso,
   medico_id: data.medico_id || null,
@@ -130,27 +136,27 @@ export const contactToApiBody = (data: Omit<Contact, 'id' | 'created_at'>) => ({
   quer_saber_sexo: !!data.quer_saber_sexo,
   gestacao_semanas_registo: data.gestacao_semanas_registo ?? null,
   gestacao_dias_registo: data.gestacao_dias_registo ?? null,
-  gestacao_registada_em: data.gestacao_registada_em || null,
-  onde_seguida: data.onde_seguida || null,
+  gestacao_registada_em: emptyToNull(data.gestacao_registada_em),
+  onde_seguida: emptyToNull(data.onde_seguida),
   posto_colheita_id: data.posto_colheita_id || null,
-  data_colheita_prevista: data.data_colheita_prevista || null,
-  notas_internas: data.notas_internas || null,
+  data_colheita_prevista: emptyToNull(data.data_colheita_prevista),
+  notas_internas: emptyToNull(data.notas_internas),
   estado_agendamento: data.estado_agendamento || null,
   estado_contacto: data.estado_contacto || null,
   motivo_anulacao_id: data.motivo_anulacao_id || null,
-  data_anulacao: data.data_anulacao || null,
+  data_anulacao: emptyToNull(data.data_anulacao),
   fatura_emitida: data.fatura_emitida ?? false,
-  fatura_numero: data.fatura_numero || null,
-  fatura_data_emissao: data.fatura_data_emissao || null,
+  fatura_numero: emptyToNull(data.fatura_numero),
+  fatura_data_emissao: emptyToNull(data.fatura_data_emissao),
   valor_base: data.valor_base ?? 0,
   desconto_percentual: data.desconto_percentual ?? 0,
   valor_final: data.valor_final ?? 0,
-  pagamento_data: data.pagamento_data || null,
-  recibo_numero: data.recibo_numero || null,
+  pagamento_data: emptyToNull(data.pagamento_data),
+  recibo_numero: emptyToNull(data.recibo_numero),
   pago: data.pago ?? false,
-  entidade_multibanco: data.entidade_multibanco || null,
-  referencia_multibanco: data.referencia_multibanco || null,
+  entidade_multibanco: emptyToNull(data.entidade_multibanco),
+  referencia_multibanco: emptyToNull(data.referencia_multibanco),
   nao_gera_comissao: data.nao_gera_comissao ?? false,
-  fatura_envio_email: data.fatura_envio_email || null,
-  fatura_envio_sms: data.fatura_envio_sms || null,
+  fatura_envio_email: emptyToNull(data.fatura_envio_email),
+  fatura_envio_sms: emptyToNull(data.fatura_envio_sms),
 });

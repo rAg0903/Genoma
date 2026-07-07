@@ -1,5 +1,8 @@
 const { body, param, query } = require('express-validator');
 
+/** Campos opcionais: ignora null, undefined e strings vazias antes de validar formato. */
+const OPTIONAL_EMPTY = { nullable: true, checkFalsy: true };
+
 // Validadores comuns para email
 const emailValidator = body('email')
   .isEmail()
@@ -7,7 +10,7 @@ const emailValidator = body('email')
   .withMessage('Email inválido');
 
 const optionalEmailValidator = body('email')
-  .optional()
+  .optional(OPTIONAL_EMPTY)
   .isEmail()
   .normalizeEmail()
   .withMessage('Email inválido');
@@ -18,7 +21,7 @@ const telefoneValidator = body('telefone')
   .withMessage('Número de telefone inválido');
 
 const optionalTelefoneValidator = body('telefone')
-  .optional()
+  .optional(OPTIONAL_EMPTY)
   .isMobilePhone('pt-PT')
   .withMessage('Número de telefone inválido');
 
@@ -88,27 +91,27 @@ const utilizadorUpdateValidator = [
 const pacienteValidator = [
   nomeValidator,
   body('data_nascimento')
-    .optional({ nullable: true })
+    .optional(OPTIONAL_EMPTY)
     .isISO8601()
     .withMessage('Data de nascimento inválida'),
   body('genero')
-    .optional()
+    .optional(OPTIONAL_EMPTY)
     .isIn(['M', 'F', 'Outro'])
     .withMessage('Gênero inválido'),
   body('nif')
-    .optional()
+    .optional(OPTIONAL_EMPTY)
     .matches(/^\d{9}$/)
     .withMessage('NIF deve ter 9 dígitos'),
   body('telemovel')
-    .optional()
+    .optional(OPTIONAL_EMPTY)
     .isMobilePhone('pt-PT')
     .withMessage('Telemóvel inválido'),
   optionalEmailValidator,
   body('morada')
-    .optional()
+    .optional(OPTIONAL_EMPTY)
     .trim()
     .isLength({ max: 200 })
-    .withMessage('Morada muito longa')
+    .withMessage('Morada muito longa'),
 ];
 
 const pacienteUpdateValidator = [
@@ -118,27 +121,27 @@ const pacienteUpdateValidator = [
     .isLength({ min: 2, max: 100 })
     .withMessage('Nome deve ter entre 2 e 100 caracteres'),
   body('data_nascimento')
-    .optional()
+    .optional(OPTIONAL_EMPTY)
     .isISO8601()
     .withMessage('Data de nascimento inválida'),
   body('genero')
-    .optional()
+    .optional(OPTIONAL_EMPTY)
     .isIn(['M', 'F', 'Outro'])
     .withMessage('Gênero inválido'),
   body('nif')
-    .optional()
+    .optional(OPTIONAL_EMPTY)
     .matches(/^\d{9}$/)
     .withMessage('NIF deve ter 9 dígitos'),
   body('telemovel')
-    .optional()
+    .optional(OPTIONAL_EMPTY)
     .isMobilePhone('pt-PT')
     .withMessage('Telemóvel inválido'),
   optionalEmailValidator,
   body('morada')
-    .optional()
+    .optional(OPTIONAL_EMPTY)
     .trim()
     .isLength({ max: 200 })
-    .withMessage('Morada muito longa')
+    .withMessage('Morada muito longa'),
 ];
 
 // Validadores para empresas

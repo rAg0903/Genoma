@@ -6,10 +6,9 @@ import { AdminModuleCards, type AdminModuleCardDef, type AdminModuleCardId } fro
 import { MedicosTab } from './MedicosTab';
 import { MotivosAnulacaoTab } from './MotivosAnulacaoTab';
 import { useData } from '../context/DataContext';
-import { Utilizador, Teste, TipoKit } from '../data/types';
+import { Utilizador } from '../data/types';
 import { toast } from 'sonner';
 import { ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
-import { formatSubTestesResumo, getTestesPrincipais } from '../../lib/testes';
 import { StatusBadge } from './shared/StatusBadge';
 import { UserAvatar } from './shared/UserAvatar';
 import { PAGE, FORM } from '../../lib/design-tokens';
@@ -24,6 +23,7 @@ import { perfisApi, Perfil } from '../../lib/api-perfis';
 import { isAdminPerfilNome, isMedicoPerfilNome } from '../../lib/perfil-utils';
 import { formatUtilizadorNome } from '../../lib/utilizadores';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
+import { getTestesPrincipais } from '../../lib/testes';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 import { useSearchParams } from 'react-router';
 import {
@@ -39,12 +39,16 @@ import {
   AdminTableHeadCell,
 } from './definicoes/admin-tab-ui';
 
-type Tab = 'inicio' | 'utilizadores' | 'permissoes' | 'empresas' | 'testes' | 'tipos_kit' | 'entidades' | 'laboratorios' | 'medicos' | 'motivos_anulacao';
+type Tab = 'inicio' | 'utilizadores' | 'permissoes' | 'empresas' | 'tipos_kit' | 'entidades' | 'laboratorios' | 'medicos' | 'motivos_anulacao';
 
-const SETTINGS_TABS: Tab[] = ['inicio', 'utilizadores', 'permissoes', 'empresas', 'testes', 'tipos_kit', 'entidades', 'laboratorios', 'medicos', 'motivos_anulacao'];
+const SETTINGS_TABS: Tab[] = ['inicio', 'utilizadores', 'permissoes', 'empresas', 'tipos_kit', 'entidades', 'laboratorios', 'medicos', 'motivos_anulacao'];
 const SETTINGS_CONTENT_TABS = SETTINGS_TABS.filter((tab): tab is Exclude<Tab, 'inicio'> => tab !== 'inicio');
 
 const getValidSettingsTab = (tab: string | null, isAdmin: boolean, allowedTabs: Exclude<Tab, 'inicio'>[]): Tab => {
+  if (tab === 'testes') {
+    tab = 'tipos_kit';
+  }
+
   if (!tab || tab === 'inicio') {
     return 'inicio';
   }
@@ -81,7 +85,6 @@ export function SettingsPage() {
   const {
     utilizadores,
     empresas,
-    testes,
     tiposKit,
     entidades,
     laboratorios,
@@ -91,6 +94,9 @@ export function SettingsPage() {
   const allowedSettingsTabs = SETTINGS_CONTENT_TABS.filter((tab) => {
     if (tab === 'permissoes') {
       return isAdmin;
+    }
+    if (tab === 'tipos_kit') {
+      return hasDefinicoesSubmodulePermission('tipos_kit') || hasDefinicoesSubmodulePermission('testes');
     }
     return hasDefinicoesSubmodulePermission(tab as DefinicoesSubmodule);
   });
@@ -136,7 +142,6 @@ export function SettingsPage() {
     utilizadores: 'brand',
     permissoes: 'violet',
     empresas: 'info',
-    testes: 'success',
     tipos_kit: 'warning',
     entidades: 'neutral',
     laboratorios: 'info',
@@ -149,7 +154,6 @@ export function SettingsPage() {
     { id: 'utilizadores', labelKey: 'navSub.utilizadores', icon: Users },
     { id: 'permissoes', labelKey: 'navSub.permissoes', icon: ShieldCheck },
     { id: 'empresas', labelKey: 'navSub.empresas', icon: Building2 },
-    { id: 'testes', labelKey: 'navSub.testes', icon: FlaskConical },
     { id: 'tipos_kit', labelKey: 'navSub.tipos_kit', icon: Package },
     { id: 'entidades', labelKey: 'navSub.entidades', icon: Landmark },
     { id: 'laboratorios', labelKey: 'navSub.laboratorios', icon: FlaskConical },
@@ -169,7 +173,6 @@ export function SettingsPage() {
     const counts: Partial<Record<AdminModuleCardId, number | undefined>> = {
       utilizadores: utilizadores.length,
       empresas: empresas.length,
-      testes: getTestesPrincipais(testes).length,
       tipos_kit: tiposKit.length,
       entidades: entidades.length,
       laboratorios: laboratorios.length,
@@ -203,7 +206,6 @@ export function SettingsPage() {
     laboratorios.length,
     motivosAnulacao.length,
     t,
-    testes,
     tiposKit.length,
     utilizadores.length,
   ]);
@@ -243,7 +245,6 @@ export function SettingsPage() {
         {activeTab === 'utilizadores' && <UtilizadoresTab canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete} />}
         {activeTab === 'permissoes' && isAdmin && <PerfisPermissoesTab />}
         {activeTab === 'empresas' && <EmpresasTab canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete} />}
-        {activeTab === 'testes' && <TestesTab canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete} />}
         {activeTab === 'tipos_kit' && <TiposKitTab canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete} />}
         {activeTab === 'entidades' && <EntidadesTab canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete} />}
         {activeTab === 'laboratorios' && <LaboratoriosTab canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete} />}
@@ -513,94 +514,31 @@ function EmpresasTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
   );
 }
 
-/* =========== TESTES =========== */
-function TestesTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
+/* =========== TIPOS DE KIT =========== */
+function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
   const navigate = useNavigate();
   const confirmDelete = useConfirmDelete();
   const { t } = useLanguage();
-  const { testes, deleteTeste } = useData();
+  const { tiposKit, testes, deleteTipoKit } = useData();
   const [search, setSearch] = useState('');
 
-  const filtered = getTestesPrincipais(testes).filter(t => t.nome.toLowerCase().includes(search.toLowerCase()) || (t.descricao || '').toLowerCase().includes(search.toLowerCase()));
-  const openNew = () => navigate('/definicoes/testes/novo');
-  const openEdit = (t: Teste) => navigate(`/definicoes/testes/${t.id}/editar`);
-  const handleDelete = async (id: string, nome: string) => {
-    if (!(await confirmDelete(deleteTargetLabel('o teste', nome)))) return;
-    try {
-      await deleteTeste(id);
-      toast.success('Teste eliminado.');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Falha ao eliminar teste.');
+  const testesPorTipoKit = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const teste of getTestesPrincipais(testes)) {
+      const nome = teste.tipo_kit?.trim();
+      if (!nome) continue;
+      counts.set(nome, (counts.get(nome) ?? 0) + 1);
     }
-  };
+    return counts;
+  }, [testes]);
 
-  return (
-    <div className="space-y-4">
-      <AdminTabToolbar
-        search={search}
-        onSearchChange={setSearch}
-        placeholder="Pesquisar testes..."
-        searchName="search-testes"
-        action={canCreate ? (
-          <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> {t('common.create.test')}</button>
-        ) : undefined}
-      />
-      <AdminTabPanel>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className={ADMIN_TABLE_HEAD_CLASS}>
-              <tr>{['Nome', 'Descrição', 'Preços (sub-testes)', 'Ações'].map(h => (
-                <AdminTableHeadCell key={h} align={h === 'Ações' ? 'right' : 'left'}>{h}</AdminTableHeadCell>
-              ))}</tr>
-            </thead>
-            <tbody className={ADMIN_TABLE_BODY_CLASS}>
-              {filtered.map(t => (
-                <tr key={t.id} className={ADMIN_TABLE_ROW_CLASS}>
-                  <td className="px-4 py-3 text-[13px] font-medium text-slate-800 dark:text-slate-100">{t.nome}</td>
-                  <td className="px-4 py-3 text-[12px] text-slate-500 dark:text-slate-400 max-w-[250px]">{t.descricao}</td>
-                  <td className="px-4 py-3 text-[13px] font-medium text-slate-500 dark:text-slate-400">{formatSubTestesResumo(t)}</td>
-                  <td className="px-4 py-3">
-                    <AdminRowActions>
-                      {canUpdate && <button type="button" onClick={() => openEdit(t)} className={ADMIN_ACTION_BTN_CLASS}><Edit className="w-4 h-4" /></button>}
-                      {canDelete && <button type="button" onClick={() => handleDelete(t.id, t.nome)} className={ADMIN_DELETE_BTN_CLASS}><Trash2 className="w-4 h-4" /></button>}
-                    </AdminRowActions>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </AdminTabPanel>
-    </div>
-  );
-}
+  const filtered = tiposKit.filter((item) => item.nome.toLowerCase().includes(search.toLowerCase()));
 
-/* =========== TIPOS DE KIT =========== */
-function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; canUpdate: boolean; canDelete: boolean }) {
-  const confirmDelete = useConfirmDelete();
-  const { t } = useLanguage();
-  const { tiposKit, addTipoKit, updateTipoKit, deleteTipoKit } = useData();
-  const [search, setSearch] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const [editItem, setEditItem] = useState<TipoKit | null>(null);
-  const [form, setForm] = useState<Omit<TipoKit, 'id'>>({ nome: '', ativo: true });
-
-  const filtered = tiposKit.filter((t) => t.nome.toLowerCase().includes(search.toLowerCase()));
-  const openNew = () => { setEditItem(null); setForm({ nome: '', ativo: true }); setIsOpen(true); };
-  const openEdit = (t: TipoKit) => { setEditItem(t); setForm({ nome: t.nome, ativo: t.ativo !== false }); setIsOpen(true); };
-  const handleSave = async (ev: FormEvent) => {
-    ev.preventDefault();
-    try {
-      if (editItem) { await updateTipoKit(editItem.id, form); toast.success('Tipo de kit atualizado!'); }
-      else { await addTipoKit(form); toast.success('Tipo de kit criado!'); }
-      setIsOpen(false);
-    } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao guardar tipo de kit.'); }
-  };
   const handleDelete = async (id: string, nome: string) => {
     if (!(await confirmDelete(deleteTargetLabel('o tipo de kit', nome)))) return;
     void deleteTipoKit(id)
-      .then(() => toast.success('Tipo de kit eliminado.'))
-      .catch((e) => toast.error(e instanceof Error ? e.message : 'Falha ao eliminar tipo de kit.'));
+      .then(() => toast.success(t('pages.admin.form.tipoKit.deleted')))
+      .catch((e) => toast.error(e instanceof Error ? e.message : t('pages.admin.form.tipoKit.deleteError')));
   };
 
   return (
@@ -611,28 +549,29 @@ function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
         placeholder="Pesquisar tipos de kit..."
         searchName="search-tipos-kit"
         action={canCreate ? (
-          <button type="button" onClick={openNew} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> {t('common.create.kitType')}</button>
+          <button type="button" onClick={() => navigate('/definicoes/tipos-kit/novo')} className={ADD_ACTION_BUTTON_CLASS}><Plus className="w-4 h-4" /> {t('common.create.kitType')}</button>
         ) : undefined}
       />
       <AdminTabPanel>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className={ADMIN_TABLE_HEAD_CLASS}>
-              <tr>{['Nome', 'Estado', 'Ações'].map((h) => (
+              <tr>{['Nome', 'Testes', 'Estado', 'Ações'].map((h) => (
                 <AdminTableHeadCell key={h} align={h === 'Ações' ? 'right' : 'left'}>{h}</AdminTableHeadCell>
               ))}</tr>
             </thead>
             <tbody className={ADMIN_TABLE_BODY_CLASS}>
-              {filtered.map((t) => (
-                <tr key={t.id} className={ADMIN_TABLE_ROW_CLASS}>
-                  <td className="px-4 py-3 text-[13px] font-medium text-slate-800 dark:text-slate-100">{t.nome}</td>
+              {filtered.map((item) => (
+                <tr key={item.id} className={ADMIN_TABLE_ROW_CLASS}>
+                  <td className="px-4 py-3 text-[13px] font-medium text-slate-800 dark:text-slate-100">{item.nome}</td>
+                  <td className="px-4 py-3 text-[13px] text-slate-500 dark:text-slate-400">{testesPorTipoKit.get(item.nome) ?? 0}</td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={t.ativo !== false ? 'Ativo' : 'Inativo'} map={ADMIN_ATIVO_STATUS_MAP} />
+                    <StatusBadge status={item.ativo !== false ? 'Ativo' : 'Inativo'} map={ADMIN_ATIVO_STATUS_MAP} />
                   </td>
                   <td className="px-4 py-3">
                     <AdminRowActions>
-                      {canUpdate && <button type="button" onClick={() => openEdit(t)} className={ADMIN_ACTION_BTN_CLASS}><Edit className="w-4 h-4" /></button>}
-                      {canDelete && <button type="button" onClick={() => handleDelete(t.id, t.nome)} className={ADMIN_DELETE_BTN_CLASS}><Trash2 className="w-4 h-4" /></button>}
+                      {canUpdate && <button type="button" onClick={() => navigate(`/definicoes/tipos-kit/${item.id}/editar`)} className={ADMIN_ACTION_BTN_CLASS}><Edit className="w-4 h-4" /></button>}
+                      {canDelete && <button type="button" onClick={() => handleDelete(item.id, item.nome)} className={ADMIN_DELETE_BTN_CLASS}><Trash2 className="w-4 h-4" /></button>}
                     </AdminRowActions>
                   </td>
                 </tr>
@@ -641,20 +580,6 @@ function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
           </table>
         </div>
       </AdminTabPanel>
-      {(canCreate || canUpdate) && isOpen && (
-        <AppModal
-          title={editItem ? 'Editar Tipo de Kit' : 'Novo Tipo de Kit'}
-          onClose={() => setIsOpen(false)}
-          footer={<ModalActions onCancel={() => setIsOpen(false)} isEdit={!!editItem} formId="tipo-kit-form" />}
-        >
-          <form id="tipo-kit-form" onSubmit={handleSave} className={FORM.stack}>
-            <ModalField label="Nome" required>
-              <input required type="text" name="tipo-kit-nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} className={MODAL_INPUT_CLASS} placeholder="Maternity" />
-            </ModalField>
-            <ModalCheckbox label="Ativo" checked={form.ativo !== false} onChange={(ativo) => setForm((f) => ({ ...f, ativo }))} />
-          </form>
-        </AppModal>
-      )}
     </div>
   );
 }
@@ -803,7 +728,7 @@ function LaboratoriosTab({ canCreate, canUpdate, canDelete }: { canCreate: boole
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 px-1">Finais (destino de descarte — associar a cada teste)</h3>
         <AdminTabPanel>
           {finais.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-6">Sem laboratórios finais. Crie um e associe-o em Administração → Testes.</p>
+            <p className="text-sm text-slate-400 text-center py-6">Sem laboratórios finais. Crie um e associe-o em Administração → Tipos de Kit → Testes.</p>
           ) : renderTable(finais, { showTipo: true, showCidade: true })}
         </AdminTabPanel>
       </div>

@@ -80,8 +80,15 @@ exports.listAll = async (user) => {
 
 exports.getById = async (id, user) => {
     const utilizador = await utilizadoresRepository.findById(id);
+    if (!utilizador) {
+        return null;
+    }
 
-    if (user.empresa_id && utilizador.empresa_id !== user.empresa_id) {
+    const isSelf = user?.id === id;
+    const perfil = user?.perfil_id ? await perfisRepository.findById(user.perfil_id) : null;
+    const isAdmin = isAdminPerfil(perfil?.nome);
+
+    if (!isSelf && !isAdmin && user.empresa_id && utilizador.empresa_id !== user.empresa_id) {
         throw new Error('Sem permissão para aceder a este utilizador');
     }
 
@@ -170,8 +177,21 @@ exports.update = async (id, data, user) => {
         throw new Error('Utilizador não encontrado');
     }
 
-    if (user.empresa_id && utilizador.empresa_id !== user.empresa_id) {
+    const isSelf = user?.id === id;
+    const perfil = user?.perfil_id ? await perfisRepository.findById(user.perfil_id) : null;
+    const isAdmin = isAdminPerfil(perfil?.nome);
+
+    if (!isSelf && !isAdmin && user.empresa_id && utilizador.empresa_id !== user.empresa_id) {
         throw new Error('Sem permissão para atualizar este utilizador');
+    }
+
+    if (isSelf && !isAdmin) {
+        const restrictedFields = ['perfil_id', 'perfil_nome', 'perfil', 'empresa_id', 'ativo', 'password'];
+        for (const field of restrictedFields) {
+            if (data[field] !== undefined) {
+                throw new Error('Sem permissão para alterar este campo');
+            }
+        }
     }
 
     if (isAdminPerfil(utilizador.perfil_nome) && data.perfil_id !== undefined) {

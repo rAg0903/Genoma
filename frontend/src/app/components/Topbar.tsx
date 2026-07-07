@@ -92,6 +92,7 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
     () => [
       { value: 'auto' as LanguagePreference, label: t('settings.languageAuto') },
       { value: 'pt' as LanguagePreference, label: t('settings.languagePt') },
+      { value: 'en' as LanguagePreference, label: t('settings.languageEn') },
     ],
     [t],
   );

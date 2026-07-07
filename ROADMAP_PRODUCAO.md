@@ -1,6 +1,6 @@
 # GENOMA CRM — Roadmap para Produção
 
-**Última actualização:** 6 de Julho de 2026
+**Última actualização:** 7 de Julho de 2026
 **Objectivo:** Estado actual do projecto e plano de melhorias para go-live em produção.
 
 ---
@@ -34,7 +34,7 @@ Para **produção real**, o que falta divide-se em três camadas:
 | Dados clínicos | Origem da conceção (natural/FIV) e preferência de divulgação do sexo fetal (migração 060) |
 | Histórico de processos | Campo `data_conclusao` em processos concluídos/cancelados com backfill (migração 061) |
 | Design system | Tokens slate/teal, toggles consistentes (matriz de permissões, parâmetros Maternity) |
-| Arquitectura | Express 5 + React/Vite + MariaDB, **63 migrações**, state machine |
+| Arquitectura | Express 5 + React/Vite + MariaDB, **64 migrações**, state machine |
 
 ### Stack técnica
 
@@ -50,8 +50,8 @@ Para **produção real**, o que falta divide-se em três camadas:
 | Módulo | Rotas / API | Ficheiros principais |
 |---|---|---|
 | Dashboard | `/` | `DashboardPage.tsx`, `MedicoDashboard.tsx` |
-| Contactos | `/contactos` | `ContactFormPage.tsx`, `ContactDetail.tsx` |
-| Processos | `/processos` | `ProcessesPage.tsx`, Kanban, `ProcessDrawer.tsx` |
+| Contactos | `/contactos`, `/contactos/:id` | `ContactsPage.tsx`, `ContactViewPage.tsx`, `ContactDetail.tsx`, `ContactFormPage.tsx` (modo embedded) |
+| Processos | `/processos`, `/processos/:id` | `ProcessesPage.tsx`, `ProcessViewPage.tsx`, Kanban, `useProcessRecordEdit.ts`, `ProcessEditTabContent.tsx` |
 | Inventário | `/stocks` | `StocksPage.tsx`, Lotes, Kits, Requisições, Descartes |
 | Listagens | `/listagens` | `ListingsPage.tsx`, Painel de Bordo, exportações |
 | Administração | `/definicoes` | Utilizadores, perfis, empresas, testes, postos, labs |
@@ -60,7 +60,22 @@ Para **produção real**, o que falta divide-se em três camadas:
 
 ---
 
-## Novidades desde a última actualização (27 Jun → 6 Jul 2026)
+## Novidades desde a última actualização (6 Jul → 7 Jul 2026)
+
+| Área | O que foi feito | Ficheiros / migrações |
+|---|---|---|
+| **Edição inline — processos** | Vista `/processos/:id` mantém header e tabs; botão Editar activa formulário só no separador activo (`?edit=1`); Cancelar/Guardar no header | `ProcessViewPage.tsx`, `ProcessDetail.tsx`, `useProcessRecordEdit.ts`, `ProcessEditTabContent.tsx`, `record-tabs.ts` |
+| **Edição inline — contactos** | Nova rota `/contactos/:id`; mesmo padrão de edição inline; `ContactFormPage` em modo `embedded`; `/contactos/:id/editar` → redirect com `?edit=1` | `ContactViewPage.tsx`, `ContactDetail.tsx`, `ContactFormPage.tsx`, `routes.tsx` |
+| **Validação contactos** | Campos opcionais (NIF, data nascimento, email) aceitam vazio; `emptyToNull` no frontend; `checkFalsy` nos validators backend | `pacientes.ts`, `api.ts`, `validators.js`, `middleware.validators.test.js` |
+| **Pipeline contactos** | Filtros Criado/Agendado/Cancelado mostram apenas a coluna seleccionada; removido KPI «Com processos» | `ContactPipeline.tsx`, `ContactsPage.tsx` |
+| **Dashboard médico** | Saudação com nome; KPI contactos registados; colheitas do dia com telemóvel | `MedicoDashboard.tsx`, `ColheitasDoDiaPage.tsx` |
+| **Processos — faturação** | Desconto decimal; removido multibanco; guardar processo sem forçar mudança de estado | `ProcessFaturacaoFields.tsx`, `process-form.ts`, `processos.service.js` |
+| **Tipos de kit** | Campo `descricao` em tipos de kit; formulário dedicado em Administração | `064_tipos_kit_descricao.js`, `TipoKitFormPage.tsx`, `tipos_kit.service.js` |
+| **Navegação global** | Pesquisa e drawers apontam para `/contactos/:id` e `/processos/:id` | `global-search-navigation.ts`, `ListingDetailDrawer.tsx`, `entity-breadcrumbs.ts` |
+
+---
+
+## Novidades anteriores (27 Jun → 6 Jul 2026)
 
 | Área | O que foi feito | Ficheiros / migrações |
 |---|---|---|
@@ -232,7 +247,7 @@ SMS_WEBHOOK_URL=https://...  # opcional
 - [x] API `/api/agendamentos` — calendário mensal, listagem por dia/posto, criação e reserva de kit (backend)
 - [x] **`ColheitasDoDiaPage`** — rota `/colheitas-hoje`: calendário + lista do dia + filtro por posto (layout alinhado com a antiga vista de agendamentos)
 - [x] Entrada na sidebar «Colheitas hoje»; **`/agendamentos` redirecciona** para `/colheitas-hoje` (página Agendamentos removida do menu)
-- [x] Acção «Registar colheita» → ficha do contacto, separador **Colheita** (`/contactos/:id/editar?tab=colheita`) para data efectiva e kit — não regista via API directamente na lista
+- [x] Acção «Registar colheita» → ficha do contacto, separador **Colheita** (`/contactos/:id?edit=1&tab=colheita`) para data efectiva e kit — não regista via API directamente na lista
 - [x] Botão outline teal (padrão «+ Novo contacto»); acção de cancelamento removida desta vista
 - [x] Listagem de agendamentos inclui `paciente_id` (contactos pré-processo e processos)
 - [x] Cores de carga verde/amarelo/vermelho no calendário
@@ -409,9 +424,10 @@ Ver runbook completo: `docs/OPERATIONS.md`
 | **Confirmações** | `ConfirmActionProvider` para avanços de estado e bulk (transições críticas de processo) |
 | **Banner dados incompletos** | `ProcessDataQualityBanner` em drawer, detalhe e regras em `process-data-quality.ts` |
 | **i18n** | Chaves `ux.*` PT/EN; inglês desactivado no selector até traduções completas |
-| **Design system** | `AccessDeniedState`, `ProcessViewPage`, `RouteLoading` migrados para slate/teal |
+| **Design system** | `AccessDeniedState`, `ProcessViewPage`, `ContactViewPage`, `RouteLoading` migrados para slate/teal |
 | **Loading states** | `PageLoadingSkeleton` / `TableSkeleton` no fallback de rotas lazy |
-| **Mensagens de erro** | Helper `lib/toast.ts` (`notifySuccess` / `notifyError`) nos fluxos principais |
+| **Mensagens de erro** | Helper `lib/toast.ts`; erros de validação API por campo (`parseApiErrorMessage`) |
+| **Edição inline** | Processos e contactos: consulta e edição no mesmo ecrã (`?edit=1`, `record-tabs.ts`) |
 
 ### Fila de trabalho ✅
 
@@ -435,7 +451,7 @@ Ver runbook completo: `docs/OPERATIONS.md`
 - [x] `ColheitasDoDiaPage.tsx` — `/colheitas-hoje`
 - [x] Entrada na sidebar + breadcrumbs
 - [x] Calendário mensal (`AgendaCalendar`) + painel de lista do dia + resumo
-- [x] «Registar colheita» → contacto, tab Colheita (`paciente_id` na API)
+- [x] «Registar colheita» → contacto, tab Colheita (`/contactos/:id?edit=1&tab=colheita`)
 - [x] Botão outline teal (`ADD_ACTION_BUTTON_CLASS`); sem cancelamento na lista
 - [x] `/agendamentos` → redirect; item «Agendamentos» removido da sidebar
 
@@ -443,6 +459,14 @@ Ver runbook completo: `docs/OPERATIONS.md`
 
 - [x] Posto em falta, data colheita em falta, Em Análise sem envio lab
 - [x] Integrado em `ProcessDrawer`, `ProcessDetail`
+
+### Edição inline (processos e contactos) ✅
+
+- [x] `ProcessViewPage` + `useProcessRecordEdit` — edição por separador sem sair da vista
+- [x] `ContactViewPage` + `ContactFormPage` embedded — mesmo padrão em contactos
+- [x] `record-tabs.ts` — helper `withRecordQuery` para `?edit=1` e `?tab=`
+- [x] Redirects: `/processos/:id/editar` e `/contactos/:id/editar` → vista com `?edit=1`
+- [x] Breadcrumbs e i18n actualizados (`breadcrumb.editContact`)
 
 ### Pendente (polish contínuo)
 
@@ -553,6 +577,10 @@ Se só puderem fazer cinco coisas, nesta ordem:
 
 | Data | Área | Detalhe |
 |---|---|---|
+| Jul/2026 | Edição inline | Processos e contactos: header/tabs estáticos; edição no separador activo (`?edit=1`) |
+| Jul/2026 | Validação contactos | NIF/data nascimento opcionais; `checkFalsy` backend; erros por campo no frontend |
+| Jul/2026 | Pipeline contactos | Filtro por estado mostra coluna única; KPI «Com processos» removido |
+| Jul/2026 | Tipos de kit | Campo `descricao` (migração 064); `TipoKitFormPage.tsx` |
 | Jul/2026 | Auto-descartes | Serviço `kit-auto-descarte.service.js` activado em `server.js`; agendado diariamente com startup delay |
 | Jul/2026 | Devolução de descarte | Novo motivo `DevolucaoDescarte` em `movimentos_kits` (migração 063) |
 | Jul/2026 | Dados clínicos | Campos `origem_conceicao` e `quer_saber_sexo` em `pacientes` e `informacao_clinica` (migração 060) |

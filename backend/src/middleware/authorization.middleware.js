@@ -24,6 +24,28 @@ exports.requireAdmin = async (req, res, next) => {
   }
 };
 
+/** Permite admin aceder a qualquer utilizador; outros utilizadores só o próprio registo. */
+exports.requireSelfOrAdminForUtilizador = async (req, res, next) => {
+  try {
+    const perfil = await resolvePerfil(req);
+    if (!perfil) {
+      return res.status(403).json({ error: 'Perfil não identificado para autorização.' });
+    }
+
+    if (isAdminByPerfilNome(perfil.nome)) {
+      return next();
+    }
+
+    if (req.user?.id && req.user.id === req.params.id) {
+      return next();
+    }
+
+    return res.status(403).json({ error: 'Sem permissão para aceder a este utilizador.' });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 /** Permite admin consultar qualquer perfil; outros utilizadores só o próprio. */
 exports.requireSelfOrAdminForPerfil = async (req, res, next) => {
   try {

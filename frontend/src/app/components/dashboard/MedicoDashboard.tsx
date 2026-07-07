@@ -26,6 +26,7 @@ import { EmptyState } from '../shared/EmptyState';
 import { useDashboardData } from './useDashboardData';
 import { RefreshCw } from 'lucide-react';
 import { processoMatchesMedico } from '../../../lib/process-data-quality';
+import { formatUtilizadorGreeting } from '../../../lib/utilizadores';
 import { WorkQueuePanel, WorkQueueItem } from '../shared/WorkQueuePanel';
 
 interface OperacionalData {
@@ -471,7 +472,7 @@ export function MedicoDashboard() {
                       <button
                         key={c.id}
                         type="button"
-                        onClick={() => navigate(`/contactos/${c.id}/editar`)}
+                        onClick={() => navigate(`/contactos/${c.id}`)}
                         className="w-full flex items-center gap-3 px-5 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left"
                       >
                         <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center flex-shrink-0">

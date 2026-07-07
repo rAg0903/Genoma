@@ -6,6 +6,7 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { SubTeste } from '../data/types';
 import { findSubTeste, findTestePrincipal } from '../../lib/testes';
+import { TIPOS_KIT_LIST_PATH } from '../../lib/tipo-kit-navigation';
 import { SECONDARY_ACTION_BUTTON_CLASS } from '../../lib/design-system';
 import { FORM } from '../../lib/design-tokens';
 import { DetailDivider, DetailPanel, DetailSection } from './ContactDetail';
@@ -170,7 +171,7 @@ export function SubTesteFormPage() {
     if (loading) return;
     if (!parentId || !parent) {
       toast.error('Teste pai não encontrado.');
-      navigate('/definicoes?tab=testes');
+      navigate(TIPOS_KIT_LIST_PATH);
       return;
     }
     if (editing && subId) {

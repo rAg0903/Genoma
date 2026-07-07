@@ -546,10 +546,11 @@ exports.update = async (id, data, user) => {
   }
 
   const workflowData = normalizeWorkflowPayload(data);
-  const statusResultante = normalizeStatus(data.status) || processo.status_id || 'Agendado';
+  const statusAtual = normalizeStatus(processo.status_id) || processo.status_id;
+  const statusResultante = normalizeStatus(data.status) || statusAtual || 'Agendado';
 
-  if (data.status !== undefined) {
-    assertTransicaoValida(processo.status_id, statusResultante);
+  if (data.status !== undefined && statusAtual !== statusResultante) {
+    assertTransicaoValida(statusAtual, statusResultante);
   }
   const kitResultante = resolveKitCodigoProcesso(processo, workflowData.kit_codigo);
 
@@ -596,7 +597,7 @@ exports.update = async (id, data, user) => {
   }
 
   const updateData = {};
-  if (data.status !== undefined) updateData.status_id = statusResultante;
+  if (data.status !== undefined && statusAtual !== statusResultante) updateData.status_id = statusResultante;
   if (data.medico_id !== undefined) updateData.medico_id = data.medico_id;
   if (data.teste_id !== undefined) updateData.teste_id = data.teste_id;
   if (data.data_entrada !== undefined) updateData.data_entrada = data.data_entrada || null;
@@ -646,7 +647,7 @@ exports.update = async (id, data, user) => {
     updateData[key] = workflowData[key];
   }
 
-  if (data.status !== undefined) {
+  if (data.status !== undefined && statusAtual !== statusResultante) {
     const hoje = formatCalendarDate(new Date());
     if (statusResultante === 'Em Analise'
       && !processo.data_envio_laboratorio

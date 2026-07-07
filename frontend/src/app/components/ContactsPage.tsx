@@ -1,9 +1,9 @@
-import { Plus, Search, Eye, Edit, Trash2, ChevronLeft, ChevronRight, Users, UserCheck, UserPlus, LayoutGrid, Table2 } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, ChevronLeft, ChevronRight, Users, UserCheck, UserPlus, LayoutGrid, Table2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { type ContactTabId, withRecordQuery } from '../../lib/record-tabs';
 import { useData } from '../context/DataContext';
 import { Contact } from '../data/types';
-import { ContactDetail } from './ContactDetail';
 import { ContactPipeline } from './contactos/ContactPipeline';
 import { toast } from 'sonner';
 import { DataTable } from './shared/DataTable';
@@ -11,6 +11,7 @@ import { PageHeader } from './shared/PageHeader';
 import { FilterBar } from './shared/FilterBar';
 import { ViewModeToggle } from './shared/SlidingTabs';
 import { StatusBadge } from './shared/StatusBadge';
+import { EmptyState } from './shared/EmptyState';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { ReadOnlyNotice } from './shared/ReadOnlyNotice';
@@ -55,8 +56,6 @@ export function ContactsPage() {
   const [estadoFilter, setEstadoFilter] = useState<ContactoFiltroEstado | ''>('');
   const [view, setView] = useState<'table' | 'pipeline'>('pipeline');
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const itemsPerPage = 10;
 
   const contactosPreProcesso = useMemo(
@@ -92,10 +91,6 @@ export function ContactsPage() {
     try {
       await deleteContact(id);
       toast.success('Contacto eliminado.');
-      if (viewMode === 'detail' && selectedContact?.id === id) {
-        setViewMode('list');
-        setSelectedContact(null);
-      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha ao eliminar contacto.';
       toast.error(message);
@@ -103,27 +98,10 @@ export function ContactsPage() {
   };
 
   const openNew = () => navigate('/contactos/novo');
-  const openEdit = (c: Contact) => navigate(`/contactos/${c.id}/editar`);
-  const openDetail = (c: Contact) => { setSelectedContact(c); setViewMode('detail'); };
-
-  if (viewMode === 'detail' && selectedContact) {
-    return (
-      <ContactDetail
-        contact={selectedContact}
-        onBack={() => { setViewMode('list'); setSelectedContact(null); }}
-        onEdit={() => {
-          if (!canUpdate) return;
-          navigate(`/contactos/${selectedContact.id}/editar`);
-        }}
-        onDelete={() => {
-          if (!canDelete) return;
-          handleDelete(selectedContact.id, selectedContact.nome);
-        }}
-        canUpdate={canUpdate}
-        canDelete={canDelete}
-      />
-    );
-  }
+  const openView = (c: Contact) => navigate(`/contactos/${c.id}`);
+  const openEdit = (c: Contact, tab?: ContactTabId) => {
+    navigate(withRecordQuery(`/contactos/${c.id}`, { tab, edit: true }));
+  };
 
   const novosEsteMes = contactosPreProcesso.filter(c => {
     const d = new Date(c.created_at);
@@ -131,7 +109,6 @@ export function ContactsPage() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
   const agendados = contactosPreProcesso.filter((c) => getContactoPipelineEstado(c) === 'Agendado').length;
-  const comProcessos = new Set(processos.map(p => p.paciente_id)).size;
 
   const contactColumns = [
     {
@@ -199,7 +176,7 @@ export function ContactsPage() {
       align: 'right' as const,
       render: (contact: Contact) => (
         <div className="flex items-center justify-end gap-1">
-          <button onClick={() => openDetail(contact)} className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors" title="Ver detalhes"><Eye className="w-4 h-4" /></button>
+          <button onClick={() => openView(contact)} className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors" title="Ver detalhes"><Eye className="w-4 h-4" /></button>
           {canUpdate && <button onClick={() => openEdit(contact)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg transition-colors" title="Editar"><Edit className="w-4 h-4" /></button>}
           {canDelete && <button onClick={() => handleDelete(contact.id, contact.nome)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 rounded-lg transition-colors" title="Eliminar"><Trash2 className="w-4 h-4" /></button>}
         </div>
@@ -258,17 +235,14 @@ export function ContactsPage() {
         {view === 'pipeline' ? (
           <ContactPipeline
             contacts={filtered}
-            onOpen={openDetail}
-            onEdit={openEdit}
+            visibleEstados={estadoFilter ? [estadoFilter] : undefined}
+            onOpen={openView}
+            onEdit={(c) => openEdit(c)}
           />
         ) : (
           <div className={PANEL.table}>
-            {paginated.length === 0 ? (
-              <div className="py-16 text-center">
-                <Users className="w-12 h-12 text-gray-200 dark:text-gray-700 mx-auto mb-3" />
-                <p className="text-gray-400 dark:text-gray-500" style={{ fontSize: '15px', fontWeight: 500 }}>Sem contactos encontrados</p>
-                <p className="text-gray-300 dark:text-gray-600" style={{ fontSize: '13px', marginTop: 4 }}>Tente ajustar os filtros ou criar um novo contacto</p>
-              </div>
+            {filtered.length === 0 ? (
+              <EmptyState icon={Users} title="Sem contactos" description="Nao ha contactos que correspondam aos filtros atuais." />
             ) : (
               <>
                 <div className="hidden md:block">
@@ -293,7 +267,7 @@ export function ContactsPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                            <button onClick={() => openDetail(contact)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"><Eye className="w-4 h-4" /></button>
+                            <button onClick={() => openView(contact)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"><Eye className="w-4 h-4" /></button>
                             {canUpdate && <button onClick={() => openEdit(contact)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>}
                           </div>
                         </div>
@@ -333,7 +307,6 @@ export function ContactsPage() {
           <KpiCard label="Em contacto" value={contactosPreProcesso.length} icon={Users} tone="brand" />
           <KpiCard label="Agendados" value={agendados} icon={UserCheck} tone="warning" />
           <KpiCard label="Novos este mês" value={novosEsteMes} icon={UserPlus} tone="success" />
-          <KpiCard label="Com processos" value={comProcessos} icon={Search} tone="violet" />
         </div>
       </div>
     </div>

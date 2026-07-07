@@ -37,7 +37,7 @@ interface ProcessDrawerProps {
   open: boolean;
   onClose: () => void;
   onView: (p: Processo) => void;
-  onEdit: (p: Processo) => void;
+  onEdit: (p: Processo, drawerTab?: string) => void;
   onDelete: (p: Processo) => void;
   onUpdateEstado: (p: Processo, destino: EstadoProcesso) => Promise<void> | void;
   onChanged: () => void;
@@ -118,7 +118,7 @@ export function ProcessDrawer({
         <div className="flex items-center gap-1">
           <StatusBadge status={processo.estado} map={PROCESS_STATUS_STYLES} className="px-2 py-0.5" />
           {canUpdate && (
-            <button type="button" onClick={() => onEdit(processo)} className={MODAL.closeBtn} title="Editar">
+            <button type="button" onClick={() => onEdit(processo, tab)} className={MODAL.closeBtn} title="Editar">
               <Edit className="h-4 w-4" />
             </button>
           )}

@@ -28,10 +28,8 @@ function detectBrowserLocale(): AppLocale {
 
 function resolveLocale(preference: LanguagePreference): AppLocale {
   if (preference === 'pt') return 'pt';
-  // EN temporariamente desactivado até traduções estarem completas
-  if (preference === 'en') return 'pt';
-  const detected = detectBrowserLocale();
-  return detected === 'en' ? 'pt' : detected;
+  if (preference === 'en') return 'en';
+  return detectBrowserLocale();
 }
 
 function lookupTranslation(locale: AppLocale, key: string): string | undefined {

@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   Edit, Trash2, User, MapPin, Baby, Syringe, Receipt,
-  StickyNote, Paperclip, FileText, Package, Activity,
+  StickyNote, Paperclip, FileText, Package, Activity, Save, Loader2, Ban,
 } from 'lucide-react';
 import { Contact, Processo } from '../data/types';
 import { useData } from '../context/DataContext';
@@ -24,19 +24,30 @@ import { extractFaturacaoFromProcesso } from '../../lib/process-form';
 import { StatusBadge } from './shared/StatusBadge';
 import { PROCESS_STATUS_STYLES, ADD_ACTION_BUTTON_CLASS } from '../../lib/design-system';
 import { CONTROL, FORM } from '../../lib/design-tokens';
-import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormTabContent } from './shared/FormPageChrome';
+import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton, FormTabContent } from './shared/FormPageChrome';
+import { ProcessEditTabContent } from './processos/ProcessEditTabContent';
+import { ProcessRecordEdit } from './processos/useProcessRecordEdit';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { type ProcessTabId } from '../../lib/record-tabs';
 
 interface ProcessDetailProps {
   processo: Processo;
   onBack: () => void;
-  onEdit: () => void;
+  onEdit?: () => void;
+  onCancelEdit?: () => void;
+  onSave?: () => void;
   onDelete: () => void;
   canUpdate?: boolean;
   canDelete?: boolean;
+  isEditing?: boolean;
+  saving?: boolean;
+  edit?: ProcessRecordEdit;
   topNotice?: ReactNode;
+  activeTab?: TabId;
+  onTabChange?: (tab: TabId) => void;
 }
 
-type TabId = 'identificacao' | 'gravidez' | 'colheita' | 'faturacao' | 'resultados' | 'kits' | 'notas' | 'anexos';
+type TabId = ProcessTabId;
 
 const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: 'identificacao', label: 'Identificação', icon: User },
@@ -58,13 +69,23 @@ export function ProcessDetail({
   processo,
   onBack,
   onEdit,
+  onCancelEdit,
+  onSave,
   onDelete,
   canUpdate = true,
   canDelete = true,
+  isEditing = false,
+  saving = false,
+  edit,
   topNotice,
+  activeTab,
+  onTabChange,
 }: ProcessDetailProps) {
   const { contacts, getAnexosByPaciente, uploadAnexoFile, deleteAnexo } = useData();
-  const [tab, setTab] = useState<TabId>('identificacao');
+  const { t } = useLanguage();
+  const [internalTab, setInternalTab] = useState<TabId>('identificacao');
+  const tab = activeTab ?? internalTab;
+  const handleTabChange = onTabChange ?? setInternalTab;
   const [paciente, setPaciente] = useState<Contact | null>(null);
 
   useEffect(() => {
@@ -110,40 +131,81 @@ export function ProcessDetail({
           avatar={<FormAvatarInitials initials={initials || 'PR'} />}
           actions={(canUpdate || canDelete) ? (
             <>
-              {canUpdate && (
-                <button type="button" onClick={onEdit} className={ADD_ACTION_BUTTON_CLASS}>
-                  <Edit className="w-4 h-4" />
-                  <span className="hidden sm:inline">Editar</span>
-                </button>
-              )}
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  className={`${CONTROL.buttonSecondary} text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Eliminar</span>
-                </button>
+              {isEditing ? (
+                <>
+                  <button type="button" onClick={onCancelEdit} className={CONTROL.buttonSecondary}>
+                    Cancelar
+                  </button>
+                  {canUpdate && (
+                    <FormPrimaryButton onClick={onSave} disabled={saving}>
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      <span className="hidden sm:inline">{saving ? 'A guardar…' : 'Guardar'}</span>
+                    </FormPrimaryButton>
+                  )}
+                </>
+              ) : (
+                <>
+                  {canUpdate && onEdit && (
+                    <button type="button" onClick={onEdit} className={ADD_ACTION_BUTTON_CLASS}>
+                      <Edit className="w-4 h-4" />
+                      <span className="hidden sm:inline">Editar</span>
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={onDelete}
+                      className={`${CONTROL.buttonSecondary} text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">Eliminar</span>
+                    </button>
+                  )}
+                </>
               )}
             </>
           ) : undefined}
           tabs={TABS}
           activeTab={tab}
-          onTabChange={setTab}
+          onTabChange={handleTabChange}
         />
 
         <FormTabContent>
           <div className="space-y-3">
-            <ProcessDataQualityBanner processo={processo} />
+            {isEditing && edit?.form && edit.jaCancelado ? (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-900 dark:text-rose-200/90">
+                <Ban className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p style={{ fontSize: '13px', fontWeight: 600 }}>{t('pages.processes.form.cancelledBanner')}</p>
+                  <p className="mt-0.5 opacity-90" style={{ fontSize: '13px' }}>{t('pages.processes.form.cancelledBannerDetail')}</p>
+                  {edit.motivoCanceladoNome && (
+                    <p className="mt-2 opacity-90" style={{ fontSize: '13px' }}>Motivo: {edit.motivoCanceladoNome}</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <ProcessDataQualityBanner processo={processo} />
+            )}
             <FaturacaoAlertBanner
-              value={extractFaturacaoFromProcesso(processo)}
+              value={extractFaturacaoFromProcesso(
+                isEditing && edit?.form ? { ...processo, ...edit.form } : processo,
+              )}
               context="processo"
-              onGoToFaturacao={() => setTab('faturacao')}
+              onGoToFaturacao={() => handleTabChange('faturacao')}
             />
           </div>
         </FormTabContent>
 
+        {isEditing && edit ? (
+          <ProcessEditTabContent
+            tab={tab}
+            processo={processo}
+            edit={edit}
+            canUpdate={canUpdate}
+            t={t}
+          />
+        ) : (
+          <>
         {tab === 'identificacao' && (
           <FormTabContent>
             <DetailPanel>
@@ -309,6 +371,8 @@ export function ProcessDetail({
               deleteAnexo={deleteAnexo}
             />
           </FormTabContent>
+        )}
+          </>
         )}
       </FormPageBody>
     </FormPageShell>

@@ -78,7 +78,6 @@ const LISTINGS_LABEL_KEYS: Record<ListingsSubmodule, string> = {
   colheitas: 'listings.colheitas',
   kits: 'listings.kits',
   lotes: 'listings.lotes',
-  auditoria: 'listings.auditoria',
 };
 
 const DEFINICOES_LABEL_KEYS: Record<DefinicoesSubmodule, string> = {

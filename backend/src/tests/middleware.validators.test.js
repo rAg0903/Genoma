@@ -41,6 +41,27 @@ describe('pacienteValidator', () => {
     expect(res.status).toBe(400);
   });
 
+  test('aceita payload sem NIF (campo omitido ou vazio)', async () => {
+    const resOmitido = await request(app).post('/test').send({
+      nome: 'Maria Silva',
+      telemovel: '912874652',
+      email: 'maria@example.com',
+    });
+    expect(resOmitido.status).toBe(200);
+
+    const resNull = await request(app).post('/test').send({
+      nome: 'Maria Silva',
+      nif: null,
+      telemovel: '912874652',
+    });
+    expect(resNull.status).toBe(200);
+  });
+
+  test('aceita NIF válido com 9 dígitos', async () => {
+    const res = await request(app).post('/test').send({ nome: 'Maria', nif: '123456789' });
+    expect(res.status).toBe(200);
+  });
+
   test('aceita género válido (M)', async () => {
     const res = await request(app).post('/test').send({ nome: 'João', genero: 'M' });
     expect(res.status).toBe(200);

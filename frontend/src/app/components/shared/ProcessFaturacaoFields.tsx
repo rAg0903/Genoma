@@ -1,8 +1,15 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useRef, useState, useEffect, type ReactNode } from 'react';
 import { CHECKBOX_INPUT_CLASS } from '../../../lib/design-system';
 import { todayLocal, formatCalendarDatePt, maxCalendarDate, normalizeCalendarDate } from '../../../lib/dates';
 import { CONTROL, DETAIL, FORM } from '../../../lib/design-tokens';
-import { ProcessFaturacaoData, isDocumentoFaturaCompleto } from '../../../lib/process-form';
+import {
+  ProcessFaturacaoData,
+  isDocumentoFaturaCompleto,
+  computeValorFinal,
+  sanitizeDecimalInput,
+  parseDecimalInput,
+  formatDecimalInput,
+} from '../../../lib/process-form';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { InfoField } from './DetailLayout';
 import { FormField, FormInput, FormNumberInput, FormSelect, FormFieldAccessory } from './FormPageChrome';
@@ -31,13 +38,35 @@ function FaturacaoSubsection({ title, children }: { title: string; children: Rea
   );
 }
 
-export function ProcessFaturacaoFields({ value, onChange, canUpdate = true, showMultibancoEnvio = true }: ProcessFaturacaoFieldsProps) {
+export function ProcessFaturacaoFields({ value, onChange, canUpdate = true, showMultibancoEnvio = false }: ProcessFaturacaoFieldsProps) {
   const { t } = useLanguage();
   const documentoCompleto = isDocumentoFaturaCompleto(value);
+  const [discountInput, setDiscountInput] = useState(() => formatDecimalInput(value.desconto_percentual));
+  const lastExternalDiscount = useRef(value.desconto_percentual);
   const paymentMinDate = useMemo(
     () => maxCalendarDate(todayLocal(), value.fatura_data_emissao),
     [value.fatura_data_emissao],
   );
+
+  useEffect(() => {
+    if (value.desconto_percentual === lastExternalDiscount.current) return;
+    const parsedFromInput = parseDecimalInput(discountInput);
+    if (Math.abs(parsedFromInput - Number(value.desconto_percentual ?? 0)) > 1e-9) {
+      setDiscountInput(formatDecimalInput(value.desconto_percentual));
+    }
+    lastExternalDiscount.current = value.desconto_percentual;
+  }, [value.desconto_percentual, discountInput]);
+
+  const applyDiscount = (raw: string) => {
+    const sanitized = sanitizeDecimalInput(raw);
+    setDiscountInput(sanitized);
+    const parsed = parseDecimalInput(sanitized);
+    lastExternalDiscount.current = parsed;
+    set({
+      desconto_percentual: parsed,
+      valor_final: computeValorFinal(Number(value.valor_base || 0), parsed),
+    });
+  };
 
   const set = (patch: Partial<ProcessFaturacaoData>) => {
     const next = { ...value, ...patch };
@@ -79,21 +108,23 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true, show
         <FormField label={t('faturacao.fields.discount')} width="sm">
           <FormNumberInput
             inputMode="decimal"
-            value={String(value.desconto_percentual ?? 0)}
-            onChange={(e) => set({
-              desconto_percentual: Number(e.target.value.replace(',', '.') || 0),
-              valor_final: Number((Number(value.valor_base || 0) * (1 - Number(e.target.value.replace(',', '.') || 0) / 100)).toFixed(2)),
-            })}
+            value={discountInput}
+            onChange={(e) => applyDiscount(e.target.value)}
+            onBlur={() => setDiscountInput(formatDecimalInput(parseDecimalInput(discountInput)))}
             disabled={!canUpdate}
           />
         </FormField>
         <FormFieldAccessory width="md">
           <button
             type="button"
-            onClick={() => set({
-              desconto_percentual: 10,
-              valor_final: Number((Number(value.valor_base || 0) * 0.9).toFixed(2)),
-            })}
+            onClick={() => {
+              setDiscountInput('10');
+              lastExternalDiscount.current = 10;
+              set({
+                desconto_percentual: 10,
+                valor_final: computeValorFinal(Number(value.valor_base || 0), 10),
+              });
+            }}
             disabled={!canUpdate}
             className={`${CONTROL.buttonSecondary} w-full justify-center h-9`}
           >
@@ -238,7 +269,7 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true, show
   );
 }
 
-export function ProcessFaturacaoView({ value, showMultibancoEnvio = true }: { value: ProcessFaturacaoData; showMultibancoEnvio?: boolean }) {
+export function ProcessFaturacaoView({ value, showMultibancoEnvio = false }: { value: ProcessFaturacaoData; showMultibancoEnvio?: boolean }) {
   const { t } = useLanguage();
   const yesNo = (v: boolean) => (v ? t('faturacao.fields.yes') : t('faturacao.fields.no'));
 
@@ -246,7 +277,7 @@ export function ProcessFaturacaoView({ value, showMultibancoEnvio = true }: { va
     <div className={DETAIL.grid}>
       <InfoField label={t('faturacao.fields.testPrice')} value={formatMoney(value.valor_base)} />
       <InfoField label={t('faturacao.fields.noCommission')} value={yesNo(!!value.nao_gera_comissao)} />
-      <InfoField label={t('faturacao.fields.discount')} value={String(value.desconto_percentual ?? 0)} />
+      <InfoField label={t('faturacao.fields.discount')} value={formatDecimalInput(value.desconto_percentual)} />
       <InfoField label={t('faturacao.fields.invoiceNumber')} value={value.fatura_numero || ''} mono />
       <InfoField label={t('faturacao.fields.invoiceDate')} value={fmt(value.fatura_data_emissao)} />
       <InfoField label={t('faturacao.fields.invoiceAmount')} value={formatMoney(value.valor_final)} />

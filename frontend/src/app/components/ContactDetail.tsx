@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Edit, Trash2, Phone, MapPin, User, FileText, Baby, Syringe, Receipt, StickyNote, Paperclip, Plus, Download, Ban, Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState, type ChangeEvent, type MutableRefObject } from 'react';
+import { Edit, Trash2, Phone, MapPin, User, FileText, Baby, Syringe, Receipt, StickyNote, Paperclip, Plus, Download, Ban, Loader2, Save } from 'lucide-react';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -21,14 +21,24 @@ import { DetailDivider, DetailPanel, DetailSection, InfoField } from './shared/D
 
 export { DetailDivider, DetailPanel, DetailSection, InfoField, Section } from './shared/DetailLayout';
 import { FormAvatarInitials, FormPageBody, FormPageHeader, FormPageShell, FormPrimaryButton, FormTabContent } from './shared/FormPageChrome';
+import { ContactFormPage, type ContactFormEditHandle } from './ContactFormPage';
+import { type ContactTabId } from '../../lib/record-tabs';
 
 interface ContactDetailProps {
   contact: Contact;
   onBack: () => void;
-  onEdit: () => void;
+  onEdit?: () => void;
+  onCancelEdit?: () => void;
+  onSave?: () => void;
   onDelete: () => void;
   canUpdate?: boolean;
   canDelete?: boolean;
+  isEditing?: boolean;
+  saving?: boolean;
+  editRef?: MutableRefObject<ContactFormEditHandle | null>;
+  onSaveComplete?: () => void;
+  activeTab?: TabId;
+  onTabChange?: (tab: TabId) => void;
 }
 
 const calculateAge = (birthDate?: string): number | null => {
@@ -62,7 +72,7 @@ const estadoBadge = (estado: string) => {
   return map[estado] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
 };
 
-type TabId = 'identificacao' | 'gravidez' | 'colheita' | 'faturacao' | 'notas' | 'anexos';
+type TabId = ContactTabId;
 
 const TABS: { id: TabId; label: string; icon: typeof User }[] = [
   { id: 'identificacao', label: 'Identificação', icon: User },
@@ -75,10 +85,27 @@ const TABS: { id: TabId; label: string; icon: typeof User }[] = [
 
 const formatDate = (value?: string) => formatCalendarDatePt(value);
 
-export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = true, canDelete = true }: ContactDetailProps) {
+export function ContactDetail({
+  contact,
+  onBack,
+  onEdit,
+  onCancelEdit,
+  onSave,
+  onDelete,
+  canUpdate = true,
+  canDelete = true,
+  isEditing = false,
+  saving = false,
+  editRef,
+  onSaveComplete,
+  activeTab,
+  onTabChange,
+}: ContactDetailProps) {
   const { processos, testes, postos, motivosAnulacao, getAnexosByPaciente, uploadAnexoFile, deleteAnexo } = useData();
   const { t } = useLanguage();
-  const [tab, setTab] = useState<TabId>('identificacao');
+  const [internalTab, setInternalTab] = useState<TabId>('identificacao');
+  const tab = activeTab ?? internalTab;
+  const handleTabChange = onTabChange ?? setInternalTab;
   const contactProcessos = processos.filter((p) => p.paciente_id === contact.id && isProcessoLaboratorio(p.estado));
   const faturacao = resolveFaturacao(contact, contactProcessos[0]);
   const motivoAnulacaoNome = contact.motivo_anulacao_id
@@ -110,46 +137,76 @@ export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = t
           )}
           actions={(canUpdate || canDelete) ? (
             <>
-              {canUpdate && (
-                <button type="button" onClick={onEdit} className={ADD_ACTION_BUTTON_CLASS}>
-                  <Edit className="w-4 h-4" />
-                  <span className="hidden sm:inline">Editar</span>
-                </button>
-              )}
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  className={`${CONTROL.buttonSecondary} text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Eliminar</span>
-                </button>
+              {isEditing ? (
+                <>
+                  <button type="button" onClick={onCancelEdit} className={CONTROL.buttonSecondary}>
+                    Cancelar
+                  </button>
+                  {canUpdate && (
+                    <FormPrimaryButton onClick={onSave} disabled={saving}>
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      <span className="hidden sm:inline">{saving ? 'A guardar…' : 'Guardar'}</span>
+                    </FormPrimaryButton>
+                  )}
+                </>
+              ) : (
+                <>
+                  {canUpdate && onEdit && (
+                    <button type="button" onClick={onEdit} className={ADD_ACTION_BUTTON_CLASS}>
+                      <Edit className="w-4 h-4" />
+                      <span className="hidden sm:inline">Editar</span>
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={onDelete}
+                      className={`${CONTROL.buttonSecondary} text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">Eliminar</span>
+                    </button>
+                  )}
+                </>
               )}
             </>
           ) : undefined}
           tabs={TABS}
           activeTab={tab}
-          onTabChange={setTab}
+          onTabChange={handleTabChange}
         />
 
         <FormTabContent>
-          {isContactoCancelado(contact) ? (
-            <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-900 dark:text-rose-200/90">
-              <Ban className="w-5 h-5 flex-shrink-0 mt-0.5" />
-              <div>
-                <p style={{ fontSize: '13px', fontWeight: 600 }}>{t('pages.contacts.form.voidedBanner')}</p>
-                <p className="mt-0.5 opacity-90" style={{ fontSize: '13px' }}>
-                  {motivoAnulacaoNome
-                    ? `${t('pages.contacts.form.voidReason')}: ${motivoAnulacaoNome}`
-                    : t('pages.contacts.form.voidedBannerDetail')}
-                </p>
+          {!isEditing && (
+            isContactoCancelado(contact) ? (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-900 dark:text-rose-200/90">
+                <Ban className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p style={{ fontSize: '13px', fontWeight: 600 }}>{t('pages.contacts.form.voidedBanner')}</p>
+                  <p className="mt-0.5 opacity-90" style={{ fontSize: '13px' }}>
+                    {motivoAnulacaoNome
+                      ? `${t('pages.contacts.form.voidReason')}: ${motivoAnulacaoNome}`
+                      : t('pages.contacts.form.voidedBannerDetail')}
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <FaturacaoAlertBanner value={faturacao} context="contacto" onGoToFaturacao={() => setTab('faturacao')} />
+            ) : (
+              <FaturacaoAlertBanner value={faturacao} context="contacto" onGoToFaturacao={() => handleTabChange('faturacao')} />
+            )
           )}
         </FormTabContent>
+
+        {isEditing && editRef ? (
+          <ContactFormPage
+            embedded
+            contactId={contact.id}
+            activeTab={tab}
+            editRef={editRef}
+            onSaveComplete={onSaveComplete}
+            onTabChangeRequest={handleTabChange}
+          />
+        ) : (
+          <>
         {tab === 'identificacao' && (
           <IdentificacaoTab contact={contact} motivoAnulacaoNome={motivoAnulacaoNome} />
         )}
@@ -166,6 +223,8 @@ export function ContactDetail({ contact, onBack, onEdit, onDelete, canUpdate = t
             uploadAnexoFile={uploadAnexoFile}
             deleteAnexo={deleteAnexo}
           />
+        )}
+          </>
         )}
       </FormPageBody>
     </FormPageShell>

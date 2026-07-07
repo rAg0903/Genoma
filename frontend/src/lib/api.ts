@@ -20,6 +20,22 @@ const handleSessionExpired = () => {
   }
 };
 
+const parseApiErrorMessage = (text: string): string => {
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed?.errors) && parsed.errors.length > 0) {
+      const details = parsed.errors
+        .map((e: { message?: string }) => e.message)
+        .filter(Boolean)
+        .join(' · ');
+      return details || parsed.message || text;
+    }
+    return parsed?.error || parsed?.message || text;
+  } catch {
+    return text;
+  }
+};
+
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, token, headers = {} } = options;
 
@@ -36,13 +52,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   if (!response.ok) {
     const text = await response.text();
-    let message = text;
-    try {
-      const parsed = JSON.parse(text);
-      message = parsed?.error || parsed?.message || text;
-    } catch {
-      // resposta não-JSON; mantém o texto original
-    }
+    const message = parseApiErrorMessage(text);
 
     // Sessão expirada ou token inválido: terminar sessão e voltar ao login.
     if (response.status === 401) {
@@ -83,13 +93,7 @@ export async function apiUpload<T>(
 
   if (!response.ok) {
     const text = await response.text();
-    let message = text;
-    try {
-      const parsed = JSON.parse(text);
-      message = parsed?.error || parsed?.message || text;
-    } catch {
-      // resposta não-JSON
-    }
+    const message = parseApiErrorMessage(text);
 
     if (response.status === 401) {
       handleSessionExpired();

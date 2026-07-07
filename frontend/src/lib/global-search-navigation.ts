@@ -12,7 +12,7 @@ export function navigateToSearchTarget(
       navigateToProcessoFromContact(navigate, target.processo_id);
       return;
     }
-    navigate(`/contactos/${target.paciente_id}/editar`);
+    navigate(`/contactos/${target.paciente_id}`);
     return;
   }
 
