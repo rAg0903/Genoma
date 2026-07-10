@@ -13,7 +13,8 @@ O levantamento de requisitos combinou:
 1. **Análise do domínio** com base na documentação do cliente e no código implementado.
 2. **Inspeção do sistema** — módulos React (`frontend/src/app/components/`) e serviços backend (`backend/src/services/`).
 3. **Entrevistas semi-estruturadas** com stakeholders (ver Capítulo 1).
-4. **Derivação de User Stories** no formato *Como [ator], quero [acção], para [benefício]*, com Critérios de Aceitação testáveis.
+4. **Reuniões de sincronização com o cliente** (Nuno/Genoma) — três sessões de recolha e validação incremental de requisitos, alinhadas com os sprints, que consolidaram as decisões de negócio sintetizadas na secção 2.7.
+5. **Derivação de User Stories** no formato *Como [ator], quero [acção], para [benefício]*, com Critérios de Aceitação testáveis.
 
 ---
 
@@ -49,9 +50,15 @@ O levantamento de requisitos combinou:
 |---|---|---|
 | CA-002.1 | A listagem de kits apresenta KPIs: disponíveis, reservados, a expirar, inválidos | Componente `StockKpis.tsx` |
 | CA-002.2 | Kits expirados ou com validade ultrapassada são sinalizados automaticamente | Query em `stocks.repository.js` |
-| CA-002.3 | Alerta de stock baixo quando kits disponíveis < limiar (defeito: 5) | Dashboard / alertas |
+| CA-002.3 | Alertas de stock por posto: vermelho quando 0, aviso entre 1 e 4, normal a partir de 5; stock mínimo configurável por posto (incluindo zero) | Dashboard / alertas / Inventário por local |
 | CA-002.4 | Movimentos entre locais (Escritório, Posto, Laboratório) ficam em `movimentos_kits` | Histórico consultável |
 | CA-002.5 | Permissões de stock são controladas por submódulo via `perfil_stock_submodulos` | RBAC granular |
+| CA-002.6 | Os lotes são criados vazios (com validade) e os kits inseridos manualmente com leitura de código de barras, com adição de múltiplos em sequência | Formulário de kits |
+| CA-002.7 | A criação de kit valida duplicados de imediato, com alerta e indicação do processo/cliente associado | Validação na BD |
+| CA-002.8 | Os kits associam-se ao Teste (não à "opção"); por defeito ficam na empresa (Genoma) | `tipo_kit_id`, `localizacao = Escritorio` |
+| CA-002.9 | As transferências usam o conceito "Envio" (sem estados "pendente"/"em trânsito"); o kit move-se automaticamente Empresa → Posto → Laboratório, com tracking opcional e destino ao laboratório final (FeatureHealth, UK) | `movimentos_kits`, `kit-lifecycle.js` |
+
+**Decisão do cliente (R2/R3):** a antiga "Requisição" de kits passou a "Envio" (reservando "Requisição" para os pedidos de teste dos médicos); os estados "pendente"/"em trânsito" foram eliminados a favor de transições automáticas; a origem determina os kits disponíveis (independentemente do lote) e o destino é escolhido em dois passos (Laboratório → Posto), podendo incluir o laboratório final.
 
 ---
 
@@ -67,9 +74,13 @@ O levantamento de requisitos combinou:
 |---|---|---|
 | CA-003.1 | Ao agendar, o sistema selecciona kit `Disponivel` do tipo correcto | `colheitas.repository.js` |
 | CA-003.2 | O kit passa a estado `Reservado` e o processo a `Kit Reservado` | Transacção atómica na BD |
-| CA-003.3 | O calendário apresenta carga por dia com codificação por cores | Módulo de agendamentos |
+| CA-003.3 | O calendário apresenta carga por dia com codificação por cores (verde: ≥1 colheita; amarelo: 2; vermelho: 3–4, indicando carga elevada) | Módulo de agendamentos |
 | CA-003.4 | É registada colheita em `colheitas` com `data_prevista`, `posto_id` e `periodo` | Persistência validada |
 | CA-003.5 | O processo é criado automaticamente a partir do agendamento | `numero_processo` gerado |
+| CA-003.6 | O agendamento verifica o stock de kit do posto na data; sem kit disponível não é possível marcar colheita | Verificação de stock por posto |
+| CA-003.7 | O posto de colheita pode ser escolhido por proximidade (código postal da utente) ou manualmente | Pesquisa por proximidade |
+
+**Decisão do cliente (R1/R3):** o calendário usa cores como indicador de capacidade/pressão (sem limite rígido de marcações). A escolha do posto por proximidade e a verificação de stock na data foram validadas para evitar colheitas sem material.
 
 ---
 
@@ -88,6 +99,12 @@ O levantamento de requisitos combinou:
 | CA-004.3 | Cada processo tem `numero_processo` único (varchar 20) | Constraint `UNIQUE` |
 | CA-004.4 | Um kit só pode estar associado a um processo (relação 1:1) | `uk_processos_kit` |
 | CA-004.5 | Dados clínicos de gravidez podem ser registados em `informacao_clinica` | Campos de semanas, tipo gravidez |
+| CA-004.6 | A ficha do contacto organiza-se em separadores (Identificação, Gravidez, Colheita, Faturação, Notas, Anexos), sem a antiga aba "Marketing" | `ContactViewPage.tsx`, `record-tabs.ts` |
+| CA-004.7 | A origem da conceção (natural vs fertilização/FIV) é registável | `origem_conceicao` (migração 060) |
+| CA-004.8 | A morada suporta País/Distrito/Cidade com autofill a partir do código postal | Campos de identificação |
+| CA-004.9 | Ao seleccionar o médico, apenas surgem as clínicas associadas a esse médico | Filtro médico → clínicas |
+
+**Decisão do cliente (R2/R3):** a aba "Marketing" foi removida e mantiveram-se Notas e Anexos; foram adicionados País/Distrito/Cidade com autofill por código postal, o campo de conceção (natural/FIV) e o filtro das clínicas pelas associadas ao médico escolhido.
 
 ---
 
@@ -149,7 +166,12 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | CA-007.2 | Ficheiros PDF ficam em `assets_resultados` com `url_ficheiro` | Upload associado ao processo |
 | CA-007.3 | Estado do processo pode transitar para `Resultado Disponivel` | Transição validada |
 | CA-007.4 | Campos `resultado_tudo_ok` e `resultado_anomalias` são actualizáveis | `processos` |
-| CA-007.5 | Metadados do teste (cromossomas analisados, microdeleções) vêm de `testes` | Catálogo pré-configurado |
+| CA-007.5 | Metadados do teste (cromossomas 1–23, deleções/duplicações, microdeleções/microduplicações, gémeos) vêm de `testes` | Catálogo pré-configurado |
+| CA-007.6 | Por defeito o resultado assume "nenhuma anomalia detectada" ("tudo OK"), assinalando apenas as anomalias (ex.: trissomia 21) | `resultado_tudo_ok = 1` por defeito |
+| CA-007.7 | A fração fetal é um campo de escrita (0–100%), presente por defeito | `fracao_fetal`, `incluir_fracao_fetal` |
+| CA-007.8 | São registáveis a data de envio ao laboratório e a data de recepção no laboratório | `data_envio_laboratorio`, `data_chegada_laboratorio` |
+
+**Decisão do cliente (R1/R2):** adoptou-se o padrão "tudo OK" por defeito nos cromossomas para reduzir o esforço e o erro de marcar manualmente os 23 pares; a fração fetal ficou como campo de escrita (sem dropdown). O conteúdo do relatório depende do teste e das opções seleccionadas.
 
 ---
 
@@ -192,7 +214,7 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 ### US-010 — Faturação de Processo
 
 **Como** gestor financeiro,  
-**quero** emitir fatura com numeração, valor base, desconto e referências multibanco,  
+**quero** emitir fatura com numeração, valor base, desconto e referências multibanco, e registar o pagamento,  
 **para** concluir o ciclo comercial do exame genético.
 
 #### Critérios de Aceitação
@@ -202,8 +224,13 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 | CA-010.1 | Faturação só é possível a partir do estado `Validado` | Transição para `Faturado` |
 | CA-010.2 | Campos `fatura_numero`, `fatura_data_emissao`, `valor_final` são persistidos | `processos` |
 | CA-010.3 | Registo complementar em `facturacao` com `preco_teste`, referências MB | Tabela dedicada |
-| CA-010.4 | Desconto percentual validado entre 0 e 100 | Validação no service |
+| CA-010.4 | Desconto percentual validado entre 0 e 100 (ex.: 10% para médicos) | Validação no service |
 | CA-010.5 | Estado `Faturado` é terminal (sem transições posteriores) | `TRANSICOES_VALIDAS['Faturado'] = []` |
+| CA-010.6 | O preço por defeito é obtido da definição do teste, com override manual | `testes.preco_venda` → `valor_base` |
+| CA-010.7 | O pagamento é registável com estado Pago, data de pagamento e número de recibo | `pago`, `pagamento_data`, número de recibo |
+| CA-010.8 | O dashboard sinaliza faturas não emitidas e não pagas | Alertas de faturação |
+
+**Decisão do cliente (R2):** a emissão de fatura não é obrigatória no momento de criação do processo; evitou-se uma separação rígida "pendente/faturado" que comprometesse o histórico, mantendo antes os estados "Fatura emitida" e "Pago". A emissão fiscal oficial (AT) é tratada externamente.
 
 ---
 
@@ -379,6 +406,41 @@ Agendado → Kit Reservado → Colheita Realizada → Enviado Laboratorio
 [INSERIR DIAGRAMA DE CASOS DE USO AQUI]
 
 [INSERIR MOCKUP FIGMA DO MÓDULO DE PROCESSOS AQUI]
+
+---
+
+## 2.7. Decisões de Negócio Validadas com o Cliente
+
+Esta secção consolida as decisões de negócio acordadas nas três reuniões de sincronização com o cliente (Nuno/Genoma), rastreando cada decisão ao(s) requisito(s) e/ou user story afectados. A síntese qualitativa consta da secção 1.5.5.
+
+| # | Decisão validada | Reunião | RF / US associados |
+|---|---|---|---|
+| D-01 | Contacto converte-se em processo após a colheita, identificado pelo código único do kit (1:1 kit-processo) | R1 | RF-006, US-004 |
+| D-02 | Calendário de agendamentos com codificação por cores (verde/amarelo/vermelho) como indicador de carga | R1 | RF-005, US-003 |
+| D-03 | Verificação de stock de kit antes de agendar; sem kit não há colheita | R1/R3 | RF-005, US-003 |
+| D-04 | Padrão "tudo OK" por defeito nos cromossomas; assinalar apenas anomalias | R1/R2 | RF-008, US-007 |
+| D-05 | Fração fetal como campo de escrita (0–100%), sem dropdown | R2 | RF-015, US-007 |
+| D-06 | Relatório gerado em PDF com layout personalizável; parsing automático de PDFs fora do âmbito imediato | R1/R2 | RF-009, US-009 |
+| D-07 | "Envio" substitui "Requisição" nas transferências de kits; "Requisição" reservada aos pedidos de teste | R2 | RF-012, US-002 |
+| D-08 | Eliminação dos estados "pendente"/"em trânsito"; movimento automático Empresa → Posto → Laboratório | R2/R3 | RF-012, US-002 |
+| D-09 | Tracking da transportadora opcional | R2 | RF-012, US-002 |
+| D-10 | Lotes criados vazios; kits inseridos manualmente com código de barras e validação de duplicados | R2 | RF-004, US-001/US-002 |
+| D-11 | Kits associados ao Teste (não à "opção"); localização inicial na empresa (Genoma) | R3 | RF-004, US-002 |
+| D-12 | Alertas de stock por posto (vermelho=0, aviso=1–4, normal≥5); stock mínimo configurável (incl. zero) | R2/R3 | RF-013, US-002 |
+| D-13 | Laboratório com N postos associados; laboratório final (FeatureHealth, UK) como destino possível | R3 | RF-012 |
+| D-14 | Escolha de posto por proximidade (código postal da utente) ou manual, com stock na data | R3 | RF-005, US-003 |
+| D-15 | Ao seleccionar médico, apresentar apenas as clínicas associadas a esse médico | R3 | RF-003, US-004 |
+| D-16 | Condições comerciais por laboratório (preço por colheita, prazo de pagamento) e listagem mensal por posto | R3 | RF-010, RF-014 |
+| D-17 | Contactos: remover aba "Marketing"; manter Notas/Anexos; adicionar País/Distrito/Cidade com autofill por código postal | R2 | RF-003, US-004 |
+| D-18 | Campo de conceção (natural vs fertilização/FIV) | R3 | RF-003, US-004 |
+| D-19 | Preço por defeito do teste com override manual; descontos (ex.: 10% médicos) | R2 | RF-010, US-010 |
+| D-20 | Estados de faturação "Fatura emitida" e "Pago" (data de pagamento, nº de recibo); emissão fiscal (AT) externa | R2 | RF-010, US-010 |
+| D-21 | Dashboard com métricas (contactos, processos activos, faturação) e alertas de SLA e faturação | R2 | RF-013 |
+| D-22 | Perfis restritivos: Admin gere credenciais/acesso total; Médico limitado ao seu dashboard e processos | R2 | RF-002, RF-020, US-013 |
+| D-23 | Capacidade multiutilizador (centenas em simultâneo) e módulos desacoplados | R1 | RNF-011/013, RNF-023 |
+| D-24 | Reactivação de e-mails automáticos desejável mas não prioritária; contingência manual + notificações in-app | R1/R2 | RF-017, US-009 |
+| D-25 | Integração com a app mobile de requisições (Gabriel), com risco por stack/design distintos | R1/R3 | RF-003 (criação automática de contactos) |
+| D-26 | Actualização da nomenclatura da empresa para "Genoma" nos módulos relevantes | R1 | — |
 
 ---
 

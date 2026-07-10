@@ -336,6 +336,22 @@ O schema evolui de forma controlada através de 63 ficheiros numerados em `backe
 
 ---
 
+## 3.9. Integração com o CRM Mobile de Requisições (Cliente Externo)
+
+Em paralelo com o CRM web, o cliente promoveu o desenvolvimento de uma **aplicação de requisição de testes para médicos (web/mobile)**, da responsabilidade do Gabriel, concebida para ser **autónoma** face aos restantes módulos e para **desbloquear a adesão** dos médicos prescritores. O objectivo funcional é permitir que o médico submeta uma requisição com os campos mínimos da utente (nome, telefone, e-mail, idade gestacional, seguro/nº de seguro) e que essa requisição gere automaticamente um contacto no CRM.
+
+A arquitectura API-Based do CRM Genoma favorece esta integração: a API REST desacoplada (secção 3.1) pode ser consumida por clientes adicionais, sendo a criação de contactos a partir de requisições um ponto de integração natural. Foi, contudo, identificado um **risco de integração** (validado na reunião R3): a app mobile utiliza **stack e design distintos**, pelo que a integração exigirá **normalização de contratos de API, alinhamento do modelo de dados e da autenticação, e coerência de UX**. Recomenda-se uma sessão técnica conjunta entre a equipa web e o Gabriel para definir o contrato de integração (endpoints, formato de payload, autenticação e mapeamento requisição → contacto).
+
+| Aspecto | Decisão / Estado |
+|---|---|
+| Origem da requisição | App mobile externa (Gabriel), autónoma |
+| Ponto de integração | Criação automática de contactos no CRM (RF-003) |
+| Mecanismo | API REST do CRM (`/api/...`) com autenticação por token |
+| Risco | Stack/design distintos → normalização de APIs e UX |
+| Mitigação | Contrato de API estável; sessão técnica de alinhamento |
+
+---
+
 ## Referências
 
 - `backend/ARCHITECTURE.md`

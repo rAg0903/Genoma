@@ -157,6 +157,8 @@ O sistema prevê perfis configuráveis (`perfis`, `perfil_stock_submodulos`) com
 | Administrador/Gestão | Decisor | Faturação, KPIs, exportações, permissões |
 | Técnico de recepção | Utilizador operacional | Stocks, kits, colheitas |
 
+O levantamento decorreu de forma incremental através de **reuniões de sincronização com o cliente**, tendo o **Nuno (Genoma)** como principal interlocutor e coordenador. O Nuno assegurou a interface com a organização, a partilha do conhecimento do fluxo operacional real (incluindo capturas de ecrã do sistema legado de stocks/lotes) e a validação iterativa das decisões de negócio ao longo dos sprints. A recolha combinou, assim, a perspectiva operacional dos utilizadores finais com a visão de gestão consolidada pelo cliente.
+
 ### 1.5.3. Guião de Entrevista Semi-Estruturado
 
 #### Bloco A — Identificação e Contexto (5 min)
@@ -206,15 +208,55 @@ O sistema prevê perfis configuráveis (`perfis`, `perfil_stock_submodulos`) com
 
 ### 1.5.4. Registo de Entrevistas Realizadas
 
-| Data | Entrevistado | Função | Duração | Ficheiro de Notas |
-|---|---|---|---|---|
-| [INSERIR] | [INSERIR NOME] | Médico | [INSERIR] | [INSERIR CAMINHO] |
-| [INSERIR] | [INSERIR NOME] | Director de Laboratório | [INSERIR] | [INSERIR CAMINHO] |
-| [INSERIR] | [INSERIR NOME] | Administrador | [INSERIR] | [INSERIR CAMINHO] |
+O levantamento e a validação de requisitos foram conduzidos através de um ciclo de **três reuniões de sincronização com o cliente**, realizadas com o Nuno (Genoma) ao longo do projecto e alinhadas com os sprints. Cada reunião funcionou simultaneamente como sessão de recolha de requisitos, revisão de sprint e validação de decisões de negócio.
+
+| Reunião | Período (aprox.) | Interlocutor | Foco Principal |
+|---|---|---|---|
+| R1 — Arranque e visão | Final de Março / início de Abril de 2026 | Nuno (Genoma) | Visão geral do CRM, fluxo operacional actual, divisão de responsabilidades da equipa, UI unificada (Figma), desacoplamento e escalabilidade |
+| R2 — Alinhamento funcional | Meados de Maio de 2026 | Nuno (Genoma) | Stocks/kits, envios, contactos/processos, definição de testes, resultados, faturação, perfis/permissões e dashboard |
+| R3 — Estado e integração | Junho de 2026 | Nuno (Genoma) | Modelo kit↔teste, laboratórios/postos, condições comerciais, pesquisa de posto por proximidade e integração com o CRM mobile |
 
 ### 1.5.5. Síntese das Conclusões das Entrevistas
 
-[INSERIR SÍNTESE APÓS REALIZAÇÃO DAS ENTREVISTAS — incluir citações relevantes e decisões tomadas]
+As três reuniões permitiram transformar o conhecimento operacional da Genoma em decisões de negócio concretas, que orientaram a implementação. As principais conclusões, por área temática, foram as seguintes.
+
+**Fluxo operacional e processos**
+- Confirmou-se o fluxo `Lote → Kit → Agendamento → Colheita → Processo → Resultado → Relatório → Faturação`, com o **contacto a converter-se em processo após a colheita**, ficando identificado pelo **código único do kit** (relação 1:1 kit-processo).
+- A sequência de estados do workflow foi validada; os **motivos de anulação** e as regras finas de visibilidade do médico ficaram para refinamento posterior.
+
+**Stocks, kits e envios**
+- Os **lotes são criados vazios** (com data de recepção e validade) e os **kits inseridos manualmente**, respeitando a numeração fornecida pelo laboratório, com **leitura de código de barras** e adição de múltiplos em sequência.
+- Exige-se **validação imediata de duplicados** de kit, com alerta claro e indicação do processo/cliente associado.
+- Decidiu-se usar o termo **"Envio"** (e reservar "Requisição" para os pedidos de teste dos médicos), **eliminando os estados "pendente" e "em trânsito"**: o kit move-se automaticamente **Empresa → Posto → Laboratório** ao registar envio/colheita. O **tracking da transportadora é opcional**.
+- Os **kits associam-se ao Teste** (e não à sua "opção"); por defeito ficam localizados na empresa (Genoma).
+- Definiram-se **alertas de stock**: vermelho quando 0, aviso entre 1 e 4 e normal a partir de 5, com **stock mínimo configurável por posto** (incluindo zero).
+
+**Laboratórios, postos e condições comerciais**
+- Cada **laboratório tem N postos** de colheita associados ao laboratório central; o **laboratório final** (FeatureHealth, UK) pode ser destino de envio.
+- O **posto de colheita** deve poder ser escolhido por **proximidade** (código postal da utente) ou manualmente, mostrando o stock do posto na data.
+- Ao escolher o médico, apenas devem surgir as **clínicas associadas** a esse médico.
+- Definiram-se **condições comerciais por laboratório** (preço por colheita e prazo de pagamento) e uma **listagem mensal por posto** para o laboratório central.
+
+**Testes, resultados e relatórios**
+- A **definição de testes** inclui tempo de resposta (SLA), gestação mínima, preços de compra e venda, tipo de teste/kit e opções (cromossomas 1–23, deleções/duplicações, microdeleções/microduplicações, gémeos), com a **fração fetal como campo de escrita**.
+- No registo de resultados adoptou-se o padrão **"nenhuma anomalia detectada" ("tudo OK") por defeito**, assinalando apenas as anomalias (ex.: trissomia 21), para reduzir o esforço e o erro de marcar manualmente os 23 pares de cromossomas.
+- O **relatório é gerado em PDF** com layout personalizável (logótipo, PT); o **parsing automático de PDFs do laboratório** foi considerado não prioritário pela complexidade e risco.
+
+**Faturação e pagamentos**
+- O **preço por defeito** vem da definição do teste, com **override manual** e possibilidade de **descontos** (ex.: 10% para médicos).
+- Os estados relevantes são **"Fatura emitida"** e **"Pago"** (com data de pagamento e número de recibo); a emissão fiscal oficial (AT) é tratada externamente.
+
+**Perfis, dashboard e infraestrutura**
+- **Perfis restritivos**: o Administrador gere credenciais e tem acesso total; o Médico acede apenas ao seu dashboard e aos seus processos, sem acesso a Stocks.
+- O **dashboard** deve apresentar métricas (contactos, processos activos, faturação) e **alertas críticos** de resultados em atraso (SLA ultrapassado) e faturas não emitidas/não pagas.
+- Reforçou-se a necessidade de **capacidade multiutilizador** (potencialmente centenas de utilizadores em simultâneo) sem bloqueios, e o **desacoplamento** entre módulos como princípio de entrega.
+
+**Notificações e integrações (fora do âmbito imediato)**
+- O **subsistema de e-mails automáticos** (avisos a postos e envio de relatórios) encontrava-se inoperacional; a sua reactivação é desejável mas **não prioritária**, mantendo-se procedimentos manuais de contingência (o centro de notificações in-app já está operacional).
+- A **app mobile de requisição de testes** para médicos (desenvolvida em separado pelo Gabriel) deverá integrar-se com o CRM; foi identificado **risco de integração** por usar stack e design distintos, exigindo normalização de APIs.
+
+**Nomenclatura**
+- As referências à designação anterior da empresa foram actualizadas para **"Genoma"** nos módulos relevantes.
 
 ---
 

@@ -174,6 +174,8 @@
 
 ### 6.3.2. Cronograma (Gantt)
 
+A coordenação com o cliente assentou num ciclo de **três reuniões de sincronização** com o Nuno (Genoma), alinhadas com os sprints e usadas simultaneamente como recolha de requisitos, revisão de sprint e validação de decisões de negócio (síntese na secção 1.5.5 e decisões consolidadas na secção 2.7): **R1** (arranque e visão, fim de Março/início de Abril), **R2** (alinhamento funcional, meados de Maio) e **R3** (estado e integração, Junho).
+
 O projecto foi organizado em quatro sprints (metodologia ágil/Scrum) entre o final de Março e meados de Julho de 2026:
 
 ```
@@ -213,9 +215,12 @@ Data-limite de entrega: 16/17 de Julho de 2026. Apresentação oficial: 21 de Ju
 
 | Risco | Probabilidade | Impacto | Mitigação | Estado |
 |---|---|---|---|---|
-| Atraso na validação do cliente | Média | Alto | Documento de perguntas (`PONTO_DE_SITUACAO`) | Activo |
+| Atraso na validação do cliente | Média | Alto | Documento de perguntas (`PONTO_DE_SITUACAO`); reuniões de sincronização com o Nuno | Activo |
+| Integração com o CRM mobile (Gabriel) | Média | Alto | Stack/design distintos; normalização de APIs e sessão técnica conjunta (ver secção 3.9) | Activo |
 | Integração faturação certificada | Média | Médio | API modular; campos já modelados | Pendente |
-| Dados históricos para importação | Baixa | Médio | Script de importação [A DESENVOLVER] | Pendente |
+| Dados históricos para importação | Baixa | Médio | Script de importação [A DESENVOLVER]; base mitigada pelo estagiário | Pendente |
+| Subsistema de e-mails automáticos inoperacional | Média | Médio | Contingência manual; notificações in-app operacionais | Fora do âmbito imediato |
+| Carga concorrente (centenas de utilizadores) | Média | Alto | Pool de conexões; paginação; avaliação de performance da BD | A monitorizar |
 | Conformidade RGPD | Baixa | Alto | RBAC, auditoria, soft-delete | Mitigado |
 
 ---
