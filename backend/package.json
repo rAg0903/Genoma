@@ -27,7 +27,7 @@
     "api",
     "rest"
   ],
-  "author": "Genoma Lab",
+  "author": "Ricardo Rodrigues, Rafael Males, Daniel Pereira, Alberto Macieira",
   "license": "ISC",
   "type": "commonjs",
   "engines": {

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Genoma CRM — aplicação desktop Mac/Windows",
   "main": "main.js",
-  "author": "Genoma",
+  "author": "Ricardo Rodrigues, Rafael Males, Daniel Pereira, Alberto Macieira",
   "license": "ISC",
   "scripts": {
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",

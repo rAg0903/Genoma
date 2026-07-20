@@ -1,7 +1,7 @@
 # Relatório Final de Curso — CRM Genoma
 
 **Instituição:** ISLA — Engenharia Informática  
-**Autores:** Rafael Fernandes Males (a22212343) e Alberto Macieira (a22301601)  
+**Autores:** Ricardo Rodrigues, Rafael Males, Daniel Pereira e Alberto Macieira  
 **Orientador:** Ana Paula  
 **Ano Lectivo:** 2025/2026  
 **Data:** Julho de 2026

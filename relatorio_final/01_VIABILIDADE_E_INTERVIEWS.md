@@ -2,7 +2,7 @@
 
 **Projeto:** CRM Genoma — Sistema de Gestão Operacional de Testes Genéticos  
 **Instituição:** ISLA — Engenharia Informática (2025/2026)  
-**Autores:** Rafael Fernandes Males (a22212343) e Alberto Macieira (a22301601)  
+**Autores:** Ricardo Rodrigues, Rafael Males, Daniel Pereira e Alberto Macieira  
 **Orientador:** Ana Paula  
 **Data:** Julho de 2026
 

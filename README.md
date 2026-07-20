@@ -314,10 +314,11 @@ Espelho académico (PFC): [Males24/CRM-Genoma2026](https://github.com/Males24/CR
 
 ---
 
-## Autor
+## Autores
 
-**Rafael Fernandes Males** — Projeto Final de Curso, ISLA  
-Engenharia Informática · Ano lectivo 2025/2026
+**Ricardo Rodrigues**, **Rafael Males**, **Daniel Pereira** e **Alberto Macieira**
+
+Projeto Final de Curso, ISLA — Engenharia Informática · Ano lectivo 2025/2026
 
 ---
 
