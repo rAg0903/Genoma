@@ -1,5 +1,9 @@
 # GENOMA
 
+> **Versão activa do projecto:** a stack web + desktop (React, Node, Electron) vive em  
+> **[CRM-Genoma2026](https://github.com/Males24/CRM-Genoma2026)** — inclui modo online e app Mac/Windows.  
+> Este repositório é a **referência MAUI** (.NET 9 Blazor Hybrid) usada como protótipo e base funcional.
+
 CRM para área de saúde / diagnóstico pré-natal (testes genéticos).
 
 Aplicação desktop multiplataforma construída com **.NET MAUI Blazor Hybrid**, **MudBlazor** e **MariaDB**.
