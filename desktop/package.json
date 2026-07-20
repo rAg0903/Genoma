@@ -1,0 +1,66 @@
+{
+  "name": "genoma-desktop",
+  "version": "1.0.0",
+  "description": "Genoma CRM — aplicação desktop Mac/Windows",
+  "main": "main.js",
+  "author": "Genoma",
+  "license": "ISC",
+  "scripts": {
+    "start": "env -u ELECTRON_RUN_AS_NODE electron .",
+    "prepare:build": "npm run build --prefix ../frontend && npm ci --omit=dev --prefix ../backend",
+    "pack:mac": "npm run prepare:build && electron-builder --mac",
+    "pack:win": "npm run prepare:build && electron-builder --win",
+    "pack": "npm run prepare:build && electron-builder --mac --win"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "pt.genoma.crm",
+    "productName": "Genoma",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "database.js",
+      "paths.js",
+      ".env.desktop.example"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!node_modules/.cache/**"
+        ]
+      },
+      {
+        "from": "../frontend/dist",
+        "to": "frontend-dist"
+      },
+      {
+        "from": "../database",
+        "to": "database"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.medical",
+      "target": ["dmg"],
+      "identity": null
+    },
+    "win": {
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

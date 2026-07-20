@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { Plus, Edit, Trash2, X, Users, Building2, FlaskConical, ShieldCheck, Package, Stethoscope, Ban, Landmark, LayoutGrid, type LucideIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Users, Building2, FlaskConical, ShieldCheck, Package, Stethoscope, Ban, Landmark, LayoutGrid, Settings2, type LucideIcon } from 'lucide-react';
 import { PerfisPermissoesTab } from './definicoes/PerfisPermissoesTab';
+import { SistemaTab } from './definicoes/SistemaTab';
 import { AdminModuleCards, type AdminModuleCardDef, type AdminModuleCardId } from './definicoes/AdminModuleCards';
 import { MedicosTab } from './MedicosTab';
 import { MotivosAnulacaoTab } from './MotivosAnulacaoTab';
@@ -39,9 +40,9 @@ import {
   AdminTableHeadCell,
 } from './definicoes/admin-tab-ui';
 
-type Tab = 'inicio' | 'utilizadores' | 'permissoes' | 'empresas' | 'tipos_kit' | 'entidades' | 'laboratorios' | 'medicos' | 'motivos_anulacao';
+type Tab = 'inicio' | 'utilizadores' | 'permissoes' | 'empresas' | 'tipos_kit' | 'entidades' | 'laboratorios' | 'medicos' | 'motivos_anulacao' | 'sistema';
 
-const SETTINGS_TABS: Tab[] = ['inicio', 'utilizadores', 'permissoes', 'empresas', 'tipos_kit', 'entidades', 'laboratorios', 'medicos', 'motivos_anulacao'];
+const SETTINGS_TABS: Tab[] = ['inicio', 'utilizadores', 'permissoes', 'empresas', 'tipos_kit', 'entidades', 'laboratorios', 'medicos', 'motivos_anulacao', 'sistema'];
 const SETTINGS_CONTENT_TABS = SETTINGS_TABS.filter((tab): tab is Exclude<Tab, 'inicio'> => tab !== 'inicio');
 
 const getValidSettingsTab = (tab: string | null, isAdmin: boolean, allowedTabs: Exclude<Tab, 'inicio'>[]): Tab => {
@@ -58,6 +59,10 @@ const getValidSettingsTab = (tab: string | null, isAdmin: boolean, allowedTabs: 
   }
 
   if (!isAdmin && tab === 'permissoes') {
+    return 'inicio';
+  }
+
+  if (!isAdmin && tab === 'sistema') {
     return 'inicio';
   }
 
@@ -91,15 +96,18 @@ export function SettingsPage() {
     motivosAnulacao,
   } = useData();
   const isAdmin = isAdministrator;
-  const allowedSettingsTabs = SETTINGS_CONTENT_TABS.filter((tab) => {
-    if (tab === 'permissoes') {
-      return isAdmin;
-    }
-    if (tab === 'tipos_kit') {
-      return hasDefinicoesSubmodulePermission('tipos_kit') || hasDefinicoesSubmodulePermission('testes');
-    }
-    return hasDefinicoesSubmodulePermission(tab as DefinicoesSubmodule);
-  });
+  const allowedSettingsTabs = useMemo(() => {
+    const tabs = SETTINGS_CONTENT_TABS.filter((tab) => {
+      if (tab === 'permissoes' || tab === 'sistema') {
+        return isAdmin;
+      }
+      if (tab === 'tipos_kit') {
+        return hasDefinicoesSubmodulePermission('tipos_kit') || hasDefinicoesSubmodulePermission('testes');
+      }
+      return hasDefinicoesSubmodulePermission(tab as DefinicoesSubmodule);
+    });
+    return tabs;
+  }, [hasDefinicoesSubmodulePermission, isAdmin]);
   const activeTab = useMemo(
     () => getValidSettingsTab(searchParams.get('tab'), isAdmin, allowedSettingsTabs),
     [allowedSettingsTabs, isAdmin, searchParams]
@@ -147,6 +155,7 @@ export function SettingsPage() {
     laboratorios: 'info',
     medicos: 'violet',
     motivos_anulacao: 'danger',
+    sistema: 'brand',
   };
 
   const allTabs: { id: Tab; labelKey: string; icon: LucideIcon }[] = [
@@ -159,12 +168,14 @@ export function SettingsPage() {
     { id: 'laboratorios', labelKey: 'navSub.laboratorios', icon: FlaskConical },
     { id: 'medicos', labelKey: 'navSub.medicos', icon: Stethoscope },
     { id: 'motivos_anulacao', labelKey: 'navSub.motivos_anulacao', icon: Ban },
+    { id: 'sistema', labelKey: 'navSub.sistema', icon: Settings2 },
   ];
 
   const tabs = allTabs
     .filter((tab) => {
       if (tab.id === 'inicio') return true;
       if (tab.id === 'permissoes' && !isAdmin) return false;
+      if (tab.id === 'sistema' && !isAdmin) return false;
       return allowedSettingsTabs.includes(tab.id as Exclude<Tab, 'inicio'>);
     })
     .map((tab) => ({ ...tab, label: t(tab.labelKey) }));
@@ -182,7 +193,7 @@ export function SettingsPage() {
     return allTabs
       .filter((tab) => tab.id !== 'inicio')
       .filter((tab) => {
-        if (tab.id === 'permissoes') return isAdmin;
+        if (tab.id === 'permissoes' || tab.id === 'sistema') return isAdmin;
         return allowedSettingsTabs.includes(tab.id as Exclude<Tab, 'inicio'>);
       })
       .map((tab) => {
@@ -250,6 +261,7 @@ export function SettingsPage() {
         {activeTab === 'laboratorios' && <LaboratoriosTab canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete} />}
         {activeTab === 'medicos' && <MedicosTab canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete} />}
         {activeTab === 'motivos_anulacao' && <MotivosAnulacaoTab canCreate={canCreate} canUpdate={canUpdate} canDelete={canDelete} />}
+        {activeTab === 'sistema' && isAdmin && <SistemaTab />}
       </div>
     </div>
   );

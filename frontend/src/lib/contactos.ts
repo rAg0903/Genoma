@@ -2,6 +2,7 @@ import { Contact, EstadoContactoAgendamento, Processo } from '../app/data/types'
 import { parseGestacaoRegistoInput, resolveGestacaoRegistadaEm } from './gestacao';
 import { normalizeOrigemConceicao } from './origem-conceicao';
 import { isAtivo } from './processos';
+import { ColheitaFormState, colheitaContactPayload } from './colheita';
 
 /** Estados visiveis na pagina Contactos (pipeline + filtros). */
 export type ContactoPipelineEstado = 'Criado' | 'Agendado' | 'Cancelado';
@@ -92,6 +93,14 @@ export const buildContactPosConversao = (
   onde_seguida: undefined,
   posto_colheita_id: undefined,
   data_colheita_prevista: undefined,
+  colheita_periodo: null,
+  colheita_facturado_entidade: false,
+  colheita_repeticao: false,
+  colheita_nao_notificar: false,
+  colheita_semanas_gestacao: null,
+  colheita_dias_gestacao: null,
+  colheita_data_recepcao_amostra: null,
+  colheita_data_efetiva: null,
   notas_internas: undefined,
   estado_agendamento: null,
 });
@@ -111,7 +120,7 @@ export type GravidezFormState = {
 export const buildContactClinicalPayload = (
   form: Omit<Contact, 'id' | 'created_at'>,
   gravidez: GravidezFormState,
-  colheita: { posto_id: string; data_prevista: string },
+  colheita: ColheitaFormState,
   notas: string,
 ): Omit<Contact, 'id' | 'created_at'> => {
   const gestacao = parseGestacaoRegistoInput(
@@ -137,6 +146,7 @@ export const buildContactClinicalPayload = (
     onde_seguida: gravidez.onde_seguida?.trim() || undefined,
     posto_colheita_id: colheita.posto_id || undefined,
     data_colheita_prevista: colheita.data_prevista || undefined,
+    ...colheitaContactPayload(colheita),
     notas_internas: notas?.trim() || undefined,
     estado_agendamento: deriveEstadoAgendamento(gravidez, colheita) ?? null,
   };

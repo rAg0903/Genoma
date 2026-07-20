@@ -27,6 +27,14 @@ export interface ApiPaciente {
   onde_seguida?: string | null;
   posto_colheita_id?: string | null;
   data_colheita_prevista?: string | null;
+  colheita_periodo?: string | null;
+  colheita_facturado_entidade?: boolean | null;
+  colheita_repeticao?: boolean | null;
+  colheita_nao_notificar?: boolean | null;
+  colheita_semanas_gestacao?: number | null;
+  colheita_dias_gestacao?: number | null;
+  colheita_data_recepcao_amostra?: string | null;
+  colheita_data_efetiva?: string | null;
   notas_internas?: string | null;
   estado_agendamento?: 'Agendado' | 'Kit Reservado' | null;
   estado_contacto?: 'Cancelado' | null;
@@ -93,6 +101,14 @@ export const mapApiPacienteToContact = (paciente: ApiPaciente): Contact => ({
   onde_seguida: paciente.onde_seguida || undefined,
   posto_colheita_id: paciente.posto_colheita_id || undefined,
   data_colheita_prevista: normalizeCalendarDate(paciente.data_colheita_prevista) || undefined,
+  colheita_periodo: paciente.colheita_periodo || null,
+  colheita_facturado_entidade: !!paciente.colheita_facturado_entidade,
+  colheita_repeticao: !!paciente.colheita_repeticao,
+  colheita_nao_notificar: !!paciente.colheita_nao_notificar,
+  colheita_semanas_gestacao: paciente.colheita_semanas_gestacao ?? null,
+  colheita_dias_gestacao: paciente.colheita_dias_gestacao ?? null,
+  colheita_data_recepcao_amostra: normalizeCalendarDate(paciente.colheita_data_recepcao_amostra) || null,
+  colheita_data_efetiva: normalizeCalendarDate(paciente.colheita_data_efetiva) || null,
   notas_internas: paciente.notas_internas || undefined,
   estado_agendamento: paciente.estado_agendamento || null,
   estado_contacto: paciente.estado_contacto === 'Cancelado' ? 'Cancelado' : null,
@@ -140,6 +156,14 @@ export const contactToApiBody = (data: Omit<Contact, 'id' | 'created_at'>) => ({
   onde_seguida: emptyToNull(data.onde_seguida),
   posto_colheita_id: data.posto_colheita_id || null,
   data_colheita_prevista: emptyToNull(data.data_colheita_prevista),
+  colheita_periodo: emptyToNull(data.colheita_periodo),
+  colheita_facturado_entidade: !!data.colheita_facturado_entidade,
+  colheita_repeticao: !!data.colheita_repeticao,
+  colheita_nao_notificar: !!data.colheita_nao_notificar,
+  colheita_semanas_gestacao: data.colheita_semanas_gestacao ?? null,
+  colheita_dias_gestacao: data.colheita_dias_gestacao ?? null,
+  colheita_data_recepcao_amostra: emptyToNull(data.colheita_data_recepcao_amostra),
+  colheita_data_efetiva: emptyToNull(data.colheita_data_efetiva),
   notas_internas: emptyToNull(data.notas_internas),
   estado_agendamento: data.estado_agendamento || null,
   estado_contacto: data.estado_contacto || null,

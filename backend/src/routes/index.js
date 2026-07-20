@@ -26,6 +26,7 @@ const tiposKitRoutes = require('./tipos_kit.routes');
 const motivosAnulacaoRoutes = require('./motivos_anulacao.routes');
 const notificacoesRoutes = require('./notificacoes.routes');
 const codigoPostalRoutes = require('./codigo-postal.routes');
+const configuracaoSistemaRoutes = require('./configuracao-sistema.routes');
 
 router.use('/auth', authRoutes);
 router.use('/perfis', perfisRoutes);
@@ -52,5 +53,6 @@ router.use('/tipos-kit', tiposKitRoutes);
 router.use('/motivos-anulacao', motivosAnulacaoRoutes);
 router.use('/notificacoes', notificacoesRoutes);
 router.use('/codigo-postal', codigoPostalRoutes);
+router.use('/configuracao', configuracaoSistemaRoutes);
 
 module.exports = router;

@@ -19,7 +19,12 @@ const requiredEnvVars = [
   'JWT_SECRET',
 ];
 
-const missingEnvVars = requiredEnvVars.filter((env) => !process.env[env]);
+const missingEnvVars = requiredEnvVars.filter((env) => {
+  if (env === 'DB_PASSWORD') {
+    return process.env[env] === undefined;
+  }
+  return !process.env[env];
+});
 if (missingEnvVars.length > 0) {
   logger.fatal({ missing: missingEnvVars }, 'Variáveis de ambiente obrigatórias em falta');
   process.exit(1);

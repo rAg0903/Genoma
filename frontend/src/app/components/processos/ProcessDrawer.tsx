@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import {
-  Edit, Trash2, FileText, Send, CheckCircle2, ExternalLink, Loader2, Wallet, Eye,
+  Edit, Trash2, FileText, Send, CheckCircle2, ExternalLink, Loader2, Wallet, Eye, X,
   LayoutDashboard, GitBranch, FlaskConical, Receipt, Link2, History, User,
 } from 'lucide-react';
 import { Processo } from '../../data/types';
@@ -24,11 +25,15 @@ import { StateTransitionMenu } from './StateTransitionMenu';
 import { PROCESS_STATUS_STYLES } from '../../../lib/design-system';
 import { CONTROL, DRAWER, formatEUR, MODAL } from '../../../lib/design-tokens';
 import { EstadoProcesso, buildProcessHistoricoSteps, buildProcessWorkflowSteps, ESTADO_LABEL } from '../../../lib/processos';
-import { processosApi, FaturacaoProcesso } from '../../../lib/api-processos';
+import { processosApi, FaturacaoProcesso, AnexoProcesso } from '../../../lib/api-processos';
+import { downloadAnexoFile } from '../../../lib/api';
 import { formatCalendarDatePt } from '../../../lib/dates';
 import { ProcessResultadoTab } from './ProcessResultadoTab';
 import { ProcessDataQualityBanner } from '../shared/ProcessDataQualityBanner';
 import { FormRadixSelect } from '../shared/FormPageChrome';
+import { useAuth } from '../../context/AuthContext';
+import { canManageProcessoOperacional } from '../../../lib/processo-access';
+import { RelatorioPreviewFrame } from '../shared/RelatorioPreviewFrame';
 
 type TabId = 'resumo' | 'workflow' | 'resultado' | 'relatorio' | 'faturacao' | 'trace' | 'historico';
 
@@ -83,9 +88,18 @@ function DrawerTabPane({
   );
 }
 
+const MEDICO_HIDDEN_TABS = new Set<TabId>(['faturacao', 'trace']);
+
+const drawerTabsForRole = (role: string): DrawerTab<TabId>[] =>
+  role === 'Medico'
+    ? PROCESS_DRAWER_TABS.filter((t) => !MEDICO_HIDDEN_TABS.has(t.id))
+    : PROCESS_DRAWER_TABS;
+
 export function ProcessDrawer({
   processo, open, onClose, onView, onEdit, onDelete, onUpdateEstado, onChanged, canUpdate, canDelete, renderTrace,
 }: ProcessDrawerProps) {
+  const { role, hasPermission } = useAuth();
+  const canWriteProcesso = canManageProcessoOperacional(role, hasPermission);
   const [tab, setTab] = useState<TabId>('resumo');
   const [loadedTabs, setLoadedTabs] = useState<Set<TabId>>(() => new Set(['resumo']));
 
@@ -94,6 +108,11 @@ export function ProcessDrawer({
     setTab('resumo');
     setLoadedTabs(new Set(['resumo']));
   }, [processo?.id]);
+
+  useEffect(() => {
+    const allowedIds = new Set(drawerTabsForRole(role).map((t) => t.id));
+    if (!allowedIds.has(tab)) setTab('resumo');
+  }, [role, tab]);
 
   useEffect(() => {
     setLoadedTabs((prev) => {
@@ -117,7 +136,7 @@ export function ProcessDrawer({
       headerExtra={
         <div className="flex items-center gap-1">
           <StatusBadge status={processo.estado} map={PROCESS_STATUS_STYLES} className="px-2 py-0.5" />
-          {canUpdate && (
+          {canWriteProcesso && (
             <button type="button" onClick={() => onEdit(processo, tab)} className={MODAL.closeBtn} title="Editar">
               <Edit className="h-4 w-4" />
             </button>
@@ -129,21 +148,21 @@ export function ProcessDrawer({
           )}
         </div>
       }
-      tabs={PROCESS_DRAWER_TABS}
+      tabs={drawerTabsForRole(role)}
       activeTab={tab}
       onTabChange={setTab}
     >
       <DrawerTabPane tabId="resumo" activeTab={tab} isLoaded={loadedTabs.has('resumo')}>
-        <ResumoTab processo={processo} onView={onView} onUpdateEstado={onUpdateEstado} canUpdate={canUpdate} />
+        <ResumoTab processo={processo} onView={onView} onUpdateEstado={onUpdateEstado} canUpdate={canWriteProcesso} />
       </DrawerTabPane>
       <DrawerTabPane tabId="workflow" activeTab={tab} isLoaded={loadedTabs.has('workflow')}>
-        <WorkflowTab processo={processo} onUpdateEstado={onUpdateEstado} canUpdate={canUpdate} />
+        <WorkflowTab processo={processo} onUpdateEstado={onUpdateEstado} canUpdate={canWriteProcesso} />
       </DrawerTabPane>
       <DrawerTabPane tabId="resultado" activeTab={tab} isLoaded={loadedTabs.has('resultado')}>
-        <ProcessResultadoTab processo={processo} canUpdate={canUpdate} onChanged={onChanged} variant="drawer" />
+        <ProcessResultadoTab processo={processo} canUpdate={canWriteProcesso} onChanged={onChanged} variant="drawer" />
       </DrawerTabPane>
       <DrawerTabPane tabId="relatorio" activeTab={tab} isLoaded={loadedTabs.has('relatorio')}>
-        <RelatorioTab processo={processo} canUpdate={canUpdate} onChanged={onChanged} />
+        <RelatorioTab processo={processo} canUpdate={canWriteProcesso} onChanged={onChanged} />
       </DrawerTabPane>
       <DrawerTabPane tabId="faturacao" activeTab={tab} isLoaded={loadedTabs.has('faturacao')}>
         <FaturacaoTab processo={processo} canUpdate={canUpdate} onChanged={onChanged} />
@@ -220,22 +239,55 @@ function WorkflowTab({ processo, onUpdateEstado, canUpdate }: { processo: Proces
 
 function RelatorioTab({ processo, canUpdate, onChanged }: { processo: Processo; canUpdate: boolean; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
   const [destino, setDestino] = useState<'Medico' | 'Utente' | 'Ambos'>('Medico');
+  const [anexos, setAnexos] = useState<AnexoProcesso[]>([]);
+  const [loadingAnexos, setLoadingAnexos] = useState(true);
+
+  const loadAnexos = useCallback(async () => {
+    setLoadingAnexos(true);
+    try {
+      const todos = await processosApi.listRelatoriosAnexos(processo.id);
+      setAnexos(todos.filter((a) => a.titulo?.startsWith('Relatório #') || a.url?.includes('Relatorio_')));
+    } catch (e) {
+      setAnexos([]);
+      const msg = e instanceof Error ? e.message : 'Falha ao carregar relatórios guardados.';
+      if (!msg.includes('Sem permiss')) toast.error(msg);
+    } finally {
+      setLoadingAnexos(false);
+    }
+  }, [processo.id]);
+
+  useEffect(() => { void loadAnexos(); }, [loadAnexos]);
 
   const gerar = async () => {
     setBusy(true);
     try {
-      await processosApi.gerarRelatorio(processo.id);
-      toast.success('Relatório gerado.');
-      onChanged();
+      const res = await processosApi.gerarRelatorio(processo.id);
+      if (res.skipped) {
+        toast.info('Relatório inalterado — o PDF mais recente já reflecte estes dados.');
+      } else {
+        toast.success(res.anexo?.titulo ? `${res.anexo.titulo} guardado nos anexos.` : 'Relatório gerado.');
+      }
+      onChanged?.();
+      await loadAnexos();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Falha ao gerar relatório.');
+      const msg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'Falha ao gerar relatório.';
+      toast.error(msg);
     } finally { setBusy(false); }
   };
 
   const abrir = async () => {
-    try { await processosApi.abrirRelatorioHtml(processo.id); }
-    catch (e) { toast.error(e instanceof Error ? e.message : 'Falha ao abrir relatório.'); }
+    setLoadingPreview(true);
+    try {
+      const html = await processosApi.fetchRelatorioHtml(processo.id);
+      setPreviewHtml(html);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao abrir relatório.');
+    } finally {
+      setLoadingPreview(false);
+    }
   };
 
   const enviar = async () => {
@@ -250,46 +302,132 @@ function RelatorioTab({ processo, canUpdate, onChanged }: { processo: Processo; 
   };
 
   return (
+    <>
     <DrawerTabBody>
       <DrawerPanel>
-        <DrawerPanelHeader title="Relatório clínico Genoma" icon={FileText} />
+        <DrawerPanelHeader title="Relatório de resultados" icon={FileText} subtitle="Layout Maternity — Proposta 1 (cliente)" />
         <DrawerPanelContent className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={gerar} disabled={!canUpdate || busy} className={CONTROL.buttonPrimary}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-              Gerar
-            </button>
-            <button type="button" onClick={abrir} className={CONTROL.buttonSecondary}>
-              <ExternalLink className="h-4 w-4" /> Pré-visualizar
+            {canUpdate && (
+              <button type="button" onClick={gerar} disabled={busy} className={CONTROL.buttonPrimary}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                Gerar PDF
+              </button>
+            )}
+            <button type="button" onClick={abrir} disabled={loadingPreview} className={CONTROL.buttonSecondary}>
+              {loadingPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+              Pré-visualizar HTML
             </button>
           </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {canUpdate
+              ? 'Ao validar o resultado, o PDF é gerado automaticamente (se os dados tiverem alterado).'
+              : 'Consulta do relatório clínico. A geração e envio são feitos pela equipa administrativa.'}
+          </p>
         </DrawerPanelContent>
       </DrawerPanel>
 
       <DrawerPanel>
-        <DrawerPanelHeader title="Envio" icon={Send} />
-        <DrawerPanelContent className="space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="min-w-0 flex-1">
-              <div className={DRAWER.fieldLabel}>Destinatário</div>
-              <FormRadixSelect
-                value={destino}
-                onChange={(v) => setDestino(v as typeof destino)}
-                options={DESTINO_OPTIONS}
-              />
+        <DrawerPanelHeader title="Versões guardadas" icon={FileText} />
+        <DrawerPanelContent className="space-y-2">
+          {loadingAnexos ? (
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" /> A carregar…
             </div>
-            <button type="button" onClick={enviar} disabled={!canUpdate || busy} className={`${CONTROL.buttonSecondary} shrink-0 border-teal-200 text-teal-700 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-300 dark:hover:bg-teal-900/20`}>
-              <Send className="h-4 w-4" /> Enviar
-            </button>
-          </div>
-          {processo.data_envio_relatorio && (
-            <p className="text-xs text-emerald-600 dark:text-emerald-400">
-              Enviado em {fmt(processo.data_envio_relatorio)} para {processo.relatorio_enviado_para}.
-            </p>
+          ) : anexos.length === 0 ? (
+            <p className="text-sm text-slate-500">Nenhum relatório PDF guardado ainda.</p>
+          ) : (
+            <ul className="space-y-2">
+              {anexos.map((anexo) => (
+                <li key={anexo.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{anexo.titulo}</div>
+                    {anexo.descricao && (
+                      <div className="truncate text-xs text-slate-500">{anexo.descricao}</div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void downloadAnexoFile(anexo.id, anexo.titulo)}
+                    className={`${CONTROL.buttonSecondary} shrink-0`}
+                  >
+                    <ExternalLink className="h-4 w-4" /> PDF
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </DrawerPanelContent>
       </DrawerPanel>
+
+      {canUpdate ? (
+        <DrawerPanel>
+          <DrawerPanelHeader title="Envio" icon={Send} />
+          <DrawerPanelContent className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1">
+                <div className={DRAWER.fieldLabel}>Destinatário</div>
+                <FormRadixSelect
+                  value={destino}
+                  onChange={(v) => setDestino(v as typeof destino)}
+                  options={DESTINO_OPTIONS}
+                />
+              </div>
+              <button type="button" onClick={enviar} disabled={busy} className={`${CONTROL.buttonSecondary} shrink-0 border-teal-200 text-teal-700 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-300 dark:hover:bg-teal-900/20`}>
+                <Send className="h-4 w-4" /> Enviar
+              </button>
+            </div>
+            {processo.data_envio_relatorio && (
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                Enviado em {fmt(processo.data_envio_relatorio)} para {processo.relatorio_enviado_para}.
+              </p>
+            )}
+          </DrawerPanelContent>
+        </DrawerPanel>
+      ) : processo.data_envio_relatorio ? (
+        <DrawerPanel>
+          <DrawerPanelHeader title="Envio" icon={Send} />
+          <DrawerPanelContent>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Enviado em {fmt(processo.data_envio_relatorio)} para {processo.relatorio_enviado_para}.
+            </p>
+          </DrawerPanelContent>
+        </DrawerPanel>
+      ) : null}
     </DrawerTabBody>
+
+    {previewHtml
+      ? createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-start justify-center bg-black/50 px-3 pb-5 pt-20 dark:bg-black/60 sm:px-5"
+          style={{ fontFamily: 'Inter, sans-serif' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="relatorio-preview-title"
+          onClick={() => setPreviewHtml(null)}
+        >
+          <div
+            className="flex h-[min(calc(100vh-4rem),920px)] w-[min(860px,98vw)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 ${MODAL.headerBorder}`}>
+              <div className="min-w-0">
+                <h2 id="relatorio-preview-title" className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  Pré-visualização do relatório
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{processo.numero}</p>
+              </div>
+              <button type="button" onClick={() => setPreviewHtml(null)} className={MODAL.closeBtn} aria-label="Fechar">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <RelatorioPreviewFrame html={previewHtml} />
+          </div>
+        </div>,
+        document.body,
+      )
+      : null}
+    </>
   );
 }
 

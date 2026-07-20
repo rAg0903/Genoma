@@ -2,18 +2,12 @@ const faturacaoRepository = require('../repositories/faturacao.repository');
 const processosRepository = require('../repositories/processos.repository');
 const testesRepository = require('../repositories/testes.repository');
 const logService = require('./log.service');
+const { loadProcessoWithAccess, assertOperacionalWriteAllowed } = require('../utils/medico-access');
 const { emit, EVENTS } = require('../events');
 
 const round2 = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 
-const ensureProcesso = async (processoId, user) => {
-  const processo = await processosRepository.findById(processoId);
-  if (!processo) throw new Error('Processo nao encontrado');
-  if (user && user.empresa_id && processo.empresa_id !== user.empresa_id) {
-    throw new Error('Sem permissao para aceder a este processo');
-  }
-  return processo;
-};
+const ensureProcesso = (processoId, user) => loadProcessoWithAccess(processoId, user);
 
 exports.getFaturacao = async (processoId, user) => {
   const processo = await ensureProcesso(processoId, user);
@@ -45,6 +39,7 @@ exports.getFaturacao = async (processoId, user) => {
  * avanca o processo para "Faturado".
  */
 exports.emitirFatura = async (processoId, data, user) => {
+  await assertOperacionalWriteAllowed(user);
   const processo = await ensureProcesso(processoId, user);
 
   if (processo.fatura_emitida) {
@@ -117,6 +112,7 @@ exports.emitirFatura = async (processoId, data, user) => {
  * Regista o pagamento (data + numero de recibo), resolvendo a pendencia.
  */
 exports.registarPagamento = async (processoId, data, user) => {
+  await assertOperacionalWriteAllowed(user);
   const processo = await ensureProcesso(processoId, user);
 
   if (!processo.fatura_emitida) {

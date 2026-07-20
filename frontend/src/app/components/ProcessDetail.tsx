@@ -81,7 +81,7 @@ export function ProcessDetail({
   activeTab,
   onTabChange,
 }: ProcessDetailProps) {
-  const { contacts, getAnexosByPaciente, uploadAnexoFile, deleteAnexo } = useData();
+  const { contacts, getAnexosByPaciente, uploadAnexoFile, deleteAnexo, refreshProcessos } = useData();
   const { t } = useLanguage();
   const [internalTab, setInternalTab] = useState<TabId>('identificacao');
   const tab = activeTab ?? internalTab;
@@ -308,28 +308,13 @@ export function ProcessDetail({
         )}
 
         {tab === 'resultados' && (
-          <FormTabContent className="space-y-4">
-            <DetailPanel>
-              <DetailSection title="Ciclo laboratorial" icon={Activity}>
-                <div className={FORM.fieldRow}>
-                  <InfoField label="Responsável de Fluxo" value={processo.responsavel_fluxo || ''} width="lg" />
-                  <InfoField label="Envio Relatório" value={processo.relatorio_enviado_para || 'Nenhum'} width="md" />
-                  <InfoField label="Envio ao Laboratório" value={fmt(processo.data_envio_laboratorio)} width="sm" />
-                  <InfoField label="Chegada ao Laboratório" value={fmt(processo.data_chegada_laboratorio)} width="sm" />
-                  <InfoField label="Data Resultado" value={fmt(processo.data_resultado)} width="sm" />
-                  <InfoField label="Data Validação" value={fmt(processo.data_validacao)} width="sm" />
-                  <InfoField label="Data Envio Relatório" value={fmt(processo.data_envio_relatorio)} width="sm" />
-                  <InfoField label="Fração fetal" value={processo.fracao_fetal || ''} width="sm" />
-                  <InfoField label="Relatório validado" value={processo.relatorio_validado ? 'Sim' : 'Não'} width="md" />
-                </div>
-              </DetailSection>
-
-              <DetailDivider />
-
-              <DetailSection title="Resultados genéticos" icon={FileText}>
-                <ProcessResultadoTab processo={processo} canUpdate={false} />
-              </DetailSection>
-            </DetailPanel>
+          <FormTabContent>
+            <ProcessResultadoTab
+              processo={processo}
+              canUpdate={canUpdate}
+              onChanged={() => { void refreshProcessos(); }}
+              variant="page"
+            />
           </FormTabContent>
         )}
 

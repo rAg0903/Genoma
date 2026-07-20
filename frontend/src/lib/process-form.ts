@@ -1,6 +1,11 @@
 import { Processo } from '../app/data/types';
 import { maxCalendarDate, normalizeCalendarDate, todayLocal } from './dates';
 import { resolveProcessoKitCodigo } from './processos';
+import {
+  validateFaturacaoWorkflowDate,
+  WorkflowMilestoneDates,
+  workflowDatesFromProcesso,
+} from './workflow-faturacao';
 
 export type ProcessFormData = Omit<Processo, 'id'>;
 
@@ -145,16 +150,32 @@ export const isDocumentoFaturaCompleto = (data: ProcessFaturacaoData): boolean =
     Number(data.valor_final ?? 0) > 0
   );
 
-export const validateFaturacaoData = (data: ProcessFaturacaoData): string | null => {
+export const validateFaturacaoData = (
+  data: ProcessFaturacaoData,
+  workflow?: WorkflowMilestoneDates,
+): string | null => {
   const faturaEmitida = !!(data.fatura_numero?.trim() || data.fatura_data_emissao);
   if (faturaEmitida && !data.fatura_data_emissao) {
     return 'Preencha a data de emissão da fatura.';
+  }
+  if (data.fatura_data_emissao) {
+    if (!workflow) {
+      return 'Não foi possível validar a data de faturação em relação ao processo.';
+    }
+    const workflowErr = validateFaturacaoWorkflowDate(workflow, data.fatura_data_emissao);
+    if (workflowErr) return workflowErr;
   }
   if (data.pago && !isDocumentoFaturaCompleto(data)) {
     return 'Preencha o documento de fatura antes de marcar como pago.';
   }
   if (data.pagamento_data && !data.recibo_numero?.trim()) {
     return 'Preencha o número de recibo ao marcar a fatura como paga.';
+  }
+  if (data.pagamento_data && data.fatura_data_emissao) {
+    const paymentMin = normalizeCalendarDate(data.fatura_data_emissao);
+    if (normalizeCalendarDate(data.pagamento_data) < paymentMin) {
+      return 'A data de pagamento não pode ser anterior à data da fatura.';
+    }
   }
   if (data.pago && data.pagamento_data) {
     const paymentMin = maxCalendarDate(todayLocal(), data.fatura_data_emissao);
@@ -224,6 +245,20 @@ export const validateProcessForm = (
   if (formData.fatura_emitida && !formData.fatura_data_emissao) {
     return 'Preencha a data de emissão da fatura.';
   }
+
+  const faturacaoErr = validateFaturacaoData(
+    {
+      fatura_numero: formData.fatura_numero,
+      fatura_data_emissao: formData.fatura_data_emissao,
+      fatura_emitida: formData.fatura_emitida,
+      valor_final: formData.valor_final,
+      pago: formData.pago,
+      pagamento_data: formData.pagamento_data,
+      recibo_numero: formData.recibo_numero,
+    } as ProcessFaturacaoData,
+    workflowDatesFromProcesso(formData),
+  );
+  if (faturacaoErr) return faturacaoErr;
 
   if (formData.pagamento_data && !formData.recibo_numero.trim()) {
     return 'Preencha o número de recibo ao marcar a fatura como paga.';

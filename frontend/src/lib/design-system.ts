@@ -1,10 +1,10 @@
 import { CONTROL, FORM } from './design-tokens';
 
 export const ADD_ACTION_BUTTON_CLASS =
-  'inline-flex items-center justify-center gap-2 shrink-0 px-4 py-2 rounded-lg text-sm font-semibold text-teal-700 dark:text-teal-300 bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-800 shadow-sm hover:bg-teal-50 dark:hover:bg-teal-950/40 hover:border-teal-300 dark:hover:border-teal-700 transition-colors';
+  'inline-flex items-center justify-center gap-2 shrink-0 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-teal-600 border border-teal-700/25 shadow-sm hover:bg-teal-700 active:bg-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 dark:bg-teal-600 dark:border-teal-500/35 dark:hover:bg-teal-500 transition-colors';
 
 export const SECONDARY_ACTION_BUTTON_CLASS =
-  'inline-flex items-center justify-center gap-2 shrink-0 px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-colors';
+  'inline-flex items-center justify-center gap-2 shrink-0 px-4 py-2 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500 transition-colors';
 
 /** @deprecated Preferir CONTROL.input ou MODAL_INPUT_CLASS */
 export const FORM_INPUT_CLASS = CONTROL.input;

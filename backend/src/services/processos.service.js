@@ -10,8 +10,19 @@ const utilizadoresRepository = require('../repositories/utilizadores.repository'
 const logService = require('./log.service');
 const motivosAnulacaoService = require('./motivos_anulacao.service');
 const pacientesService = require('./pacientes.service');
-const { isMedicoUser, assertPacienteAccess } = require('../utils/medico-access');
+const { isMedicoUser, assertPacienteAccess, assertProcessoAccess, assertOperacionalWriteAllowed } = require('../utils/medico-access');
 const { formatCalendarDate } = require('../utils/calendar-dates');
+const { normalizeCalendarDate } = require('../utils/dates');
+
+const assertFaturaDataEmissaoCoerente = (dataEntrada, faturaDataEmissao) => {
+  if (!faturaDataEmissao) return;
+  const entrada = normalizeCalendarDate(dataEntrada);
+  const fatura = normalizeCalendarDate(faturaDataEmissao);
+  if (!entrada || !fatura) return;
+  if (fatura < entrada) {
+    throw new Error('A data de faturacao nao pode ser anterior a data de entrada do processo.');
+  }
+};
 
 const PROCESSO_DATE_FIELDS = [
   'data_entrada',
@@ -377,13 +388,7 @@ exports.getById = async (id, user) => {
   const processo = await processosRepository.findById(id);
   if (!processo) throw new Error('Processo nao encontrado');
 
-  if (await isMedicoUser(user) && processo.medico_id !== user.id) {
-    throw new Error('Sem permissao para aceder a este processo');
-  }
-
-  if (user.empresa_id && processo.empresa_id !== user.empresa_id) {
-    throw new Error('Sem permissao para aceder a este processo');
-  }
+  await assertProcessoAccess(processo, user);
 
   return attachProcessoResponse(processo);
 };
@@ -446,6 +451,11 @@ exports.create = async (data, user) => {
     throw new Error('Numero de recibo e obrigatorio ao marcar pagamento.');
   }
 
+  const dataEntradaProcesso = workflowData.data_entrada || data.data_entrada || formatCalendarDate(new Date());
+  if (workflowData.fatura_data_emissao) {
+    assertFaturaDataEmissaoCoerente(dataEntradaProcesso, workflowData.fatura_data_emissao);
+  }
+
   if (statusExigeKit(statusProcesso) && !kitCodigo) {
     throw new Error('Codigo do kit e obrigatorio apos colheita.');
   }
@@ -498,12 +508,20 @@ exports.create = async (data, user) => {
   await syncInformacaoClinica(processo.id, clinicoSnapshot);
 
   const colheitasService = require('./colheitas.service');
+  const colheitaSnapshot = colheitasService.buildColheitaSnapshotFromSources(data, paciente);
   await colheitasService.syncFromProcesso({
     processoId: processo.id,
     postoId: workflowData.posto_id || data.posto_id || null,
     dataPrevista: clinicoSnapshot.data_colheita_prevista || workflowData.data_colheita_prevista || null,
     dataEfetiva: workflowData.data_colheita || null,
     status: statusProcesso,
+    periodo: colheitaSnapshot.periodo,
+    facturadoEntidade: colheitaSnapshot.facturadoEntidade,
+    repeticao: colheitaSnapshot.repeticao,
+    naoNotificar: colheitaSnapshot.naoNotificar,
+    semanasGestacaoColheita: colheitaSnapshot.semanasGestacaoColheita,
+    diasGestacaoColheita: colheitaSnapshot.diasGestacaoColheita,
+    dataRecepcaoAmostra: colheitaSnapshot.dataRecepcaoAmostra,
   });
 
   // Contacto convertido: limpar fase pre-processo para nao permitir segundo teste no mesmo registo.
@@ -518,6 +536,14 @@ exports.create = async (data, user) => {
     data_colheita_prevista: null,
     notas_internas: null,
     estado_agendamento: null,
+    colheita_periodo: null,
+    colheita_facturado_entidade: 0,
+    colheita_repeticao: 0,
+    colheita_nao_notificar: 0,
+    colheita_semanas_gestacao: null,
+    colheita_dias_gestacao: null,
+    colheita_data_recepcao_amostra: null,
+    colheita_data_efetiva: null,
   });
 
   if (user) {
@@ -534,12 +560,11 @@ exports.create = async (data, user) => {
 };
 
 exports.update = async (id, data, user) => {
+  await assertOperacionalWriteAllowed(user);
   const processo = await processosRepository.findById(id);
   if (!processo) throw new Error('Processo nao encontrado');
 
-  if (user.empresa_id && processo.empresa_id !== user.empresa_id) {
-    throw new Error('Sem permissao para atualizar este processo');
-  }
+  await assertProcessoAccess(processo, user);
 
   if (data.status && !normalizeStatus(data.status)) {
     throw new Error(`Status invalido. Valores validos: ${STATUS_CANONICOS.join(', ')}`);
@@ -576,6 +601,13 @@ exports.update = async (id, data, user) => {
 
   if (workflowData.pagamento_data && !workflowData.recibo_numero && !(processo.recibo_numero && workflowData.recibo_numero === undefined)) {
     throw new Error('Numero de recibo e obrigatorio ao marcar pagamento.');
+  }
+
+  const dataEntradaProcesso = workflowData.data_entrada !== undefined
+    ? workflowData.data_entrada
+    : (data.data_entrada !== undefined ? data.data_entrada : processo.data_entrada);
+  if (workflowData.fatura_data_emissao !== undefined && workflowData.fatura_data_emissao) {
+    assertFaturaDataEmissaoCoerente(dataEntradaProcesso, workflowData.fatura_data_emissao);
   }
 
   if (data.medico_id) {

@@ -1,4 +1,5 @@
 import { apiRequest, API_BASE_URL } from './api';
+import type { ColheitaProcesso } from './colheita';
 
 const AUTH_TOKEN_KEYS = ['token', 'authToken', 'jwtToken', 'access_token'];
 export const getAuthToken = (): string | undefined => {
@@ -28,6 +29,42 @@ export interface ResultadoProcesso {
   data_validacao: string | null;
   relatorio_validado: boolean;
   anomalias: AnomaliaGenetica[];
+  cromossomas_analisados: number[];
+  resultados_cromossomas: Record<number, string>;
+  sem_anomalias: boolean;
+  sugerir_repeticao: boolean;
+  fracao_fetal: string;
+  cromossomas_sexuais: string;
+  resultado_cromossomas_sexuais: string;
+  id_amostra: string;
+  data_envio_laboratorio: string | null;
+  data_recepcao_laboratorio: string | null;
+  data_relatorio_laboratorio: string | null;
+  teste_cromossomas?: string | null;
+  incluir_fracao_fetal?: boolean;
+  determinacao_sexo_fetal?: boolean;
+  relatorio_arquivo?: {
+    skipped?: boolean;
+    anexo?: { id: string; titulo: string };
+    motivo?: string;
+  } | null;
+}
+
+export interface RegistarResultadosBody {
+  sem_anomalias?: boolean;
+  sugerir_repeticao?: boolean;
+  resultados_cromossomas?: Record<number, string>;
+  /** Legado — ainda aceite pelo backend */
+  tudo_ok?: boolean;
+  anomalias?: AnomaliaGenetica[];
+  fracao_fetal?: string;
+  cromossomas_sexuais?: string;
+  resultado_cromossomas_sexuais?: string;
+  id_amostra?: string;
+  data_resultado?: string;
+  data_envio_laboratorio?: string;
+  data_recepcao_laboratorio?: string;
+  data_relatorio_laboratorio?: string;
 }
 
 export interface FaturacaoProcesso {
@@ -52,6 +89,19 @@ export interface RelatorioRegisto {
   pdf_url?: string;
   estado_envio?: string;
   created_at?: string;
+  html?: string;
+  anexo?: { id: string; titulo: string; url?: string };
+  skipped?: boolean;
+  motivo?: string | null;
+}
+
+export interface AnexoProcesso {
+  id: string;
+  titulo: string;
+  url?: string | null;
+  descricao?: string | null;
+  created_at?: string;
+  processo_id?: string;
 }
 
 const wrap = <T>(p: Promise<{ data: T }>) => p.then((r) => r.data);
@@ -60,7 +110,7 @@ export const processosApi = {
   getResultados: (id: string) =>
     wrap(apiRequest<{ data: ResultadoProcesso }>(`/processos/${id}/resultados`, { token: getAuthToken() })),
 
-  registarResultados: (id: string, body: { tudo_ok: boolean; anomalias?: AnomaliaGenetica[]; data_resultado?: string }) =>
+  registarResultados: (id: string, body: RegistarResultadosBody) =>
     wrap(apiRequest<{ data: ResultadoProcesso }>(`/processos/${id}/resultados`, { method: 'POST', token: getAuthToken(), body })),
 
   validar: (id: string, body: { data_validacao?: string; responsavel_fluxo?: string } = {}) =>
@@ -69,8 +119,11 @@ export const processosApi = {
   listRelatorios: (id: string) =>
     wrap(apiRequest<{ data: RelatorioRegisto[] }>(`/processos/${id}/relatorios`, { token: getAuthToken() })),
 
-  gerarRelatorio: (id: string, body: { template?: string; observacoes?: string } = {}) =>
-    wrap(apiRequest<{ data: RelatorioRegisto & { html: string } }>(`/processos/${id}/relatorio`, { method: 'POST', token: getAuthToken(), body })),
+  gerarRelatorio: async (id: string, body: { template?: string; observacoes?: string; pdf_base64?: string } = {}) =>
+    wrap(apiRequest<{ data: RelatorioRegisto }>(`/processos/${id}/relatorio`, { method: 'POST', token: getAuthToken(), body })),
+
+  listRelatoriosAnexos: (id: string) =>
+    wrap(apiRequest<{ data: AnexoProcesso[] }>(`/anexos/processo/${id}`, { token: getAuthToken() })),
 
   enviarRelatorio: (id: string, body: { destino: 'Medico' | 'Utente' | 'Ambos'; estado_envio?: string; relatorio_id?: string; observacoes?: string }) =>
     wrap(apiRequest<{ data: unknown }>(`/processos/${id}/relatorio/enviar`, { method: 'POST', token: getAuthToken(), body })),
@@ -84,19 +137,30 @@ export const processosApi = {
   registarPagamento: (id: string, body: { recibo_numero: string; pagamento_data?: string }) =>
     wrap(apiRequest<{ data: FaturacaoProcesso }>(`/processos/${id}/faturacao/pagamento`, { method: 'POST', token: getAuthToken(), body })),
 
-  /** Abre o relatorio HTML (autenticado) numa nova aba via blob URL. */
-  async abrirRelatorioHtml(id: string): Promise<void> {
+  getColheita: (id: string) =>
+    wrap(apiRequest<{ data: ColheitaProcesso }>(`/processos/${id}/colheita`, { token: getAuthToken() })),
+
+  updateColheita: (id: string, body: Partial<ColheitaProcesso>) =>
+    wrap(apiRequest<{ data: ColheitaProcesso }>(`/processos/${id}/colheita`, { method: 'PUT', token: getAuthToken(), body })),
+
+  /** Obtém o HTML do relatório (pedido autenticado). */
+  async fetchRelatorioHtml(id: string): Promise<string> {
     const token = getAuthToken();
     const res = await fetch(`${API_BASE_URL}/processos/${id}/relatorio/html`, {
       cache: 'no-store',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
-    if (!res.ok) throw new Error('Falha ao obter o relatorio.');
-    const html = await res.text();
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank');
-    if (win) setTimeout(() => URL.revokeObjectURL(url), 60000);
-    else URL.revokeObjectURL(url);
+    if (!res.ok) {
+      const text = await res.text();
+      let message = 'Falha ao obter o relatório.';
+      try {
+        const parsed = JSON.parse(text);
+        message = parsed?.error || parsed?.message || message;
+      } catch {
+        if (text.trim()) message = text.trim();
+      }
+      throw new Error(message);
+    }
+    return res.text();
   },
 };

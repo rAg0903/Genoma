@@ -254,6 +254,38 @@ exports.update = async (id, data) => {
             updates.push('data_colheita_prevista = ?');
             values.push(data.data_colheita_prevista);
         }
+        if (data.colheita_periodo !== undefined) {
+            updates.push('colheita_periodo = ?');
+            values.push(data.colheita_periodo);
+        }
+        if (data.colheita_facturado_entidade !== undefined) {
+            updates.push('colheita_facturado_entidade = ?');
+            values.push(data.colheita_facturado_entidade ? 1 : 0);
+        }
+        if (data.colheita_repeticao !== undefined) {
+            updates.push('colheita_repeticao = ?');
+            values.push(data.colheita_repeticao ? 1 : 0);
+        }
+        if (data.colheita_nao_notificar !== undefined) {
+            updates.push('colheita_nao_notificar = ?');
+            values.push(data.colheita_nao_notificar ? 1 : 0);
+        }
+        if (data.colheita_semanas_gestacao !== undefined) {
+            updates.push('colheita_semanas_gestacao = ?');
+            values.push(data.colheita_semanas_gestacao);
+        }
+        if (data.colheita_dias_gestacao !== undefined) {
+            updates.push('colheita_dias_gestacao = ?');
+            values.push(data.colheita_dias_gestacao);
+        }
+        if (data.colheita_data_recepcao_amostra !== undefined) {
+            updates.push('colheita_data_recepcao_amostra = ?');
+            values.push(data.colheita_data_recepcao_amostra);
+        }
+        if (data.colheita_data_efetiva !== undefined) {
+            updates.push('colheita_data_efetiva = ?');
+            values.push(data.colheita_data_efetiva);
+        }
         if (data.notas_internas !== undefined) {
             updates.push('notas_internas = ?');
             values.push(data.notas_internas);

@@ -12,7 +12,9 @@ import { isContactToProcessoRedirect } from '../../lib/contact-processo-redirect
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
 import { notifyError, notifySuccess } from '../../lib/toast';
+import { canManageProcessoOperacional } from '../../lib/processo-access';
 import { useProcessRecordEdit } from './processos/useProcessRecordEdit';
+import type { Processo } from '../../lib/processos';
 
 export function ProcessViewPage() {
   const { id } = useParams();
@@ -21,10 +23,12 @@ export function ProcessViewPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const confirmDelete = useConfirmDelete();
   const { t } = useLanguage();
-  const { processos, deleteProcesso, refreshProcessos } = useData();
-  const { hasPermission } = useAuth();
-  const canUpdate = hasPermission('processos', 'update');
+  const { processos, deleteProcesso, fetchProcessoById } = useData();
+  const { hasPermission, role } = useAuth();
+  const canUpdate = canManageProcessoOperacional(role, hasPermission);
   const canDelete = hasPermission('processos', 'delete');
+  const [processo, setProcesso] = useState<Processo | undefined>();
+  const [loading, setLoading] = useState(true);
   const [showContactNotice, setShowContactNotice] = useState(() =>
     isContactToProcessoRedirect(location.state),
   );
@@ -35,11 +39,36 @@ export function ProcessViewPage() {
   }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
-    if (!id) return;
-    void refreshProcessos();
-  }, [id, refreshProcessos]);
+    if (!id) {
+      setProcesso(undefined);
+      setLoading(false);
+      return;
+    }
 
-  const processo = id ? processos.find((p) => p.id === id) : undefined;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const cached = processos.find((p) => p.id === id);
+      if (cached) {
+        if (!cancelled) {
+          setProcesso(cached);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const fetched = await fetchProcessoById(id);
+      if (!cancelled) {
+        setProcesso(fetched ?? undefined);
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, processos, fetchProcessoById]);
+
   const tab = parseTabParam(searchParams.get('tab'), PROCESS_TAB_IDS, 'identificacao');
   const edit = useProcessRecordEdit(processo, canUpdate, t);
 
@@ -96,7 +125,29 @@ export function ProcessViewPage() {
     }
   };
 
-  if (!id || !processo) {
+  if (!id) {
+    return (
+      <div className={`flex flex-col min-h-full ${PAGE.shell} p-6`} style={{ fontFamily: 'Inter, sans-serif' }}>
+        <button onClick={() => navigate('/processos')} className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-4">
+          <ArrowLeft className="w-4 h-4" /> Voltar aos processos
+        </button>
+        <p className="text-slate-500 dark:text-slate-400">Processo não encontrado.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className={`flex flex-col min-h-full ${PAGE.shell} p-6`} style={{ fontFamily: 'Inter, sans-serif' }}>
+        <button onClick={() => navigate('/processos')} className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-4">
+          <ArrowLeft className="w-4 h-4" /> Voltar aos processos
+        </button>
+        <p className="text-slate-500 dark:text-slate-400">A carregar processo…</p>
+      </div>
+    );
+  }
+
+  if (!processo) {
     return (
       <div className={`flex flex-col min-h-full ${PAGE.shell} p-6`} style={{ fontFamily: 'Inter, sans-serif' }}>
         <button onClick={() => navigate('/processos')} className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 mb-4">

@@ -38,6 +38,37 @@ Lote → Kit → Agendamento → Colheita → Processo → Resultado → Relató
 
 ---
 
+## Modos de execução
+
+O mesmo código base suporta **dois modos** — escolhe conforme o contexto:
+
+| Modo | Quando usar | Como arrancar |
+|------|-------------|---------------|
+| **Online (web)** | Desenvolvimento, servidor interno, Docker/nginx | Backend `:3000` + frontend Vite `:5173` |
+| **Desktop (Mac/Windows)** | Utilizador final, janela nativa, tudo integrado | Electron em `desktop/` — arranca BD, migrações e API automaticamente |
+
+```
+                    ┌─────────────────────────────────────┐
+                    │         CRM Genoma (código único)      │
+                    └─────────────────┬───────────────────┘
+                                      │
+              ┌───────────────────────┴───────────────────────┐
+              │                                               │
+    ┌─────────▼─────────┐                         ┌───────────▼──────────┐
+    │  Modo Online       │                         │  Modo Desktop         │
+    │  Browser + API     │                         │  Electron (Mac/Win)   │
+    │  localhost:5173    │                         │  localhost:3847       │
+    └─────────┬─────────┘                         └───────────┬──────────┘
+              │                                               │
+              └───────────────────────┬───────────────────────┘
+                                      │
+                            MariaDB / MySQL (serviço local)
+```
+
+> **Nota:** A app desktop tenta iniciar o serviço MariaDB/MySQL do sistema (Homebrew no Mac, `net start` no Windows), tal como a versão MAUI original. A base de dados **não vem embutida** no instalador — ver [`desktop/README.md`](./desktop/README.md).
+
+---
+
 ## Arquitectura
 
 Aplicação **Three-Tier / API-Based** com separação clara entre apresentação, lógica de negócio e persistência:
@@ -82,6 +113,7 @@ Aplicação **Three-Tier / API-Based** com separação clara entre apresentaçã
 |---|---|---|
 | [Node.js](https://nodejs.org) | ≥ 18 | Runtime JavaScript |
 | [Express](https://expressjs.com) | 5.2 | Framework HTTP / API REST |
+| [Puppeteer](https://pptr.dev) | — | Geração de PDF de relatórios clínicos no servidor |
 | [mysql2](https://github.com/sidorares/node-mysql2) | 3.18 | Driver MariaDB/MySQL |
 | [JWT](https://jwt.io) | 9.0 | Autenticação stateless |
 | [bcrypt](https://github.com/kelektiv/node.bcrypt.js) | 6.0 | Hash de passwords |
@@ -100,15 +132,17 @@ Aplicação **Three-Tier / API-Based** com separação clara entre apresentaçã
 | Migrações versionadas | Evolução controlada do schema (`backend/src/migrations/`) |
 | dotenv | Variáveis de ambiente |
 | nodemon | Hot reload em desenvolvimento |
+| Electron 35 | App desktop Mac/Windows (`desktop/`) |
 
 ---
 
 ## Estrutura do Repositório
 
 ```
-genoma_app-main/
+genoma_app/
 ├── frontend/          # SPA React + Vite + TypeScript
 ├── backend/           # API REST Express + MariaDB
+├── desktop/           # Aplicação nativa Mac/Windows (Electron)
 ├── database/          # Exportação SQL da BD (partilha entre ambientes)
 ├── relatorio_final/   # Documentação académica (PFC — ISLA)
 ├── BASE_DE_DADOS.md   # Schema completo (documentação)
@@ -158,6 +192,26 @@ npm run frontend:dev
 ```
 
 A aplicação fica disponível em `http://localhost:5173`. A API REST responde em `http://localhost:3000/api`.
+
+### Modo desktop (Mac / Windows)
+
+Aplicação nativa com janela própria — arranca MariaDB (se necessário), migrações, API e interface num único processo:
+
+```bash
+# Na raiz do projecto — primeira vez
+npm run desktop:install
+
+# Desenvolvimento (compila frontend + abre janela Genoma)
+npm run desktop:dev
+
+# Gerar instalador
+npm run desktop:pack:mac    # → desktop/dist/*.dmg
+npm run desktop:pack:win    # → desktop/dist/*.exe (num PC Windows)
+```
+
+- **Configuração desktop:** na 1.ª execução copia `.env` para a pasta de dados do utilizador (Mac: `~/Library/Application Support/genoma-desktop/`)
+- **Uploads e PDFs** ficam na pasta de dados do utilizador (não dentro do `.app`)
+- Detalhes: [`desktop/README.md`](./desktop/README.md)
 
 ### Credenciais de teste (após importar `database/genoma_export.sql`)
 
@@ -233,16 +287,27 @@ Este projecto integra o **Projeto Final de Curso (PFC)** da ISLA. A documentaç�
 
 | Área | Melhoria |
 |------|----------|
+| **App desktop** | Electron Mac/Windows — arranque automático de BD, migrações e API; instaladores `.dmg` / `.exe` |
+| **Relatórios PDF** | Template clínico NIPT (Maternity Proposta 1); geração no servidor com Puppeteer; preview alinhada com o PDF |
+| **Resultados NIPT** | Grelha de cromossomas C1–C23; opções clínicas (fracção fetal, sexo fetal, teste cromossomas) |
 | **Edição inline** | Processos e contactos: header e separadores estáticos; só o conteúdo do tab activo passa a edição (`?edit=1` na URL) |
-| **Rotas de ficha** | `/contactos/:id` (nova vista dedicada); `/contactos/:id/editar` redirecciona para `?edit=1`; helper `record-tabs.ts` |
-| **Validação contactos** | Campos opcionais (NIF, data nascimento) aceitam vazio; mensagens de erro por campo; `checkFalsy` no backend |
-| **Pipeline contactos** | Filtros Criado/Agendado/Cancelado mostram só a coluna seleccionada; removido KPI «Com processos» |
-| **Colheitas hoje** | Calendário operacional `/colheitas-hoje`; registo de colheita na ficha do contacto (tab Colheita) |
-| **Dashboard médico** | Saudação personalizada; KPI «Contactos registados»; colheitas do dia com telemóvel |
-| **Processos** | Guardar sem alterações de estado; desconto decimal em faturação; removido multibanco |
-| **Tipos de kit** | Campo descrição (migração 064); formulário dedicado em Administração |
-| **Robustez API** | RBAC em rotas sensíveis; testes Jest (auth, validators, kit auto-descarte); CI GitHub Actions |
-| **Base de dados** | 64 migrações versionadas (`backend/src/migrations/`) |
+| **Rotas de ficha** | `/contactos/:id` e `/processos/:id` com fetch por ID (sem falso «não encontrado» ao refrescar) |
+| **Perfil médico** | Dashboard dedicado; contactos/processos isolados por prescritor; resultados read-only |
+| **Colheitas hoje** | Calendário operacional `/colheitas-hoje`; registo de colheita na ficha do contacto |
+| **Pipeline contactos** | Filtros Criado/Agendado/Cancelado; removido KPI «Com processos» |
+| **Robustez** | RBAC reforçado; 56 testes Jest; uploads configuráveis (`UPLOAD_DIR`); rate limit desactivado em modo desktop |
+| **Base de dados** | 65+ migrações versionadas (`backend/src/migrations/`) |
+
+---
+
+## Repositórios relacionados
+
+| Repositório | Stack | Papel |
+|-------------|-------|-------|
+| **[CRM-Genoma2026](https://github.com/Males24/CRM-Genoma2026)** (este) | React + Node + Electron | Versão **activa** — web e desktop |
+| **[Genoma](https://github.com/rAg0903/Genoma)** | .NET MAUI Blazor | Protótipo / referência original (desktop MAUI) |
+
+A versão MAUI serviu de base funcional (arranque de BD, fluxos clínicos, PDF). A stack web actual é a evolução principal do projecto.
 
 ---
 

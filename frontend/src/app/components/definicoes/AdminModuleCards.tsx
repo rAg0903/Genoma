@@ -11,7 +11,8 @@ export type AdminModuleCardId =
   | 'entidades'
   | 'laboratorios'
   | 'medicos'
-  | 'motivos_anulacao';
+  | 'motivos_anulacao'
+  | 'sistema';
 
 export type AdminModuleCardDef = {
   id: AdminModuleCardId;

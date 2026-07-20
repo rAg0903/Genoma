@@ -197,6 +197,7 @@ const pt = {
     medicos: 'Médicos',
     motivos_anulacao: 'Motivos de anulação',
     inicio: 'Visão geral',
+    sistema: 'Sistema',
   },
   listings: {
     painel_bordo: 'Painel de Bordo',
@@ -842,6 +843,22 @@ const pt = {
         laboratorios: 'Laboratórios operacionais, postos de colheita e labs finais.',
         medicos: 'Prescritores, locais de trabalho e condições comerciais.',
         motivos_anulacao: 'Motivos para anular contactos e processos.',
+        sistema: 'Dados da clínica emitente nos relatórios NIPT (nome, morada, contactos).',
+      },
+      sistema: {
+        title: 'Clínica / emitente',
+        subtitle: 'Estes dados aparecem no cabeçalho dos relatórios clínicos e PDFs gerados ao validar resultados.',
+        hint: 'Alterações aplicam-se aos próximos relatórios gerados. PDFs já guardados mantêm a versão anterior.',
+        saved: 'Configuração da clínica guardada.',
+        saveError: 'Não foi possível guardar a configuração.',
+        loadError: 'Não foi possível carregar a configuração.',
+        fields: {
+          nome: 'Nome',
+          morada: 'Morada',
+          codigoPostal: 'Código postal',
+          telefone: 'Telefone',
+          email: 'Email',
+        },
       },
       form: {
         local: {

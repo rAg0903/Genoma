@@ -12,6 +12,8 @@ router.get('/paciente/:pacienteId', authMiddleware, processosController.listByPa
 router.get('/:id', authMiddleware, processosController.getById);
 router.post('/', authMiddleware, processosController.create);
 router.put('/:id', authMiddleware, processosController.update);
+router.get('/:id/colheita', authMiddleware, processosController.getColheita);
+router.put('/:id/colheita', authMiddleware, processosController.updateColheita);
 router.delete('/:id', authMiddleware, requireAdmin, processosController.delete);
 
 // Resultados (modelo "tudo OK por defeito") e validacao clinica

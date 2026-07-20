@@ -10,6 +10,13 @@ import {
   parseDecimalInput,
   formatDecimalInput,
 } from '../../../lib/process-form';
+import {
+  describeFaturacaoWorkflowPlacement,
+  resolveFaturacaoWorkflowMinDate,
+  sanitizeFaturacaoDataEmissao,
+  validateFaturacaoWorkflowDate,
+  WorkflowMilestoneDates,
+} from '../../../lib/workflow-faturacao';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { InfoField } from './DetailLayout';
 import { FormField, FormInput, FormNumberInput, FormSelect, FormFieldAccessory } from './FormPageChrome';
@@ -25,6 +32,7 @@ interface ProcessFaturacaoFieldsProps {
   onChange: (value: ProcessFaturacaoData) => void;
   canUpdate?: boolean;
   showMultibancoEnvio?: boolean;
+  workflowDates: WorkflowMilestoneDates;
 }
 
 function FaturacaoSubsection({ title, children }: { title: string; children: ReactNode }) {
@@ -38,14 +46,32 @@ function FaturacaoSubsection({ title, children }: { title: string; children: Rea
   );
 }
 
-export function ProcessFaturacaoFields({ value, onChange, canUpdate = true, showMultibancoEnvio = false }: ProcessFaturacaoFieldsProps) {
+export function ProcessFaturacaoFields({
+  value,
+  onChange,
+  canUpdate = true,
+  showMultibancoEnvio = false,
+  workflowDates,
+}: ProcessFaturacaoFieldsProps) {
   const { t } = useLanguage();
   const documentoCompleto = isDocumentoFaturaCompleto(value);
   const [discountInput, setDiscountInput] = useState(() => formatDecimalInput(value.desconto_percentual));
   const lastExternalDiscount = useRef(value.desconto_percentual);
+  const invoiceMinDate = useMemo(
+    () => resolveFaturacaoWorkflowMinDate(workflowDates),
+    [workflowDates],
+  );
   const paymentMinDate = useMemo(
     () => maxCalendarDate(todayLocal(), value.fatura_data_emissao),
     [value.fatura_data_emissao],
+  );
+  const workflowPlacement = useMemo(
+    () => describeFaturacaoWorkflowPlacement(workflowDates, value.fatura_data_emissao),
+    [workflowDates, value.fatura_data_emissao],
+  );
+  const workflowDateError = useMemo(
+    () => validateFaturacaoWorkflowDate(workflowDates, value.fatura_data_emissao),
+    [workflowDates, value.fatura_data_emissao],
   );
 
   useEffect(() => {
@@ -70,6 +96,9 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true, show
 
   const set = (patch: Partial<ProcessFaturacaoData>) => {
     const next = { ...value, ...patch };
+    if (patch.fatura_data_emissao !== undefined) {
+      next.fatura_data_emissao = sanitizeFaturacaoDataEmissao(workflowDates, patch.fatura_data_emissao);
+    }
     const paymentMin = maxCalendarDate(todayLocal(), next.fatura_data_emissao);
     if (next.pagamento_data) {
       const normalizedPayment = normalizeCalendarDate(next.pagamento_data);
@@ -160,9 +189,30 @@ export function ProcessFaturacaoFields({ value, onChange, canUpdate = true, show
           <FormDatePicker
             value={value.fatura_data_emissao || ''}
             onChange={(v) => set({ fatura_data_emissao: v })}
-            disabled={!canUpdate}
+            disabled={!canUpdate || !invoiceMinDate}
+            minDate={invoiceMinDate}
+            allowAnyDate={false}
           />
         </FormField>
+        {!invoiceMinDate && (
+          <FormFieldAccessory width="lg">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Defina primeiro a data de entrada do processo para registar a fatura.
+            </p>
+          </FormFieldAccessory>
+        )}
+        {workflowPlacement && !workflowDateError && (
+          <FormFieldAccessory width="lg">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              No workflow do processo, esta fatura aparece {workflowPlacement}.
+            </p>
+          </FormFieldAccessory>
+        )}
+        {workflowDateError && (
+          <FormFieldAccessory width="lg">
+            <p className="text-xs text-rose-600 dark:text-rose-400">{workflowDateError}</p>
+          </FormFieldAccessory>
+        )}
         <FormField label={t('faturacao.fields.invoiceAmount')} width="md">
           <input
             type="text"

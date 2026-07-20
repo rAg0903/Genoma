@@ -1,6 +1,6 @@
 import { LucideIcon, X } from 'lucide-react';
-import { ReactNode } from 'react';
-import { ADD_ACTION_BUTTON_CLASS } from '../../../lib/design-system';
+import { ReactNode, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { CONTROL, FORM, MODAL, SURFACE, TYPOGRAPHY } from '../../../lib/design-tokens';
 
 type AppModalProps = {
@@ -28,15 +28,29 @@ export function AppModal({
   footer,
   formBody = false,
 }: AppModalProps) {
-  return (
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  const modal = (
     <div
       className={MODAL.overlay}
       style={{ fontFamily: 'Inter, sans-serif' }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="app-modal-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className={`${SURFACE.cardElevated} shadow-2xl w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} overflow-hidden flex flex-col max-h-[90vh]`}>
+      <div
+        className={`${SURFACE.cardElevated} shadow-2xl w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} overflow-hidden flex flex-col max-h-[min(90vh,calc(100vh-6rem))] my-2 sm:my-4 shrink-0`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={`flex items-start justify-between gap-3 px-5 py-4 border-b shrink-0 ${MODAL.headerBorder}`}>
           <div className="min-w-0 flex items-start gap-2.5">
             {Icon ? <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${iconClassName}`} /> : null}
@@ -59,7 +73,7 @@ export function AppModal({
           </button>
         </div>
 
-        <div className={`p-5 overflow-y-auto flex-1 ${formBody ? FORM.stack : ''}`}>
+        <div className={`p-5 overflow-y-auto flex-1 min-h-0 ${formBody ? FORM.stack : ''}`}>
           {children}
         </div>
 
@@ -71,6 +85,8 @@ export function AppModal({
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }
 
 type ModalFieldProps = {
@@ -160,7 +176,7 @@ export function ModalActions({
   const submitClass =
     variant === 'danger'
       ? `${CONTROL.buttonPrimary} !bg-rose-600 hover:!bg-rose-700 active:!bg-rose-800 disabled:opacity-60 disabled:cursor-not-allowed`
-      : `${ADD_ACTION_BUTTON_CLASS} disabled:opacity-60 disabled:cursor-not-allowed`;
+      : `${CONTROL.buttonPrimary} disabled:opacity-60 disabled:cursor-not-allowed`;
 
   return (
     <>

@@ -24,7 +24,7 @@ import {
   processoMatchesEstadoFilter, isAtivo, isAtrasado, isResultadoPorValidar,
   isRelatorioPorEnviar, isFaturaPorEmitir, isAntigo, resolveDataConclusao, proximosEstados,
 } from '../../lib/processos';
-import { needsTransitionConfirm } from '../../lib/process-data-quality';
+import { canManageProcessoOperacional } from '../../lib/processo-access';
 import { isProcessoLaboratorio } from '../../lib/contactos';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
@@ -56,7 +56,7 @@ export function ProcessesPage() {
   const confirmAction = useConfirmAction();
   const navigate = useNavigate();
   const canCreate = hasPermission('processos', 'create');
-  const canUpdate = hasPermission('processos', 'update');
+  const canUpdate = canManageProcessoOperacional(role, hasPermission);
   const canDelete = hasPermission('processos', 'delete');
   const isMedico = role === 'Medico';
 

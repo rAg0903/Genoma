@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  Users, FolderOpen, CalendarClock, FlaskConical, AlertTriangle, Wallet,
+  Users, FolderOpen, CalendarClock, FlaskConical, AlertTriangle,
   TrendingUp, Clock, Activity, Plus, ArrowRight, Stethoscope,
 } from 'lucide-react';
 import {
@@ -236,14 +236,6 @@ export function MedicoDashboard() {
       hint: t('dashboard.kpi.slaOverdue'),
       onClick: () => navigate('/processos'),
     },
-    {
-      label: t('dashboard.kpi.monthlyBilling'),
-      value: formatEUR(kpis?.faturacao_mes ?? 0),
-      icon: Wallet,
-      tone: 'success' as const,
-      hint: t('dashboard.medico.kpi.billingHint'),
-      onClick: () => navigate('/processos'),
-    },
   ], [colheitasAgendadas.length, colheitasCount, contacts.length, kpis, navigate, period, porValidar.length, processos, t]);
 
   const isEmpty = (kpis?.total_contactos ?? contacts.length) === 0 && processos.length === 0;
@@ -343,7 +335,7 @@ export function MedicoDashboard() {
         </div>
       ) : (
         <>
-          <div className={`grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 ${LAYOUT.gridGap}`}>
+          <div className={`grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 ${LAYOUT.gridGap}`}>
             {medicoKpis.map((k) => (
               <KpiCard key={k.label} {...k} />
             ))}

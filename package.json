@@ -8,7 +8,11 @@
     "backend:start": "cd backend && npm start",
     "frontend:dev": "cd frontend && npm run dev",
     "frontend:build": "cd frontend && npm run build",
-    "frontend:preview": "cd frontend && npm run preview"
+    "frontend:preview": "cd frontend && npm run preview",
+    "desktop:install": "cd desktop && npm install",
+    "desktop:dev": "npm run frontend:build && cd desktop && npm start",
+    "desktop:pack:mac": "cd desktop && npm run pack:mac",
+    "desktop:pack:win": "cd desktop && npm run pack:win"
   },
   "dependencies": {
     "dotenv": "^17.3.1"

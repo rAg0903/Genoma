@@ -18,6 +18,9 @@ const baseSelect = `
            ELSE t.nome
          END AS teste_nome,
          t.tempo_resposta_dias,
+         t.cromossomas AS teste_cromossomas,
+         t.incluir_fracao_fetal,
+         t.determinacao_sexo_fetal,
          e.nome AS empresa_nome,
          k.codigo_barras AS kit_codigo,
          ma.nome AS motivo_anulacao_nome
@@ -251,6 +254,16 @@ exports.update = async (id, data) => {
     if (data.relatorio_enviado_para !== undefined) setIfDefined('relatorio_enviado_para', data.relatorio_enviado_para || 'Nenhum');
     if (data.resultado_tudo_ok !== undefined) setIfDefined('resultado_tudo_ok', data.resultado_tudo_ok ? 1 : 0);
     if (data.resultado_anomalias !== undefined) setIfDefined('resultado_anomalias', data.resultado_anomalias || null);
+    if (data.resultados_cromossomas !== undefined) setIfDefined('resultados_cromossomas', data.resultados_cromossomas || null);
+    if (data.sugerir_repeticao !== undefined) setIfDefined('sugerir_repeticao', data.sugerir_repeticao ? 1 : 0);
+    if (data.cromossomas_sexuais !== undefined) setIfDefined('cromossomas_sexuais', data.cromossomas_sexuais || null);
+    if (data.resultado_cromossomas_sexuais !== undefined) {
+      setIfDefined('resultado_cromossomas_sexuais', data.resultado_cromossomas_sexuais || null);
+    }
+    if (data.id_amostra !== undefined) setIfDefined('id_amostra', data.id_amostra || null);
+    if (data.data_relatorio_laboratorio !== undefined) {
+      setIfDefined('data_relatorio_laboratorio', data.data_relatorio_laboratorio || null);
+    }
     if (data.fracao_fetal !== undefined) setIfDefined('fracao_fetal', data.fracao_fetal || null);
     if (data.fatura_emitida !== undefined) setIfDefined('fatura_emitida', data.fatura_emitida ? 1 : 0);
     if (data.fatura_numero !== undefined) setIfDefined('fatura_numero', data.fatura_numero || null);

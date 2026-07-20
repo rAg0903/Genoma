@@ -199,6 +199,7 @@ const en: TranslationTree = {
     medicos: 'Doctors',
     motivos_anulacao: 'Cancellation reasons',
     inicio: 'Overview',
+    sistema: 'System',
   },
   listings: {
     painel_bordo: 'Control Panel',
@@ -844,6 +845,22 @@ const en: TranslationTree = {
         laboratorios: 'Operational labs, collection sites and final labs.',
         medicos: 'Prescribers, workplaces and commercial terms.',
         motivos_anulacao: 'Reasons for cancelling contacts and processes.',
+        sistema: 'Clinic issuer details on NIPT reports (name, address, contacts).',
+      },
+      sistema: {
+        title: 'Clinic / issuer',
+        subtitle: 'These details appear in clinical report headers and PDFs generated when validating results.',
+        hint: 'Changes apply to newly generated reports. Already saved PDFs keep the previous version.',
+        saved: 'Clinic configuration saved.',
+        saveError: 'Could not save configuration.',
+        loadError: 'Could not load configuration.',
+        fields: {
+          nome: 'Name',
+          morada: 'Address',
+          codigoPostal: 'Postal code',
+          telefone: 'Phone',
+          email: 'Email',
+        },
       },
       form: {
         local: {

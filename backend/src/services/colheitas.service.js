@@ -3,6 +3,7 @@ const processosService = require('./processos.service');
 const processosRepository = require('../repositories/processos.repository');
 const testesRepository = require('../repositories/testes.repository');
 const logService = require('./log.service');
+const { loadProcessoWithAccess, assertOperacionalWriteAllowed } = require('../utils/medico-access');
 const { emit, EVENTS } = require('../events');
 
 const PERIODOS_VALIDOS = ['Manhã', 'Tarde', 'Noite'];
@@ -39,6 +40,41 @@ const mapAgendamento = (row) => ({
   data_prevista: toDateString(row.data_prevista),
   periodo: row.periodo || '',
   data_efetiva: row.data_efetiva ? new Date(row.data_efetiva).toISOString() : '',
+});
+
+const mapColheitaDetalhe = (row) => ({
+  id: row.id || null,
+  processo_id: row.processo_id,
+  posto_id: row.posto_id || null,
+  posto_nome: row.posto_nome || '',
+  data_prevista: toDateString(row.data_prevista),
+  periodo: row.periodo || '',
+  data_efetiva: toDateString(row.data_efetiva),
+  facturado_entidade: !!row.facturado_entidade,
+  repeticao: !!row.repeticao,
+  nao_notificar: !!row.nao_notificar,
+  semanas_gestacao_colheita: row.semanas_gestacao_colheita ?? null,
+  dias_gestacao_colheita: row.dias_gestacao_colheita ?? null,
+  data_recepcao_amostra: toDateString(row.data_recepcao_amostra),
+});
+
+const buildColheitaSnapshotFromSources = (data = {}, paciente = null) => ({
+  periodo: data.periodo ?? data.colheita_periodo ?? paciente?.colheita_periodo ?? null,
+  facturadoEntidade: !!(data.facturado_entidade ?? data.colheita_facturado_entidade ?? paciente?.colheita_facturado_entidade),
+  repeticao: !!(data.repeticao ?? data.colheita_repeticao ?? paciente?.colheita_repeticao),
+  naoNotificar: !!(data.nao_notificar ?? data.colheita_nao_notificar ?? paciente?.colheita_nao_notificar),
+  semanasGestacaoColheita: data.semanas_gestacao_colheita
+    ?? data.colheita_semanas_gestacao
+    ?? paciente?.colheita_semanas_gestacao
+    ?? null,
+  diasGestacaoColheita: data.dias_gestacao_colheita
+    ?? data.colheita_dias_gestacao
+    ?? paciente?.colheita_dias_gestacao
+    ?? null,
+  dataRecepcaoAmostra: data.data_recepcao_amostra
+    ?? data.colheita_data_recepcao_amostra
+    ?? paciente?.colheita_data_recepcao_amostra
+    ?? null,
 });
 
 exports.listAgendamentos = async (filters = {}) => {
@@ -96,6 +132,13 @@ exports.syncFromProcesso = async ({
   dataPrevista = null,
   dataEfetiva = null,
   status = null,
+  periodo = null,
+  facturadoEntidade = false,
+  repeticao = false,
+  naoNotificar = false,
+  semanasGestacaoColheita = null,
+  diasGestacaoColheita = null,
+  dataRecepcaoAmostra = null,
 }) => {
   if (!processoId) return null;
   const hasColheitaData = !!(dataPrevista || dataEfetiva || COLHEITA_PROCESSO_STATUSES.has(status));
@@ -107,8 +150,86 @@ exports.syncFromProcesso = async ({
     postoId,
     dataPrevista: dataPrevista || dataEfetiva || null,
     dataEfetiva: efetiva || null,
+    periodo,
+    facturadoEntidade,
+    repeticao,
+    naoNotificar,
+    semanasGestacaoColheita,
+    diasGestacaoColheita,
+    dataRecepcaoAmostra,
   });
 };
+
+exports.getColheitaProcesso = async (processoId, user) => {
+  const processo = await processosRepository.findById(processoId);
+  if (!processo) throw new Error('Processo nao encontrado');
+  if (user?.empresa_id && processo.empresa_id !== user.empresa_id) {
+    throw new Error('Sem permissao para aceder a este processo');
+  }
+
+  const row = await colheitasRepository.findByProcessoId(processoId);
+  if (row) return mapColheitaDetalhe(row);
+
+  return mapColheitaDetalhe({
+    processo_id: processoId,
+    posto_id: processo.posto_id,
+    posto_nome: processo.posto,
+    data_prevista: processo.data_colheita_prevista,
+    data_efetiva: processo.data_colheita,
+    periodo: '',
+    facturado_entidade: 0,
+    repeticao: 0,
+    nao_notificar: 0,
+    semanas_gestacao_colheita: null,
+    dias_gestacao_colheita: null,
+    data_recepcao_amostra: null,
+  });
+};
+
+exports.updateColheitaProcesso = async (processoId, data, user) => {
+  await assertOperacionalWriteAllowed(user);
+  const processo = await loadProcessoWithAccess(processoId, user);
+
+  if (data.periodo && !PERIODOS_VALIDOS.includes(data.periodo)) {
+    throw new Error(`Periodo invalido. Valores validos: ${PERIODOS_VALIDOS.join(', ')}`);
+  }
+
+  const snapshot = buildColheitaSnapshotFromSources(data);
+  await colheitasRepository.upsertForProcesso({
+    processoId,
+    postoId: data.posto_id ?? processo.posto_id ?? null,
+    dataPrevista: data.data_prevista ?? processo.data_colheita_prevista ?? null,
+    dataEfetiva: data.data_efetiva ?? processo.data_colheita ?? null,
+    periodo: snapshot.periodo,
+    facturadoEntidade: snapshot.facturadoEntidade,
+    repeticao: snapshot.repeticao,
+    naoNotificar: snapshot.naoNotificar,
+    semanasGestacaoColheita: snapshot.semanasGestacaoColheita,
+    diasGestacaoColheita: snapshot.diasGestacaoColheita,
+    dataRecepcaoAmostra: snapshot.dataRecepcaoAmostra,
+  });
+
+  const processoUpdates = {};
+  if (data.data_prevista !== undefined) processoUpdates.data_colheita_prevista = data.data_prevista || null;
+  if (data.data_efetiva !== undefined) processoUpdates.data_colheita = data.data_efetiva || null;
+  if (Object.keys(processoUpdates).length) {
+    await processosRepository.update(processoId, processoUpdates);
+  }
+
+  if (user) {
+    await logService.log({
+      empresa_id: user.empresa_id || processo.empresa_id,
+      utilizador_id: user.id,
+      acao: 'Actualizou colheita',
+      tabela: 'colheitas',
+      registro_id: processoId,
+    });
+  }
+
+  return exports.getColheitaProcesso(processoId, user);
+};
+
+exports.buildColheitaSnapshotFromSources = buildColheitaSnapshotFromSources;
 
 exports.getCalendario = async ({ from, to } = {}) => {
   const rows = await colheitasRepository.getCalendar({ from, to });

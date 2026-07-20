@@ -1,4 +1,9 @@
 import { Processo } from '../app/data/types';
+import {
+  getWorkflowFaturacaoDate,
+  resolveFaturacaoWorkflowInsertAfterIndex,
+  workflowDatesFromProcesso,
+} from './workflow-faturacao';
 
 export type EstadoProcesso = Processo['estado'];
 
@@ -23,10 +28,9 @@ export const PROCESS_PIPELINE_ESTADOS: EstadoProcesso[] = [
   'Em Analise',
   'Resultado Disponivel',
   'Validado',
-  'Faturado',
 ];
 
-/** Colunas do kanban — colheita integrada na etapa de envio ao laboratório. */
+/** Colunas do kanban — fluxo clínico-laboratorial (faturação fica fora do pipeline). */
 export const PROCESS_PIPELINE_COLUMNS: {
   key: string;
   label: string;
@@ -38,8 +42,7 @@ export const PROCESS_PIPELINE_COLUMNS: {
     estados: ['Colheita Realizada', 'Enviado Laboratorio', 'Em Analise'],
   },
   { key: 'Resultado Disponivel', label: 'Resultado Disponivel', estados: ['Resultado Disponivel'] },
-  { key: 'Validado', label: 'Validado', estados: ['Validado'] },
-  { key: 'Faturado', label: 'Faturado', estados: ['Faturado'] },
+  { key: 'Validado', label: 'Validado', estados: ['Validado', 'Faturado'] },
 ];
 
 /** Filtros/chips da pagina Processos (estados agrupados). */
@@ -77,7 +80,16 @@ export const getVisiblePipelineColumns = (filterKey?: string) => {
 
 export const processoMatchesEstadoFilter = (estado: EstadoProcesso, filterKey: string): boolean => {
   const entry = PROCESSOS_PAGE_ESTADOS.find((e) => e.key === filterKey);
-  return entry ? entry.estados.includes(estado) : estado === filterKey;
+  if (entry) return entry.estados.includes(estado);
+  if (filterKey === 'Validado' && estado === 'Faturado') return true;
+  return estado === filterKey;
+};
+
+/** Coluna do kanban onde o processo deve aparecer (faturação não é coluna própria). */
+export const resolvePipelineColumnKey = (estado: EstadoProcesso): string => {
+  if (estado === 'Cancelado') return 'Cancelado';
+  const column = PROCESS_PIPELINE_COLUMNS.find((c) => c.estados.includes(estado));
+  return column?.key ?? 'lab_analise';
 };
 
 /** Pipeline completo (inclui fases de contacto, para transicoes legacy). */
@@ -92,18 +104,23 @@ export const PIPELINE_ESTADOS: EstadoProcesso[] = [
   'Faturado',
 ];
 
-/** Passos unificados do workflow (sem repetir «Enviado ao Laboratório»). */
-const WORKFLOW_STEP_DEFS: { id: string; label: string; getDate: (p: Processo) => string | null | undefined }[] = [
+/** Passos clínicos do workflow (faturação inserida dinamicamente). */
+const CLINICAL_WORKFLOW_STEP_DEFS: { id: string; label: string; getDate: (p: Processo) => string | null | undefined }[] = [
   { id: 'agendado', label: 'Agendado', getDate: (p) => p.data_entrada },
   { id: 'kit', label: 'Kit Reservado', getDate: () => undefined },
   { id: 'colheita', label: 'Colheita Realizada', getDate: (p) => p.data_colheita },
   { id: 'lab', label: 'Enviado ao Laboratório p/ Análise', getDate: (p) => p.data_envio_laboratorio || p.data_chegada_laboratorio },
   { id: 'resultado', label: 'Resultado Disponivel', getDate: (p) => p.data_resultado },
   { id: 'validado', label: 'Validado', getDate: (p) => p.data_validacao },
-  { id: 'faturado', label: 'Faturado', getDate: (p) => p.fatura_data_emissao },
 ];
 
-/** Índice do passo actual no workflow (Colheita Realizada conta como etapa de laboratório no pipeline). */
+const FATURACAO_WORKFLOW_STEP = {
+  id: 'faturacao',
+  label: 'Faturação',
+  getDate: (p: Processo) => getWorkflowFaturacaoDate(p),
+};
+
+/** Índice do passo clínico actual (Colheita Realizada conta como etapa de laboratório no pipeline). */
 const WORKFLOW_STEP_INDEX: Record<EstadoProcesso, number> = {
   Agendado: 0,
   'Kit Reservado': 1,
@@ -116,17 +133,53 @@ const WORKFLOW_STEP_INDEX: Record<EstadoProcesso, number> = {
   Cancelado: -1,
 };
 
+/** Posição da faturação no workflow conforme a data de emissão. */
+const resolveFaturacaoInsertAfterIndex = (p: Processo): number =>
+  resolveFaturacaoWorkflowInsertAfterIndex(workflowDatesFromProcesso(p), getWorkflowFaturacaoDate(p));
+
+const isClinicalWorkflowStepDone = (stepId: string, p: Processo): boolean => {
+  const idx = WORKFLOW_STEP_INDEX[p.estado];
+  const clinicalOrder: Record<string, number> = {
+    agendado: 0,
+    kit: 1,
+    colheita: 2,
+    lab: 3,
+    resultado: 4,
+    validado: 5,
+  };
+
+  if (p.estado === 'Faturado') return true;
+  const stepIdx = clinicalOrder[stepId];
+  if (stepIdx === undefined) return false;
+  return idx > stepIdx;
+};
+
+const isFaturacaoWorkflowStepDone = (p: Processo): boolean =>
+  !!getWorkflowFaturacaoDate(p) || p.estado === 'Faturado';
+
 export const buildProcessWorkflowSteps = (p: Processo): ProcessTimelineStep[] => {
+  const insertAfter = resolveFaturacaoInsertAfterIndex(p);
+  const orderedDefs = CLINICAL_WORKFLOW_STEP_DEFS.flatMap((step, i) =>
+    i === insertAfter ? [step, FATURACAO_WORKFLOW_STEP] : [step],
+  );
+
   if (p.estado === 'Cancelado') {
-    return WORKFLOW_STEP_DEFS.map((step) => ({
+    return orderedDefs.map((step) => ({
       id: step.id,
       label: step.label,
       date: step.getDate(p),
       state: 'cancelled',
     }));
   }
-  const currentIdx = WORKFLOW_STEP_INDEX[p.estado] ?? 0;
-  return WORKFLOW_STEP_DEFS.map((step, i) => ({
+
+  const completion = orderedDefs.map((step) =>
+    step.id === 'faturacao' ? isFaturacaoWorkflowStepDone(p) : isClinicalWorkflowStepDone(step.id, p),
+  );
+
+  let currentIdx = completion.findIndex((done) => !done);
+  if (currentIdx === -1) currentIdx = orderedDefs.length - 1;
+
+  return orderedDefs.map((step, i) => ({
     id: step.id,
     label: step.label,
     date: step.getDate(p),

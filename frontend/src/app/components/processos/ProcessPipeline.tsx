@@ -6,6 +6,7 @@ import {
   diasDesde,
   ultimaAtualizacao,
   isAtrasado,
+  resolvePipelineColumnKey,
 } from '../../../lib/processos';
 import { PROCESS_STATE_COLORS, PANEL } from '../../../lib/design-tokens';
 import { StateTransitionMenu } from './StateTransitionMenu';
@@ -24,7 +25,6 @@ const COLUMN_COLORS: Record<string, string> = {
   lab_analise: '#6366f1',
   'Resultado Disponivel': PROCESS_STATE_COLORS['Resultado Disponivel'],
   Validado: PROCESS_STATE_COLORS.Validado,
-  Faturado: PROCESS_STATE_COLORS.Faturado,
   Cancelado: PROCESS_STATE_COLORS.Cancelado,
 };
 
@@ -47,7 +47,7 @@ export function ProcessPipeline({ processos, onOpen, onTransition, canUpdate, co
   return (
     <div className={`flex gap-3 overflow-x-auto pb-2 ${singleColumn ? 'max-w-xl' : ''}`}>
       {columns.map((column) => {
-        const items = processos.filter((p) => column.estados.includes(p.estado));
+        const items = processos.filter((p) => resolvePipelineColumnKey(p.estado) === column.key);
         const color = COLUMN_COLORS[column.key] ?? '#94a3b8';
         return (
           <div key={column.key} className={`flex-shrink-0 ${singleColumn ? 'w-full' : 'w-72'}`}>

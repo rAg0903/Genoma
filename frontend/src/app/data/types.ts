@@ -26,6 +26,14 @@ export interface Contact {
   onde_seguida?: string;
   posto_colheita_id?: string;
   data_colheita_prevista?: string;
+  colheita_periodo?: string | null;
+  colheita_facturado_entidade?: boolean;
+  colheita_repeticao?: boolean;
+  colheita_nao_notificar?: boolean;
+  colheita_semanas_gestacao?: number | null;
+  colheita_dias_gestacao?: number | null;
+  colheita_data_recepcao_amostra?: string | null;
+  colheita_data_efetiva?: string | null;
   notas_internas?: string;
   estado_agendamento?: EstadoContactoAgendamento | null;
   /** Cancelado quando anulado pelo utilizador. */

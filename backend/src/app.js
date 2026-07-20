@@ -9,6 +9,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const swaggerUi = require('swagger-ui-express');
 const pinoHttp = require('pino-http');
+const fs = require('fs');
+const path = require('path');
 
 // Importações customizadas
 const environment = require('./config/environment');
@@ -39,7 +41,7 @@ app.use(rateLimit({
   ...environment.RATE_LIMIT,
   standardHeaders: true,
   legacyHeaders: true,
-  skip: () => environment.isDevelopment,
+  skip: () => environment.isDevelopment || process.env.DESKTOP_MODE === '1',
 }));
 
 // ============================================
@@ -104,19 +106,21 @@ app.get('/health', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'API Genoma - Sistema de Laboratório Genómico',
-    version: process.env.APP_VERSION || '1.0.0',
-    environment: environment.NODE_ENV,
-    endpoints: {
-      health: '/health',
-      docs: environment.SWAGGER_ENABLED ? '/api-docs' : null,
-      api: '/api',
-    },
+if (!process.env.SERVE_FRONTEND) {
+  app.get('/', (req, res) => {
+    res.json({
+      success: true,
+      message: 'API Genoma - Sistema de Laboratório Genómico',
+      version: process.env.APP_VERSION || '1.0.0',
+      environment: environment.NODE_ENV,
+      endpoints: {
+        health: '/health',
+        docs: environment.SWAGGER_ENABLED ? '/api-docs' : null,
+        api: '/api',
+      },
+    });
   });
-});
+}
 
 // ============================================
 // 5. DOCUMENTAÇÃO SWAGGER (parcial — só se activada)
@@ -146,6 +150,24 @@ app.use('/api', (req, res, next) => {
   res.set('Pragma', 'no-cache');
   next();
 }, routes);
+
+// ============================================
+// 6b. FRONTEND ESTÁTICO (modo desktop / produção local)
+// ============================================
+
+const frontendDist = process.env.SERVE_FRONTEND;
+if (frontendDist && fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist, { index: false, maxAge: environment.isProduction ? '1h' : 0 }));
+
+  app.get(/^(?!\/api(?:\/|$)|\/health(?:\/|$)|\/api-docs).*/, (req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    const indexHtml = path.join(frontendDist, 'index.html');
+    if (!fs.existsSync(indexHtml)) return next();
+    res.sendFile(indexHtml);
+  });
+
+  logger.info({ frontendDist }, 'Frontend estático activo (modo desktop)');
+}
 
 // ============================================
 // 7. TRATAMENTO DE ROTAS NÃO ENCONTRADAS

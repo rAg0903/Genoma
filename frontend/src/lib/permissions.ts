@@ -43,7 +43,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
   Medico: {
     dashboard: { read: true, create: false, update: false, delete: false },
     contactos: { read: true, create: true, update: true, delete: false },
-    processos: { read: true, create: true, update: true, delete: false },
+    processos: { read: true, create: true, update: false, delete: false },
     stocks: { read: false, create: false, update: false, delete: false },
     listagens: { read: false, create: false, update: false, delete: false },
     definicoes: { read: false, create: false, update: false, delete: false },

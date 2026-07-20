@@ -1,13 +1,10 @@
-const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const { getAnexosDir, ensureUploadDirs } = require('../config/uploads');
 
-const UPLOAD_DIR = path.join(__dirname, '../../uploads/anexos');
-
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
+ensureUploadDirs();
+const UPLOAD_DIR = getAnexosDir();
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),

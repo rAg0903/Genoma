@@ -1,29 +1,48 @@
+const { buildRelatorioClinicoMaternityProposta1Html } = require('../templates/relatorio-clinico-maternity-proposta1');
+const { buildRelatorioClinicoGenomaNiptHtml } = require('../templates/relatorio-clinico-genoma-nipt');
+const { buildRelatorioClinicoMaternityHtml } = require('../templates/relatorio-clinico-maternity');
+
 const relatoriosRepository = require('../repositories/relatorios.repository');
 const resultadosGeneticosRepository = require('../repositories/resultados_geneticos.repository');
 const processosRepository = require('../repositories/processos.repository');
+const relatorioArquivoService = require('./relatorio-arquivo.service');
+const { loadProcessoWithAccess, assertOperacionalWriteAllowed } = require('../utils/medico-access');
 const logService = require('./log.service');
+const configuracaoSistemaService = require('./configuracao-sistema.service');
 const { emit, EVENTS } = require('../events');
-const { buildRelatorioClinicoMaternityHtml } = require('../templates/relatorio-clinico-maternity');
 
 const RELATORIO_DESTINOS_VALIDOS = ['Nenhum', 'Medico', 'Utente', 'Ambos'];
 const ESTADOS_ENVIO = ['Pendente', 'Enviado', 'Falha'];
 
-const ensureProcesso = async (processoId, user) => {
-  const processo = await processosRepository.findById(processoId);
-  if (!processo) throw new Error('Processo nao encontrado');
-  if (user && user.empresa_id && processo.empresa_id !== user.empresa_id) {
-    throw new Error('Sem permissao para aceder a este processo');
-  }
-  return processo;
+const TEMPLATE_BUILDERS = {
+  'maternity-proposta1': buildRelatorioClinicoMaternityProposta1Html,
+  'genoma-nipt': buildRelatorioClinicoGenomaNiptHtml,
+  'maternity-maternit21': buildRelatorioClinicoMaternityHtml,
 };
 
-const buildRelatorioHtml = (processo, anomalias) =>
-  buildRelatorioClinicoMaternityHtml(processo, anomalias);
+const DEFAULT_TEMPLATE = 'maternity-proposta1';
 
-exports.getRelatorioHtml = async (processoId, user) => {
+/** Estados em que o relatório clínico faz sentido (inclui dados importados sem data_resultado). */
+const ESTADOS_COM_RELATORIO = new Set(['Resultado Disponivel', 'Validado', 'Faturado']);
+
+const podeGerarRelatorio = (processo) =>
+  !!processo.data_resultado || ESTADOS_COM_RELATORIO.has(processo.status_id);
+
+const ensureProcesso = (processoId, user) => loadProcessoWithAccess(processoId, user);
+
+const buildRelatorioHtml = async (processo, anomalias, template = DEFAULT_TEMPLATE) => {
+  const resolvedTemplate = TEMPLATE_BUILDERS[template] ? template : DEFAULT_TEMPLATE;
+  if (resolvedTemplate === 'genoma-nipt') {
+    const clinica = await configuracaoSistemaService.resolveClinica(processo);
+    return buildRelatorioClinicoGenomaNiptHtml(processo, anomalias, clinica);
+  }
+  return TEMPLATE_BUILDERS[resolvedTemplate](processo, anomalias);
+};
+
+exports.getRelatorioHtml = async (processoId, user, template) => {
   const processo = await ensureProcesso(processoId, user);
   const anomalias = await resultadosGeneticosRepository.findByProcesso(processoId);
-  return buildRelatorioHtml(processo, anomalias);
+  return buildRelatorioHtml(processo, anomalias, template);
 };
 
 exports.listRelatorios = async (processoId, user) => {
@@ -31,22 +50,43 @@ exports.listRelatorios = async (processoId, user) => {
   return relatoriosRepository.findByProcesso(processoId);
 };
 
+exports.listRelatoriosAnexos = async (processoId, user) => {
+  await ensureProcesso(processoId, user);
+  return relatorioArquivoService.listarRelatoriosProcesso(processoId);
+};
+
 exports.gerarRelatorio = async (processoId, data, user) => {
+  await assertOperacionalWriteAllowed(user);
   const processo = await ensureProcesso(processoId, user);
 
-  if (!processo.data_resultado && processo.status_id !== 'Resultado Disponivel' && processo.status_id !== 'Validado') {
+  if (!podeGerarRelatorio(processo)) {
     throw new Error('So e possivel gerar relatorio apos o resultado estar disponivel.');
   }
 
-  const pdfUrl = `/api/processos/${processoId}/relatorio/html`;
-  const relatorio = await relatoriosRepository.create({
-    processoId,
-    template: data.template || 'maternity-maternit21',
-    pdfUrl,
-    observacoes: data.observacoes || null,
-  });
+  const template = data.template || DEFAULT_TEMPLATE;
 
-  if (user) {
+  let arquivo;
+  if (data.pdf_base64) {
+    const pdfBytes = Buffer.from(String(data.pdf_base64), 'base64');
+    if (!pdfBytes.length) throw new Error('PDF vazio ou invalido.');
+    arquivo = await relatorioArquivoService.gravarPdfBuffer(processoId, pdfBytes, user, {
+      template,
+      origem: 'manual',
+    });
+  } else {
+    arquivo = await relatorioArquivoService.gerarEGravar(processoId, user, {
+      template,
+      origem: 'manual',
+    });
+  }
+
+  const html = await buildRelatorioHtml(
+    processo,
+    await resultadosGeneticosRepository.findByProcesso(processoId),
+    template,
+  );
+
+  if (user && !arquivo.skipped) {
     await logService.log({
       utilizador_id: user.id,
       acao: 'Gerou relatorio',
@@ -54,18 +94,20 @@ exports.gerarRelatorio = async (processoId, data, user) => {
     });
   }
 
-  const html = buildRelatorioHtml(
-    processo,
-    await resultadosGeneticosRepository.findByProcesso(processoId)
-  );
-
-  return { ...relatorio, html };
+  return {
+    ...(arquivo.relatorio || {}),
+    html,
+    anexo: arquivo.anexo,
+    skipped: !!arquivo.skipped,
+    motivo: arquivo.motivo || null,
+  };
 };
 
 /**
  * Regista o envio do relatorio (medico/utente/ambos) e o estado do envio.
  */
 exports.registarEnvio = async (processoId, data, user) => {
+  await assertOperacionalWriteAllowed(user);
   const processo = await ensureProcesso(processoId, user);
 
   const destino = data.destino || 'Medico';
@@ -108,3 +150,6 @@ exports.registarEnvio = async (processoId, data, user) => {
 
   return { processo_id: processo.id, relatorio_id: relatorioId, destino, estado_envio: estado };
 };
+
+exports.DEFAULT_TEMPLATE = DEFAULT_TEMPLATE;
+exports.TEMPLATE_BUILDERS = TEMPLATE_BUILDERS;

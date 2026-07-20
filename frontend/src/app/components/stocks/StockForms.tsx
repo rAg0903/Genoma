@@ -395,10 +395,10 @@ function KitTransferList({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <button type="button" onClick={() => addToSelected(pickedAvailable)} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300" title="Adicionar selecionados"><ChevronRight className="w-4 h-4" /></button>
-        <button type="button" onClick={() => addToSelected(available.map((k) => k.id))} disabled={available.length === 0} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40" title="Adicionar todos"><ChevronsRight className="w-4 h-4" /></button>
-        <button type="button" onClick={() => removeFromSelected(pickedSelected)} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300" title="Remover selecionados"><ChevronLeft className="w-4 h-4" /></button>
-        <button type="button" onClick={() => removeFromSelected(selected.map((k) => k.id))} disabled={selected.length === 0} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40" title="Remover todos"><ChevronsLeft className="w-4 h-4" /></button>
+        <button type="button" onClick={() => addToSelected(pickedAvailable)} className={`p-2 ${CONTROL.buttonIcon}`} title="Adicionar selecionados"><ChevronRight className="w-4 h-4" /></button>
+        <button type="button" onClick={() => addToSelected(available.map((k) => k.id))} disabled={available.length === 0} className={`p-2 ${CONTROL.buttonIcon}`} title="Adicionar todos"><ChevronsRight className="w-4 h-4" /></button>
+        <button type="button" onClick={() => removeFromSelected(pickedSelected)} className={`p-2 ${CONTROL.buttonIcon}`} title="Remover selecionados"><ChevronLeft className="w-4 h-4" /></button>
+        <button type="button" onClick={() => removeFromSelected(selected.map((k) => k.id))} disabled={selected.length === 0} className={`p-2 ${CONTROL.buttonIcon}`} title="Remover todos"><ChevronsLeft className="w-4 h-4" /></button>
       </div>
 
       <div>

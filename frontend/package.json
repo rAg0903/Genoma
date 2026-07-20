@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "npm run generate:favicon && vite build",
+    "build": "npm run generate:favicon && node node_modules/vite/bin/vite.js build",
     "dev": "npm run generate:favicon && vite",
     "preview": "vite preview",
     "generate:favicon": "node scripts/generate-favicon.mjs"

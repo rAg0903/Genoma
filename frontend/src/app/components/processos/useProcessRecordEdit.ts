@@ -3,8 +3,13 @@ import { toast } from 'sonner';
 import { Contact, Processo } from '../../data/types';
 import { useData } from '../../context/DataContext';
 import { apiRequest } from '../../../lib/api';
-import { getAuthToken } from '../../../lib/api-processos';
+import { getAuthToken, processosApi } from '../../../lib/api-processos';
 import { ApiPaciente, mapApiPacienteToContact } from '../../../lib/pacientes';
+import {
+  ColheitaFormState,
+  colheitaProcessoToForm,
+  emptyColheitaForm,
+} from '../../../lib/colheita';
 import {
   ProcessFormData,
   buildProcessSubmitPayload,
@@ -20,6 +25,8 @@ export function useProcessRecordEdit(processo: Processo | undefined, canUpdate: 
   const [paciente, setPaciente] = useState<Contact | null>(null);
   const [saving, setSaving] = useState(false);
   const [anulacao, setAnulacao] = useState({ cancelado: false, motivo_anulacao_id: '' });
+  const [colheita, setColheita] = useState<ColheitaFormState>(emptyColheitaForm());
+  const [colheitaLoaded, setColheitaLoaded] = useState(false);
 
   const jaCancelado = processo?.estado === 'Cancelado';
   const motivosProcesso = useMemo(
@@ -60,6 +67,27 @@ export function useProcessRecordEdit(processo: Processo | undefined, canUpdate: 
       .catch(() => setPaciente(null));
   }, [form?.paciente_id, contacts]);
 
+  useEffect(() => {
+    if (!processo?.id) {
+      setColheita(emptyColheitaForm());
+      setColheitaLoaded(false);
+      return;
+    }
+    let cancelled = false;
+    processosApi.getColheita(processo.id)
+      .then((row) => {
+        if (cancelled) return;
+        setColheita(colheitaProcessoToForm(row));
+        setColheitaLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setColheita(emptyColheitaForm());
+        setColheitaLoaded(true);
+      });
+    return () => { cancelled = true; };
+  }, [processo?.id]);
+
   const startEdit = useCallback(() => {
     if (!processo || !canUpdate) return;
     resetFromProcesso(processo);
@@ -94,6 +122,19 @@ export function useProcessRecordEdit(processo: Processo | undefined, canUpdate: 
         delete payload.estado;
       }
       await updateProcesso(processo.id, payload);
+      if (colheitaLoaded) {
+        await processosApi.updateColheita(processo.id, {
+          data_prevista: colheita.data_prevista || null,
+          data_efetiva: colheita.data_efetiva || null,
+          periodo: colheita.periodo || null,
+          facturado_entidade: colheita.facturado_entidade,
+          repeticao: colheita.repeticao,
+          nao_notificar: colheita.nao_notificar,
+          semanas_gestacao_colheita: colheita.semanas_gestacao !== '' ? Number(colheita.semanas_gestacao) : null,
+          dias_gestacao_colheita: colheita.dias_gestacao !== '' ? Number(colheita.dias_gestacao) : null,
+          data_recepcao_amostra: colheita.data_recepcao_amostra || null,
+        });
+      }
       toast.success(anulacao.cancelado ? 'Processo cancelado.' : 'Processo atualizado!');
       setIsEditing(false);
       return true;
@@ -103,7 +144,7 @@ export function useProcessRecordEdit(processo: Processo | undefined, canUpdate: 
     } finally {
       setSaving(false);
     }
-  }, [anulacao, canUpdate, form, processo, processos, t, updateProcesso]);
+  }, [anulacao, canUpdate, colheita, colheitaLoaded, form, processo, processos, t, updateProcesso]);
 
   return {
     isEditing,
@@ -118,6 +159,9 @@ export function useProcessRecordEdit(processo: Processo | undefined, canUpdate: 
     motivosProcesso,
     motivoSelecionado,
     motivoCanceladoNome,
+    colheita,
+    setColheita,
+    colheitaLoaded,
     startEdit,
     cancelEdit,
     save,

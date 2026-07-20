@@ -1,18 +1,14 @@
 /**
- * Serviço de geração de PDFs via pdfkit.
+ * Serviço de geração de PDFs.
  *
- * Suporta:
- *  - Fatura de processo (pdfkit — layout tabular completo)
- *  - Relatório clínico: devolve o HTML existente com cabeçalho de print
- *    (o browser converte para PDF via Ctrl+P / window.print()).
- *
- * Para adicionar geração server-side do relatório clínico com layout gráfico
- * completo, instalar puppeteer e usar `page.pdf()` sobre o HTML de
- * `relatorios.service.getRelatorioHtml()`.
+ *  - Fatura de processo: pdfkit (layout tabular)
+ *  - Relatório clínico NIPT: HTML do template → PDF via Puppeteer (igual à pré-visualização)
  */
 'use strict';
 
+const fs = require('fs');
 const PDFDocument = require('pdfkit');
+const { buildRelatorioClinicoMaternityProposta1Html, RELATORIO_PROPOSTA1_A4_WIDTH_PX, RELATORIO_PROPOSTA1_A4_HEIGHT_PX } = require('../templates/relatorio-clinico-maternity-proposta1');
 
 const TEAL = '#0d9488';
 const SLATE_900 = '#0f172a';
@@ -151,3 +147,118 @@ exports.gerarFaturaPdf = (opts) =>
 
     doc.end();
   });
+
+let browserPromise = null;
+
+const resolveChromePath = () => {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
+  if (process.platform === 'darwin') {
+    const macChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    if (fs.existsSync(macChrome)) return macChrome;
+  }
+  if (process.platform === 'linux') {
+    for (const candidate of ['/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium']) {
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  if (process.platform === 'win32') {
+    const winCandidates = [
+      process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      process.env.PROGRAMFILES && path.join(process.env.PROGRAMFILES, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      process.env['PROGRAMFILES(X86)'] && path.join(process.env['PROGRAMFILES(X86)'], 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    ].filter(Boolean);
+    for (const candidate of winCandidates) {
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  return undefined;
+};
+
+const getBrowser = async () => {
+  if (!browserPromise) {
+    const puppeteer = require('puppeteer');
+    const executablePath = resolveChromePath();
+    browserPromise = puppeteer.launch({
+      headless: true,
+      ...(executablePath ? { executablePath } : {}),
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
+    });
+  }
+  return browserPromise;
+};
+
+const PDF_EXPORT_CSS = `
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #fff !important;
+  overflow: visible !important;
+}
+body.pdf-export { display: block !important; }
+.page {
+  width: ${RELATORIO_PROPOSTA1_A4_WIDTH_PX}px !important;
+  max-width: ${RELATORIO_PROPOSTA1_A4_WIDTH_PX}px !important;
+  min-width: ${RELATORIO_PROPOSTA1_A4_WIDTH_PX}px !important;
+  min-height: ${RELATORIO_PROPOSTA1_A4_HEIGHT_PX}px !important;
+  margin: 0 auto !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+`;
+
+const prepareRelatorioHtmlForPdf = (html) => {
+  let doc = String(html || '');
+  if (!/class=["'][^"']*pdf-export/i.test(doc)) {
+    doc = doc.replace(/<body(\s[^>]*)?>/i, (match) => {
+      if (/class=/i.test(match)) {
+        return match.replace(/class=(["'])([^"']*)\1/i, 'class=$1$2 pdf-export$1');
+      }
+      return '<body class="pdf-export">';
+    });
+  }
+  if (doc.includes('</head>')) {
+    return doc.replace('</head>', `<style id="pdf-export-fix">${PDF_EXPORT_CSS}</style></head>`);
+  }
+  return `<style id="pdf-export-fix">${PDF_EXPORT_CSS}</style>${doc}`;
+};
+
+const htmlToPdfBuffer = async (html) => {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  try {
+    const exportHtml = prepareRelatorioHtmlForPdf(html);
+    await page.setViewport({
+      width: RELATORIO_PROPOSTA1_A4_WIDTH_PX,
+      height: RELATORIO_PROPOSTA1_A4_HEIGHT_PX,
+      deviceScaleFactor: 1,
+    });
+    await page.setContent(exportHtml, { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.emulateMediaType('screen');
+    await page.evaluate(() => document.fonts?.ready);
+
+    const pdfBytes = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: 0, right: 0, bottom: 0, left: 0 },
+    });
+    return Buffer.from(pdfBytes);
+  } finally {
+    await page.close();
+  }
+};
+
+/**
+ * PDF do relatório — Puppeteer (igual à pré-visualização HTML).
+ */
+exports.gerarRelatorioNiptPdf = async ({ processo, anomalias = [] }) => {
+  const html = buildRelatorioClinicoMaternityProposta1Html(processo, anomalias);
+  return htmlToPdfBuffer(html);
+};
+
+exports.closePdfBrowser = async () => {
+  if (!browserPromise) return;
+  const browser = await browserPromise;
+  browserPromise = null;
+  await browser.close();
+};

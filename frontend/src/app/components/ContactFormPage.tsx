@@ -27,6 +27,7 @@ import {
   validateFaturacaoData,
 } from '../../lib/process-form';
 import { extractFaturacaoFromContact, mergeFaturacaoIntoContact } from '../../lib/faturacao';
+import { canManageProcessoOperacional } from '../../lib/processo-access';
 import { filterMotivosPorContexto } from '../../lib/motivos-anulacao';
 import { ApiPaciente, mapApiPacienteToContact } from '../../lib/pacientes';
 import { AnexosTab, DetailPanel, DetailSection, DetailDivider } from './ContactDetail';
@@ -41,6 +42,8 @@ import { parseGestacaoRegistoInput } from '../../lib/gestacao';
 import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
 import { CONTROL, FORM } from '../../lib/design-tokens';
 import { CONTACT_TAB_IDS, withRecordQuery, type ContactTabId } from '../../lib/record-tabs';
+import { emptyColheitaForm, colheitaFromContact, colheitaToProcessoPayload } from '../../lib/colheita';
+import { ColheitaDetalheFields } from './shared/ColheitaFormFields';
 
 export type ContactFormEditHandle = {
   save: () => Promise<boolean>;
@@ -70,7 +73,7 @@ const emptyGravidez = {
   origem_conceicao: 'natural', quer_saber_sexo: false,
   gestacao_semanas_registo: '', gestacao_dias_registo: '', gestacao_registada_em: '',
 };
-const emptyColheita = { posto_id: '', data_prevista: '', data_efetiva: '' };
+const emptyColheita = emptyColheitaForm();
 
 interface KitOpcao { id: string; codigo_barras: string; tracking: string; tipo_kit: string; teste_nome?: string; data_validade: string }
 
@@ -98,7 +101,7 @@ export function ContactFormPage({
   const { hasPermission, role, currentUser } = useAuth();
   const canUpdate = hasPermission('contactos', 'update');
   const canCreate = hasPermission('contactos', 'create');
-  const canUpdateProcesso = hasPermission('processos', 'update');
+  const canUpdateProcesso = canManageProcessoOperacional(role, hasPermission);
 
   const editing = Boolean(id);
   const [internalTab, setInternalTab] = useState<TabId>('identificacao');
@@ -109,14 +112,17 @@ export function ContactFormPage({
     else setInternalTab(next);
   };
 
-  const tabs = useMemo(() => [
-    { id: 'identificacao' as const, label: t('form.tabs.identificacao'), icon: User },
-    { id: 'gravidez' as const, label: t('form.tabs.gravidez'), icon: Baby },
-    { id: 'colheita' as const, label: t('form.tabs.colheita'), icon: Syringe },
-    { id: 'faturacao' as const, label: t('form.tabs.faturacao'), icon: Receipt },
-    { id: 'notas' as const, label: t('form.tabs.notas'), icon: StickyNote },
-    { id: 'anexos' as const, label: t('form.tabs.anexos'), icon: Paperclip },
-  ], [t]);
+  const tabs = useMemo(() => {
+    const all = [
+      { id: 'identificacao' as const, label: t('form.tabs.identificacao'), icon: User },
+      { id: 'gravidez' as const, label: t('form.tabs.gravidez'), icon: Baby },
+      { id: 'colheita' as const, label: t('form.tabs.colheita'), icon: Syringe },
+      { id: 'faturacao' as const, label: t('form.tabs.faturacao'), icon: Receipt },
+      { id: 'notas' as const, label: t('form.tabs.notas'), icon: StickyNote },
+      { id: 'anexos' as const, label: t('form.tabs.anexos'), icon: Paperclip },
+    ];
+    return role === 'Medico' ? all.filter((item) => item.id !== 'faturacao') : all;
+  }, [t, role]);
 
   const origemConceicaoOptions = useMemo(
     () => ORIGEM_CONCEICAO_OPTIONS.map((item) => ({
@@ -232,6 +238,17 @@ export function ContactFormPage({
   const contactProcessos = savedContactId
     ? processos.filter((p) => p.paciente_id === savedContactId && isProcessoLaboratorio(p.estado))
     : [];
+  const contactWorkflowDates = useMemo(
+    () => workflowDatesFromContact(
+      {
+        created_at: contacts.find((c) => c.id === savedContactId)?.created_at || today(),
+        colheita_data_efetiva: colheita.data_efetiva || null,
+        data_colheita_prevista: colheita.data_prevista || null,
+      },
+      contactProcessos[0] ?? null,
+    ),
+    [contacts, savedContactId, colheita.data_efetiva, colheita.data_prevista, contactProcessos],
+  );
   const [contactFaturacao, setContactFaturacao] = useState<ProcessFaturacaoData>(emptyProcessFaturacao());
   const [anulacao, setAnulacao] = useState({ anulado: false, motivo_anulacao_id: '' });
   const canEditFaturacao = canUpdate || canCreate;
@@ -276,11 +293,7 @@ export function ContactFormPage({
       gestacao_dias_registo: c.gestacao_dias_registo != null ? String(c.gestacao_dias_registo) : '',
       gestacao_registada_em: c.gestacao_registada_em || '',
     });
-    setColheita((prev) => ({
-      posto_id: c.posto_colheita_id || '',
-      data_prevista: c.data_colheita_prevista || '',
-      data_efetiva: prev.data_efetiva,
-    }));
+    setColheita(colheitaFromContact(c));
     setNotas(c.notas_internas || '');
     setEstadoAgendamento(c.estado_agendamento || null);
     setContactFaturacao(extractFaturacaoFromContact(c));
@@ -500,8 +513,8 @@ export function ContactFormPage({
       focusTab('identificacao');
       return false;
     }
-    if (!anulacao.anulado) {
-      const fatErr = validateFaturacaoData(contactFaturacao);
+    if (!anulacao.anulado && role !== 'Medico') {
+      const fatErr = validateFaturacaoData(contactFaturacao, contactWorkflowDates);
       if (fatErr) {
         toast.error(fatErr);
         focusTab('faturacao');
@@ -632,6 +645,7 @@ export function ContactFormPage({
         gestacao_dias_registo: gestacao?.dias ?? null,
         gestacao_registada_em: gestacaoDataRegisto || undefined,
         ...buildFaturacaoPayload(contactFaturacao),
+        ...colheitaToProcessoPayload(colheita),
       };
       const processo = await addProcesso(novoProcesso);
       await updateContact(contactId, buildContactPosConversao(form));
@@ -673,13 +687,13 @@ export function ContactFormPage({
                 <p className="mt-0.5 opacity-90" style={{ fontSize: '13px' }}>{t('pages.contacts.form.voidedBannerDetail')}</p>
               </div>
             </div>
-          ) : (
+          ) : role !== 'Medico' ? (
             <FaturacaoAlertBanner
               value={contactFaturacao}
               context="contacto"
               onGoToFaturacao={() => handleTabChange('faturacao')}
             />
-          )}
+          ) : null}
         </FormTabContent>
 
         {tab === 'identificacao' && (
@@ -1073,6 +1087,13 @@ export function ContactFormPage({
                     )}
                   </div>
                 )}
+
+                <ColheitaDetalheFields
+                  value={colheita}
+                  onChange={(patch) => setColheita({ ...colheita, ...patch })}
+                  selectedPosto={postos.find((p) => p.id === colheita.posto_id)}
+                  showPostoInfo={!!colheita.posto_id}
+                />
               </DetailSection>
 
               <DetailDivider />
@@ -1119,6 +1140,7 @@ export function ContactFormPage({
                   onChange={setContactFaturacao}
                   canUpdate={canEditFaturacao}
                   showMultibancoEnvio={false}
+                  workflowDates={contactWorkflowDates}
                 />
               </DetailSection>
             </DetailPanel>

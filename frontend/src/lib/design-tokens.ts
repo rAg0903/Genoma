@@ -150,10 +150,11 @@ export const PANEL = {
 
 /** Modais (Admin, Inventário, etc.) — alinhados com SURFACE/PANEL no dark mode. */
 export const MODAL = {
-  overlay: 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/60',
+  overlay:
+    'fixed inset-0 z-[110] flex items-start justify-center overflow-y-auto px-4 py-6 sm:px-6 sm:py-10 pt-16 sm:pt-20 bg-black/50 dark:bg-black/60',
   headerBorder: 'border-slate-200 dark:border-[#334155]/65',
   footer:
-    'flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-200 dark:border-[#334155]/65 bg-slate-50/50 dark:bg-[#151f30]/80 shrink-0',
+    'flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-200 dark:border-[#334155]/65 bg-slate-100 dark:bg-[#151f30]/80 shrink-0',
   closeBtn:
     'p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-[#243044] transition-colors shrink-0',
 } as const;
@@ -263,7 +264,9 @@ export const CONTROL = {
   buttonGhost:
     'inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition',
   buttonSecondary:
-    'inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-[#334155]/70 bg-white dark:bg-[#1f2a3d] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#243044] transition',
+    'inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-[#334155]/70 bg-slate-50 dark:bg-[#1f2a3d] text-slate-800 dark:text-slate-200 shadow-sm hover:bg-slate-100 dark:hover:bg-[#243044] hover:border-slate-400 dark:hover:border-slate-500 transition',
+  buttonIcon:
+    'inline-flex items-center justify-center rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 transition',
   searchInput:
     'w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-[#334155]/70 bg-white dark:bg-[#1f2a3d] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 transition',
   segment:

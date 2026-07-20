@@ -614,6 +614,7 @@ const mapRequisicaoFromApi = (requisicao: ApiRequisicao): RequisicaoKit => ({
 
 export interface DataContextType {
   refreshProcessos: () => Promise<void>;
+  fetchProcessoById: (id: string) => Promise<Processo | null>;
   refreshKits: () => Promise<void>;
   refreshLotes: () => Promise<void>;
   refreshRequisicoes: () => Promise<void>;
@@ -749,6 +750,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const response = await apiRequest<ApiListResponse<ApiProcesso>>('/processos', { token });
     const pedidos = response?.data || [];
     setProcessos(pedidos.map(mapPedidoToProcesso));
+  }, []);
+
+  const fetchProcessoById = useCallback(async (id: string): Promise<Processo | null> => {
+    const token = getAuthToken();
+    if (!token) return null;
+
+    try {
+      const response = await apiRequest<ApiEntityResponse<ApiProcesso>>(`/processos/${id}`, { token });
+      if (!response?.data?.id) return null;
+      const mapped = mapPedidoToProcesso(response.data);
+      setProcessos((current) => {
+        if (current.some((p) => p.id === mapped.id)) {
+          return current.map((p) => (p.id === mapped.id ? mapped : p));
+        }
+        return [...current, mapped];
+      });
+      return mapped;
+    } catch {
+      return null;
+    }
   }, []);
 
   const refreshKits = useCallback(async () => {
@@ -1100,8 +1121,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const updateProcesso = async (id: string, data: Partial<Processo>) => {
-    const processoAtual = processos.find((p) => p.id === id);
-    if (!processoAtual) return;
+    let processoAtual = processos.find((p) => p.id === id);
+    if (!processoAtual) {
+      processoAtual = await fetchProcessoById(id) ?? undefined;
+    }
+    if (!processoAtual) {
+      throw new Error('Processo não encontrado.');
+    }
 
     const merged = { ...processoAtual, ...data };
     const kitResultante = resolveProcessoKitCodigo(merged);
@@ -1793,7 +1819,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   return (
     <DataContext.Provider value={{
-      refreshProcessos, refreshKits, refreshLotes, refreshRequisicoes,
+      refreshProcessos, fetchProcessoById, refreshKits, refreshLotes, refreshRequisicoes,
       contacts, addContact, updateContact, deleteContact,
       getAnexosByPaciente, addAnexo, uploadAnexoFile, deleteAnexo,
       processos, addProcesso, updateProcesso, deleteProcesso,

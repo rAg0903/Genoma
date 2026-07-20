@@ -12,6 +12,12 @@ const baseSelect = `
     DATE_FORMAT(c.data_prevista, '%Y-%m-%d') AS data_prevista,
     c.periodo,
     c.data_efetiva,
+    c.facturado_entidade,
+    c.repeticao,
+    c.nao_notificar,
+    c.semanas_gestacao_colheita,
+    c.dias_gestacao_colheita,
+    c.data_recepcao_amostra,
     c.created_at,
     pr.numero_processo,
     pr.status_id AS processo_status,
@@ -144,6 +150,12 @@ exports.insertSnapshotIfMissing = async ({
   dataPrevista = null,
   dataEfetiva = null,
   periodo = null,
+  facturadoEntidade = false,
+  repeticao = false,
+  naoNotificar = false,
+  semanasGestacaoColheita = null,
+  diasGestacaoColheita = null,
+  dataRecepcaoAmostra = null,
 }) => {
   const connection = await pool.getConnection();
   try {
@@ -155,8 +167,12 @@ exports.insertSnapshotIfMissing = async ({
 
     const colheitaId = uuidv4();
     await connection.execute(
-      `INSERT INTO colheitas (id, processo_id, posto_id, data_prevista, periodo, data_efetiva)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO colheitas (
+         id, processo_id, posto_id, data_prevista, periodo, data_efetiva,
+         facturado_entidade, repeticao, nao_notificar,
+         semanas_gestacao_colheita, dias_gestacao_colheita, data_recepcao_amostra
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         colheitaId,
         processoId,
@@ -164,6 +180,91 @@ exports.insertSnapshotIfMissing = async ({
         dataPrevista || null,
         periodo || null,
         dataEfetiva || null,
+        facturadoEntidade ? 1 : 0,
+        repeticao ? 1 : 0,
+        naoNotificar ? 1 : 0,
+        semanasGestacaoColheita ?? null,
+        diasGestacaoColheita ?? null,
+        dataRecepcaoAmostra || null,
+      ]
+    );
+    return { id: colheitaId };
+  } finally {
+    connection.release();
+  }
+};
+
+exports.upsertForProcesso = async ({
+  processoId,
+  postoId = null,
+  dataPrevista = null,
+  dataEfetiva = null,
+  periodo = null,
+  facturadoEntidade = false,
+  repeticao = false,
+  naoNotificar = false,
+  semanasGestacaoColheita = null,
+  diasGestacaoColheita = null,
+  dataRecepcaoAmostra = null,
+}) => {
+  const connection = await pool.getConnection();
+  try {
+    const [existing] = await connection.execute(
+      'SELECT id FROM colheitas WHERE processo_id = ? LIMIT 1',
+      [processoId]
+    );
+    if (existing.length) {
+      await connection.execute(
+        `UPDATE colheitas SET
+           posto_id = COALESCE(?, posto_id),
+           data_prevista = COALESCE(?, data_prevista),
+           periodo = ?,
+           data_efetiva = COALESCE(?, data_efetiva),
+           facturado_entidade = ?,
+           repeticao = ?,
+           nao_notificar = ?,
+           semanas_gestacao_colheita = ?,
+           dias_gestacao_colheita = ?,
+           data_recepcao_amostra = ?
+         WHERE processo_id = ?`,
+        [
+          postoId || null,
+          dataPrevista || null,
+          periodo || null,
+          dataEfetiva || null,
+          facturadoEntidade ? 1 : 0,
+          repeticao ? 1 : 0,
+          naoNotificar ? 1 : 0,
+          semanasGestacaoColheita ?? null,
+          diasGestacaoColheita ?? null,
+          dataRecepcaoAmostra || null,
+          processoId,
+        ]
+      );
+      return { id: existing[0].id };
+    }
+
+    const colheitaId = uuidv4();
+    await connection.execute(
+      `INSERT INTO colheitas (
+         id, processo_id, posto_id, data_prevista, periodo, data_efetiva,
+         facturado_entidade, repeticao, nao_notificar,
+         semanas_gestacao_colheita, dias_gestacao_colheita, data_recepcao_amostra
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        colheitaId,
+        processoId,
+        postoId || null,
+        dataPrevista || null,
+        periodo || null,
+        dataEfetiva || null,
+        facturadoEntidade ? 1 : 0,
+        repeticao ? 1 : 0,
+        naoNotificar ? 1 : 0,
+        semanasGestacaoColheita ?? null,
+        diasGestacaoColheita ?? null,
+        dataRecepcaoAmostra || null,
       ]
     );
     return { id: colheitaId };

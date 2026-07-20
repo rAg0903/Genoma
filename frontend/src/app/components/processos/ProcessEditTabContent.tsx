@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import {
   User, MapPin, Baby, Syringe, Receipt, StickyNote,
-  FileText, Package, Activity, Ban,
+  FileText, Package, Ban,
 } from 'lucide-react';
 import { Processo } from '../../data/types';
 import { useData } from '../../context/DataContext';
-import { formatCalendarDatePt, todayLocal } from '../../../lib/dates';
+import { formatCalendarDatePt } from '../../../lib/dates';
 import {
   calcularDataPartoPrevista,
   calcularGestacaoAtual,
@@ -17,6 +17,7 @@ import { type ProcessTabId } from '../../../lib/record-tabs';
 import { AnexosTab, DetailDivider, DetailPanel, DetailSection } from '../ContactDetail';
 import { ProcessResultadoTab } from './ProcessResultadoTab';
 import { ProcessFaturacaoFields } from '../shared/ProcessFaturacaoFields';
+import { workflowDatesFromProcesso } from '../../../lib/workflow-faturacao';
 import {
   FormField,
   FormInput,
@@ -30,6 +31,7 @@ import { FormDatePicker } from '../shared/FormDatePicker';
 import { CHECKBOX_INPUT_CLASS } from '../../../lib/design-system';
 import { FORM } from '../../../lib/design-tokens';
 import { ProcessRecordEdit } from './useProcessRecordEdit';
+import { ColheitaDetalheFields } from '../shared/ColheitaFormFields';
 
 type Props = {
   tab: ProcessTabId;
@@ -53,18 +55,12 @@ const ESTADO_OPTIONS: { value: Processo['estado']; label: string }[] = [
   { value: 'Faturado', label: 'Faturado' },
 ];
 
-const RELATORIO_ENVIO_OPTIONS: { value: Processo['relatorio_enviado_para']; label: string }[] = [
-  { value: 'Nenhum', label: 'Nenhum' },
-  { value: 'Medico', label: 'Médico' },
-  { value: 'Utente', label: 'Utente' },
-  { value: 'Ambos', label: 'Ambos' },
-];
-
 export function ProcessEditTabContent({ tab, processo, edit, canUpdate, t }: Props) {
   const { getAnexosByPaciente, uploadAnexoFile, deleteAnexo } = useData();
   const {
     form, setForm, paciente, anulacao, setAnulacao,
     jaCancelado, motivosProcesso, motivoSelecionado, motivoCanceladoNome, refreshProcessos,
+    colheita, setColheita,
   } = edit;
 
   const gravidezCalculada = useMemo(() => {
@@ -289,19 +285,39 @@ export function ProcessEditTabContent({ tab, processo, edit, canUpdate, t }: Pro
         <DetailPanel>
           <DetailSection title="Colheita" icon={Syringe}>
             <FormSectionNote>
-              Dados definidos na colheita do contacto — apenas leitura. Não são alterados ao guardar o processo.
+              Dados de colheita alinhados com o CRM Genoma. O posto fica fixo após criação do processo.
             </FormSectionNote>
             <div className={`${FORM.fieldRow} mt-4`}>
               <FormField label="Posto de Colheita" width="3xl">
                 <FormReadOnlyInput value={form.posto} />
               </FormField>
               <FormField label="Data Prevista da Colheita" width="sm">
-                <FormReadOnlyInput value={fmt(form.data_colheita_prevista || paciente?.data_colheita_prevista)} />
+                <FormDatePicker
+                  value={colheita.data_prevista || form.data_colheita_prevista || paciente?.data_colheita_prevista || ''}
+                  onChange={(v) => setColheita({ ...colheita, data_prevista: v })}
+                  disabled={!canUpdate}
+                  allowAnyDate
+                  allowExistingPastDate
+                  placeholder="dd/mm/aaaa"
+                />
               </FormField>
               <FormField label="Data Efetiva da Colheita" width="sm">
-                <FormReadOnlyInput value={fmt(form.data_colheita)} />
+                <FormDatePicker
+                  value={colheita.data_efetiva || form.data_colheita || ''}
+                  onChange={(v) => setColheita({ ...colheita, data_efetiva: v })}
+                  disabled={!canUpdate}
+                  allowAnyDate
+                  allowExistingPastDate
+                  placeholder="dd/mm/aaaa"
+                />
               </FormField>
             </div>
+            <ColheitaDetalheFields
+              value={colheita}
+              onChange={(patch) => setColheita({ ...colheita, ...patch })}
+              disabled={!canUpdate}
+              showPostoInfo={false}
+            />
           </DetailSection>
         </DetailPanel>
       </FormTabContent>
@@ -317,6 +333,7 @@ export function ProcessEditTabContent({ tab, processo, edit, canUpdate, t }: Pro
               value={form}
               onChange={(fat) => updateForm(fat)}
               canUpdate={canUpdate}
+              workflowDates={workflowDatesFromProcesso(form)}
             />
           </DetailSection>
         </DetailPanel>
@@ -326,96 +343,13 @@ export function ProcessEditTabContent({ tab, processo, edit, canUpdate, t }: Pro
 
   if (tab === 'resultados') {
     return (
-      <FormTabContent className="space-y-4">
-        <DetailPanel>
-          <DetailSection title="Ciclo laboratorial" icon={Activity}>
-            <div className={FORM.fieldRow}>
-              <FormField label="Responsável de Fluxo" width="lg">
-                <FormInput
-                  value={form.responsavel_fluxo}
-                  onChange={(e) => updateForm({ responsavel_fluxo: e.target.value })}
-                  disabled={!canUpdate}
-                />
-              </FormField>
-              <FormField label="Envio Relatório" width="md">
-                <FormRadixSelect
-                  value={form.relatorio_enviado_para}
-                  onChange={(v) => updateForm({ relatorio_enviado_para: v as Processo['relatorio_enviado_para'] })}
-                  disabled={!canUpdate}
-                  options={RELATORIO_ENVIO_OPTIONS}
-                />
-              </FormField>
-              <FormField label="Chegada ao Laboratório" width="sm">
-                <FormDatePicker
-                  value={form.data_chegada_laboratorio}
-                  onChange={(v) => updateForm({ data_chegada_laboratorio: v })}
-                  disabled={!canUpdate}
-                  placeholder="dd/mm/aaaa"
-                />
-              </FormField>
-              <FormField label="Data Resultado" width="sm">
-                <FormDatePicker
-                  value={form.data_resultado}
-                  onChange={(v) => updateForm({ data_resultado: v })}
-                  disabled={!canUpdate}
-                  placeholder="dd/mm/aaaa"
-                />
-              </FormField>
-              <FormField label="Data Validação" width="sm">
-                <FormDatePicker
-                  value={form.data_validacao}
-                  onChange={(v) => updateForm({
-                    data_validacao: v,
-                    relatorio_validado: v ? true : form.relatorio_validado,
-                  })}
-                  disabled={!canUpdate}
-                  placeholder="dd/mm/aaaa"
-                />
-              </FormField>
-              <FormField label="Data Envio Relatório" width="sm">
-                <FormDatePicker
-                  value={form.data_envio_relatorio}
-                  onChange={(v) => updateForm({ data_envio_relatorio: v })}
-                  disabled={!canUpdate}
-                  placeholder="dd/mm/aaaa"
-                />
-              </FormField>
-              <FormField label="Fração fetal (0–100%)" width="sm">
-                <FormInput
-                  value={form.fracao_fetal || ''}
-                  onChange={(e) => updateForm({ fracao_fetal: e.target.value })}
-                  placeholder="Ex.: 8.5%"
-                  disabled={!canUpdate}
-                />
-              </FormField>
-              <FormField label="Relatório validado" width="md" controlClassName="flex items-center">
-                <label className={`${FORM.checkboxRow} inline-flex`}>
-                  <input
-                    type="checkbox"
-                    checked={!!form.relatorio_validado}
-                    onChange={(e) => updateForm({
-                      relatorio_validado: e.target.checked,
-                      data_validacao: e.target.checked && !form.data_validacao ? todayLocal() : form.data_validacao,
-                    })}
-                    disabled={!canUpdate}
-                    className={CHECKBOX_INPUT_CLASS}
-                  />
-                  <span>Relatório validado</span>
-                </label>
-              </FormField>
-            </div>
-          </DetailSection>
-
-          <DetailDivider />
-
-          <DetailSection title="Resultados genéticos" icon={FileText}>
-            <ProcessResultadoTab
-              processo={processo}
-              canUpdate={canUpdate}
-              onChanged={() => { void refreshProcessos(); }}
-            />
-          </DetailSection>
-        </DetailPanel>
+      <FormTabContent>
+        <ProcessResultadoTab
+          processo={processo}
+          canUpdate={canUpdate}
+          onChanged={() => { void refreshProcessos(); }}
+          variant="page"
+        />
       </FormTabContent>
     );
   }

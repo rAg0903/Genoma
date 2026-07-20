@@ -30,8 +30,38 @@ const assertPacienteAccess = async (paciente, user) => {
   }
 };
 
+const assertProcessoAccess = async (processo, user) => {
+  if (!processo) throw new Error('Processo nao encontrado');
+  if (!user) return;
+
+  if (await isMedicoUser(user) && processo.medico_id !== user.id) {
+    throw new Error('Sem permissao para aceder a este processo');
+  }
+
+  if (user.empresa_id && processo.empresa_id !== user.empresa_id) {
+    throw new Error('Sem permissao para aceder a este processo');
+  }
+};
+
+const loadProcessoWithAccess = async (processoId, user) => {
+  const processo = await processosRepository.findById(processoId);
+  if (!processo) throw new Error('Processo nao encontrado');
+  await assertProcessoAccess(processo, user);
+  return processo;
+};
+
+/** Bloqueia escrita operacional (resultados, faturação, relatório, estados). */
+const assertOperacionalWriteAllowed = async (user) => {
+  if (await isMedicoUser(user)) {
+    throw new Error('Sem permissao: medicos apenas podem consultar processos.');
+  }
+};
+
 module.exports = {
   isMedicoUser,
   pacientePertenceAoMedico,
   assertPacienteAccess,
+  assertProcessoAccess,
+  loadProcessoWithAccess,
+  assertOperacionalWriteAllowed,
 };
