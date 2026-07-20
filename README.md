@@ -139,12 +139,13 @@ Aplicação **Three-Tier / API-Based** com separação clara entre apresentaçã
 ## Estrutura do Repositório
 
 ```
-genoma_app/
+Genoma/
 ├── frontend/          # SPA React + Vite + TypeScript
 ├── backend/           # API REST Express + MariaDB
 ├── desktop/           # Aplicação nativa Mac/Windows (Electron)
 ├── database/          # Exportação SQL da BD (partilha entre ambientes)
 ├── relatorio_final/   # Documentação académica (PFC — ISLA)
+├── legacy/maui/       # Versão MAUI (.NET 9) — branch `legacy/maui`
 ├── BASE_DE_DADOS.md   # Schema completo (documentação)
 └── README.md          # Este ficheiro
 ```
@@ -163,8 +164,8 @@ genoma_app/
 
 ```bash
 # Clonar o repositório
-git clone https://github.com/Males24/CRM-Genoma2026.git
-cd CRM-Genoma2026
+git clone https://github.com/rAg0903/Genoma.git
+cd Genoma
 
 # Instalar dependências
 cd backend && npm install
@@ -300,14 +301,16 @@ Este projecto integra o **Projeto Final de Curso (PFC)** da ISLA. A documentaç�
 
 ---
 
-## Repositórios relacionados
+## Histórico do projecto
 
-| Repositório | Stack | Papel |
-|-------------|-------|-------|
-| **[CRM-Genoma2026](https://github.com/Males24/CRM-Genoma2026)** (este) | React + Node + Electron | Versão **activa** — web e desktop |
-| **[Genoma](https://github.com/rAg0903/Genoma)** | .NET MAUI Blazor | Protótipo / referência original (desktop MAUI) |
+| Versão | Stack | Onde |
+|--------|-------|------|
+| **Actual (main)** | React + Node + Electron | Este repositório — web e desktop Mac/Windows |
+| **Legacy** | .NET MAUI Blazor | Branch [`legacy/maui`](https://github.com/rAg0903/Genoma/tree/legacy/maui) |
 
-A versão MAUI serviu de base funcional (arranque de BD, fluxos clínicos, PDF). A stack web actual é a evolução principal do projecto.
+A versão MAUI serviu de protótipo funcional (arranque de BD, fluxos clínicos, PDF). A stack web actual é a evolução principal.
+
+Espelho académico (PFC): [Males24/CRM-Genoma2026](https://github.com/Males24/CRM-Genoma2026)
 
 ---
 
