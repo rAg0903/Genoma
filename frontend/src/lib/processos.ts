@@ -239,13 +239,23 @@ export const PROCESSOS_PAGE_ESTADOS_LEGACY: EstadoProcesso[] = [...PROCESS_PIPEL
 /** @deprecated Use PROCESSOS_PAGE_ESTADOS com chaves agrupadas. */
 export const PROCESSOS_PAGE_ESTADO_KEYS = PROCESSOS_PAGE_ESTADOS.map((e) => e.key);
 
+/** Estados na coluna «Enviado ao Laboratório p/ Análise» — avanço só via registo de resultados. */
+export const ESTADOS_LAB_ANALISE: EstadoProcesso[] = [
+  'Colheita Realizada',
+  'Enviado Laboratorio',
+  'Em Analise',
+];
+
+export const permiteAvancoManualPipeline = (estado: EstadoProcesso): boolean =>
+  !ESTADOS_LAB_ANALISE.includes(estado);
+
 /** Espelha TRANSICOES_VALIDAS do backend (processos.service.js). */
 export const TRANSICOES_VALIDAS: Record<EstadoProcesso, EstadoProcesso[]> = {
   Agendado: ['Kit Reservado', 'Cancelado'],
   'Kit Reservado': ['Colheita Realizada', 'Agendado', 'Cancelado'],
   'Colheita Realizada': ['Em Analise', 'Cancelado'],
-  'Enviado Laboratorio': ['Resultado Disponivel', 'Cancelado'],
-  'Em Analise': ['Resultado Disponivel', 'Cancelado'],
+  'Enviado Laboratorio': ['Cancelado'],
+  'Em Analise': ['Cancelado'],
   'Resultado Disponivel': ['Validado', 'Cancelado'],
   Validado: ['Faturado', 'Cancelado'],
   Faturado: [],
@@ -273,7 +283,6 @@ export const ESTADO_LABEL: Record<EstadoProcesso, string> = {
 export const ACAO_LABEL: Partial<Record<EstadoProcesso, string>> = {
   'Kit Reservado': 'Reservar kit',
   'Colheita Realizada': 'Registar colheita',
-  'Em Analise': 'Enviar ao laboratório para análise',
   'Resultado Disponivel': 'Registar resultado',
   Validado: 'Validar',
   Faturado: 'Emitir fatura',

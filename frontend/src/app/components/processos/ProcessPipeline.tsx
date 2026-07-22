@@ -7,6 +7,7 @@ import {
   ultimaAtualizacao,
   isAtrasado,
   resolvePipelineColumnKey,
+  permiteAvancoManualPipeline,
 } from '../../../lib/processos';
 import { PROCESS_STATE_COLORS, PANEL } from '../../../lib/design-tokens';
 import { StateTransitionMenu } from './StateTransitionMenu';
@@ -84,7 +85,7 @@ export function ProcessPipeline({ processos, onOpen, onTransition, canUpdate, co
                         <Clock className="w-3 h-3" />
                         {dias !== null ? `${dias}d` : '—'}
                       </span>
-                      {canUpdate && (
+                      {canUpdate && permiteAvancoManualPipeline(p.estado) && (
                         <StateTransitionMenu estado={p.estado} onTransition={(d) => onTransition(p, d)} size="sm" />
                       )}
                     </div>

@@ -22,9 +22,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     try {
       const saved = localStorage.getItem('crm-theme');
-      if (saved === 'dark' || saved === 'light' || saved === 'system') return saved;
+      if (saved === 'dark' || saved === 'light') return saved;
+      // Tema claro por defeito (inclui utilizadores que tinham "system").
+      if (saved === 'system') return 'light';
     } catch {}
-    return 'system';
+    return 'light';
   });
 
   const [systemDark, setSystemDark] = useState(() => getSystemTheme() === 'dark');

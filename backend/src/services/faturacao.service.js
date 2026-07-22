@@ -119,6 +119,13 @@ exports.registarPagamento = async (processoId, data, user) => {
     throw new Error('Nao e possivel registar pagamento antes de emitir a fatura.');
   }
   if (!data.recibo_numero || !String(data.recibo_numero).trim()) {
+    if (!processo.numero_processo) {
+      throw new Error('Numero de recibo e obrigatorio ao marcar pagamento.');
+    }
+  }
+
+  const reciboNumero = String(data.recibo_numero || processo.numero_processo || '').trim();
+  if (!reciboNumero) {
     throw new Error('Numero de recibo e obrigatorio ao marcar pagamento.');
   }
 
@@ -128,7 +135,7 @@ exports.registarPagamento = async (processoId, data, user) => {
 
   await processosRepository.update(processoId, {
     pagamento_data: pagamentoData,
-    recibo_numero: String(data.recibo_numero).trim(),
+    recibo_numero: reciboNumero,
     pago: true,
   });
 
@@ -142,7 +149,7 @@ exports.registarPagamento = async (processoId, data, user) => {
 
   emit(EVENTS.PAGAMENTO_REGISTADO, {
     processo_id: processoId,
-    recibo_numero: String(data.recibo_numero).trim(),
+    recibo_numero: reciboNumero,
   });
 
   return exports.getFaturacao(processoId, user);

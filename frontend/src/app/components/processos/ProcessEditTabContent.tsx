@@ -334,6 +334,7 @@ export function ProcessEditTabContent({ tab, processo, edit, canUpdate, t }: Pro
               onChange={(fat) => updateForm(fat)}
               canUpdate={canUpdate}
               workflowDates={workflowDatesFromProcesso(form)}
+              numeroProcesso={form.numero}
             />
           </DetailSection>
         </DetailPanel>

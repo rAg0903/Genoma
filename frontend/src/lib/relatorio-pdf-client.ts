@@ -43,41 +43,6 @@ const asError = (e: unknown): Error => {
   return new Error('Falha ao gerar o PDF do relatório.');
 };
 
-const ensureHtml2Pdf = async (): Promise<Html2PdfApi> => {
-  const win = window as Window & { html2pdf?: Html2PdfApi };
-  if (win.html2pdf) return win.html2pdf;
-  await loadScript(document, '/js/html2pdf.bundle.min.js');
-  if (!win.html2pdf) throw new Error('Biblioteca PDF indisponível.');
-  return win.html2pdf;
-};
-
-/** Desativa temporariamente CSS da app (ex. Tailwind oklch) para o html2canvas não falhar. */
-const suspendAppStyles = (): (() => void) => {
-  const restore: Array<() => void> = [];
-  document.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
-    if (node.closest('[data-pdf-export-root]')) return;
-
-    if (node instanceof HTMLLinkElement) {
-      const prev = node.disabled;
-      node.disabled = true;
-      restore.push(() => {
-        node.disabled = prev;
-      });
-      return;
-    }
-
-    if (node instanceof HTMLStyleElement) {
-      const prev = node.getAttribute('media');
-      node.setAttribute('media', 'not all');
-      restore.push(() => {
-        if (prev) node.setAttribute('media', prev);
-        else node.removeAttribute('media');
-      });
-    }
-  });
-  return () => restore.forEach((fn) => fn());
-};
-
 const waitForImages = (doc: Document): Promise<void> =>
   Promise.all(
     Array.from(doc.images).map(
@@ -99,30 +64,29 @@ const waitForLayout = (): Promise<void> =>
   });
 
 /**
- * Gera PDF a partir do HTML da pré-visualização.
- * Usa o mesmo HTML preparado que a pré-visualização (WYSIWYG).
+ * Gera PDF a partir do HTML da pré-visualização, isolado num iframe invisível.
+ * Não altera CSS da app — evita flash da sidebar durante a exportação.
  */
 export async function exportRelatorioHtmlToPdfBase64(html: string): Promise<string> {
-  const html2pdf = await ensureHtml2Pdf();
   const prepared = prepareRelatorioHtmlForPdf(html);
 
   const iframe = document.createElement('iframe');
   iframe.setAttribute('data-pdf-export-root', '');
-  iframe.setAttribute('sandbox', 'allow-same-origin');
+  iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.tabIndex = -1;
   iframe.style.cssText = [
     'position:fixed',
-    'left:0',
+    'left:-10000px',
     'top:0',
     `width:${A4_WIDTH_PX}px`,
     'height:1200px',
     'border:0',
+    'opacity:0',
     'visibility:hidden',
     'pointer-events:none',
-    'z-index:-1',
   ].join(';');
   document.body.appendChild(iframe);
-
-  const resumeAppStyles = suspendAppStyles();
 
   try {
     await new Promise<void>((resolve, reject) => {
@@ -131,8 +95,13 @@ export async function exportRelatorioHtmlToPdfBase64(html: string): Promise<stri
       iframe.srcdoc = prepared;
     });
 
+    const iframeWin = iframe.contentWindow;
     const doc = iframe.contentDocument;
-    if (!doc) throw new Error('Falha ao preparar o relatório.');
+    if (!iframeWin || !doc) throw new Error('Falha ao preparar o relatório.');
+
+    await loadScript(doc, '/js/html2pdf.bundle.min.js');
+    const html2pdf = (iframeWin as Window & { html2pdf?: Html2PdfApi }).html2pdf;
+    if (!html2pdf) throw new Error('Biblioteca PDF indisponível.');
 
     await waitForImages(doc);
     await waitForLayout();
@@ -140,9 +109,11 @@ export async function exportRelatorioHtmlToPdfBase64(html: string): Promise<stri
     const page = doc.querySelector('.page') as HTMLElement | null;
     if (!page) throw new Error('Conteúdo do relatório não encontrado.');
 
+    // margin como número (não array): arrays criados no documento pai falham
+    // a validação do html2pdf dentro do iframe (realms diferentes).
     const blob = await html2pdf()
       .set({
-        margin: [0, 0, 0, 0],
+        margin: 0,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
           scale: 2,
@@ -151,9 +122,10 @@ export async function exportRelatorioHtmlToPdfBase64(html: string): Promise<stri
           backgroundColor: '#ffffff',
           scrollX: 0,
           scrollY: 0,
+          window: iframeWin,
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'] },
+        pagebreak: { mode: 'css legacy' },
       })
       .from(page)
       .outputPdf('blob');
@@ -162,7 +134,6 @@ export async function exportRelatorioHtmlToPdfBase64(html: string): Promise<stri
   } catch (e) {
     throw asError(e);
   } finally {
-    resumeAppStyles();
     iframe.remove();
   }
 }

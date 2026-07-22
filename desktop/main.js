@@ -11,6 +11,7 @@ const http = require('http');
 const { fork } = require('child_process');
 const dotenv = require('dotenv');
 
+const { getClearAuthScript, DESKTOP_UA_TAG } = require('./clear-auth');
 const { ensureDatabaseRunning } = require('./database');
 const {
   getBackendDir,
@@ -42,6 +43,10 @@ function buildBackendEnv() {
   fs.mkdirSync(uploadsDir, { recursive: true });
   fs.mkdirSync(logsDir, { recursive: true });
 
+  const macChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  const puppeteerExecutable = process.env.PUPPETEER_EXECUTABLE_PATH
+    || (fs.existsSync(macChrome) ? macChrome : undefined);
+
   return {
     ...process.env,
     ELECTRON_RUN_AS_NODE: '1',
@@ -61,6 +66,7 @@ function buildBackendEnv() {
     LOG_DIR: logsDir,
     BACKUP_DIR: path.join(userData, 'backups'),
     PWD: backendDir,
+    ...(puppeteerExecutable ? { PUPPETEER_EXECUTABLE_PATH: puppeteerExecutable } : {}),
   };
 }
 
@@ -146,6 +152,11 @@ function stopBackend() {
   backendProcess = null;
 }
 
+function clearAuthInWindow(win) {
+  if (!win || win.isDestroyed()) return;
+  win.webContents.executeJavaScript(getClearAuthScript()).catch(() => {});
+}
+
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -161,12 +172,19 @@ async function createWindow() {
     },
   });
 
+  const defaultUa = mainWindow.webContents.getUserAgent();
+  mainWindow.webContents.setUserAgent(`${defaultUa} ${DESKTOP_UA_TAG}`);
+
   mainWindow.once('ready-to-show', () => mainWindow?.show());
   await mainWindow.loadURL(`http://127.0.0.1:${DESKTOP_PORT}/`);
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  mainWindow.on('close', () => {
+    clearAuthInWindow(mainWindow);
   });
 
   mainWindow.on('closed', () => {
@@ -228,6 +246,7 @@ app.on('activate', async () => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  clearAuthInWindow(mainWindow);
   stopBackend();
 });
 

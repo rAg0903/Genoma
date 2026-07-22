@@ -162,7 +162,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Logo */}
       <div className={`h-16 px-5 border-b ${APP.sidebarSectionBorder} flex items-center justify-between`}>
         <div className="flex items-center gap-3">
-          <GenomaLogo className="h-8 w-auto" />
+          <GenomaLogo className="h-9 w-auto max-w-[180px]" />
         </div>
         {/* Close button - mobile only */}
         <button

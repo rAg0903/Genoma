@@ -1,0 +1,32 @@
+CRM Genoma — instalação rápida
+================================
+
+Pré-requisitos: Node.js 18+, MariaDB/MySQL, npm
+
+1. Instalar dependências
+   cd backend && npm install
+   cd ../frontend && npm install
+
+2. Configurar base de dados
+   cp backend/.env.example backend/.env
+   (editar DB_PASSWORD e JWT_SECRET)
+   mysql -u root -p < database/genoma_export.sql
+   — ou — npm run migrate --prefix backend
+
+3. Modo online (browser)
+   Terminal 1: npm run backend:dev   (na pasta backend, ou npm run backend:dev na raiz)
+   Terminal 2: npm run frontend:dev  (na raiz do projecto)
+   Abrir: http://localhost:5173
+
+4. Modo desktop (Mac/Windows)
+   npm run desktop:install
+   npm run desktop:dev
+
+Credenciais demo (após importar genoma_export.sql):
+  admin.teste@genoma.local / Teste1234!
+
+Guia completo para instalação num PC novo: INSTALACAO.md
+Documentação técnica: README.md
+Repositório: https://github.com/rAg0903/Genoma
+
+Autores: Ricardo Rodrigues, Rafael Males, Daniel Pereira, Alberto Macieira

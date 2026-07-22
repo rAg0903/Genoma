@@ -24,7 +24,7 @@ import { StatusBadge } from '../shared/StatusBadge';
 import { StateTransitionMenu } from './StateTransitionMenu';
 import { PROCESS_STATUS_STYLES } from '../../../lib/design-system';
 import { CONTROL, DRAWER, formatEUR, MODAL } from '../../../lib/design-tokens';
-import { EstadoProcesso, buildProcessHistoricoSteps, buildProcessWorkflowSteps, ESTADO_LABEL } from '../../../lib/processos';
+import { EstadoProcesso, buildProcessHistoricoSteps, buildProcessWorkflowSteps, ESTADO_LABEL, permiteAvancoManualPipeline } from '../../../lib/processos';
 import { processosApi, FaturacaoProcesso, AnexoProcesso } from '../../../lib/api-processos';
 import { downloadAnexoFile } from '../../../lib/api';
 import { formatCalendarDatePt } from '../../../lib/dates';
@@ -34,6 +34,7 @@ import { FormRadixSelect } from '../shared/FormPageChrome';
 import { useAuth } from '../../context/AuthContext';
 import { canManageProcessoOperacional } from '../../../lib/processo-access';
 import { RelatorioPreviewFrame } from '../shared/RelatorioPreviewFrame';
+import { gerarRelatorioComPdfCliente } from '../../../lib/gerar-relatorio-cliente';
 
 type TabId = 'resumo' | 'workflow' | 'resultado' | 'relatorio' | 'faturacao' | 'trace' | 'historico';
 
@@ -192,7 +193,7 @@ function ResumoTab({
         label="Estado actual"
         value={ESTADO_LABEL[processo.estado]}
         hint={processo.estado === 'Cancelado' && processo.motivo_anulacao_nome ? `Motivo: ${processo.motivo_anulacao_nome}` : undefined}
-        action={canUpdate ? <StateTransitionMenu estado={processo.estado} onTransition={(d) => onUpdateEstado(processo, d)} /> : undefined}
+        action={canUpdate && permiteAvancoManualPipeline(processo.estado) ? <StateTransitionMenu estado={processo.estado} onTransition={(d) => onUpdateEstado(processo, d)} /> : undefined}
       />
 
       <DrawerPanel>
@@ -227,7 +228,7 @@ function WorkflowTab({ processo, onUpdateEstado, canUpdate }: { processo: Proces
           title="Percurso do processo"
           icon={GitBranch}
           subtitle="Estados concluídos, actual e próximas etapas"
-          action={canUpdate ? <StateTransitionMenu estado={processo.estado} onTransition={(d) => onUpdateEstado(processo, d)} size="sm" /> : undefined}
+          action={canUpdate && permiteAvancoManualPipeline(processo.estado) ? <StateTransitionMenu estado={processo.estado} onTransition={(d) => onUpdateEstado(processo, d)} size="sm" /> : undefined}
         />
         <DrawerPanelContent>
           <Timeline steps={buildProcessWorkflowSteps(processo)} />
@@ -264,7 +265,7 @@ function RelatorioTab({ processo, canUpdate, onChanged }: { processo: Processo; 
   const gerar = async () => {
     setBusy(true);
     try {
-      const res = await processosApi.gerarRelatorio(processo.id);
+      const res = await gerarRelatorioComPdfCliente(processo.id);
       if (res.skipped) {
         toast.info('Relatório inalterado — o PDF mais recente já reflecte estes dados.');
       } else {
@@ -437,7 +438,11 @@ function FaturacaoTab({ processo, canUpdate, onChanged }: { processo: Processo; 
   const [busy, setBusy] = useState(false);
   const [valorBase, setValorBase] = useState('');
   const [desconto, setDesconto] = useState('0');
-  const [recibo, setRecibo] = useState('');
+  const [recibo, setRecibo] = useState(processo.numero || '');
+
+  useEffect(() => {
+    setRecibo(processo.numero || '');
+  }, [processo.numero]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -491,7 +496,9 @@ function FaturacaoTab({ processo, canUpdate, onChanged }: { processo: Processo; 
             <DrawerField label="Estado" value={paga ? 'Paga' : emitida ? 'Emitida (por pagar)' : 'Sem fatura'} />
             <DrawerField label="Nº fatura" value={data?.fatura_numero} mono />
             <DrawerField label="Valor final" value={data ? formatEUR(data.valor_final) : '—'} />
-            <DrawerField label="Recibo" value={data?.recibo_numero} mono />
+            {data?.pagamento_data && (
+              <DrawerField label="Recibo" value={data?.recibo_numero || processo.numero} mono />
+            )}
           </DrawerFieldGrid>
         </DrawerPanelContent>
       </DrawerPanel>
@@ -519,7 +526,7 @@ function FaturacaoTab({ processo, canUpdate, onChanged }: { processo: Processo; 
           <DrawerPanelHeader title="Registar pagamento" icon={CheckCircle2} />
           <DrawerPanelContent className="space-y-3">
             <div className="flex flex-col gap-2 sm:flex-row">
-              <input value={recibo} onChange={(e) => setRecibo(e.target.value)} placeholder="Nº de recibo" className={`${CONTROL.input} flex-1`} />
+              <input value={recibo} readOnly placeholder="Nº de recibo" className={`${CONTROL.input} flex-1 font-mono`} />
               <button type="button" onClick={pagar} disabled={!canUpdate || busy || !recibo.trim()} className={`${CONTROL.buttonSecondary} shrink-0 border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/20`}>
                 <CheckCircle2 className="h-4 w-4" /> Marcar como paga
               </button>

@@ -209,9 +209,9 @@ export function AccountSettingsModal({ open, onClose }: AccountSettingsModalProp
                 value={theme}
                 onChange={(v) => setTheme(v as Theme)}
                 options={[
-                  { value: 'system', label: t('settings.themeSystem') },
                   { value: 'light', label: t('settings.themeLight') },
                   { value: 'dark', label: t('settings.themeDark') },
+                  { value: 'system', label: t('settings.themeSystem') },
                 ]}
               />
             </SettingRow>

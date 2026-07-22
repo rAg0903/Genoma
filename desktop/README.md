@@ -15,11 +15,25 @@ Aplicação nativa que arranca automaticamente:
 
 ## Desenvolvimento (app desktop)
 
+### Abrir com duplo clique (recomendado)
+
+Na pasta do projecto existe **`Genoma.app`**. Pode:
+
+1. Dar **duplo clique** em `Genoma.app`, ou
+2. Arrastar `Genoma.app` para o **Dock** / **Aplicações** e abrir de lá
+
+Na primeira execução pode compilar o frontend automaticamente (demora ~1 min).
+
+### Abrir pela linha de comandos
+
 ```bash
 # Na raiz do projecto
-npm run desktop:install   # primeira vez — instala Electron
-npm run desktop:dev       # compila frontend + abre Genoma.app
+npm run app             # abre Genoma.app (macOS)
+npm run desktop:install # primeira vez — instala Electron
+npm run desktop:dev     # compila frontend + abre via terminal
 ```
+
+**Não abrir** `desktop/node_modules/electron/dist/Electron.app` — isso mostra o ecrã genérico do Electron, não a Genoma.
 
 ## Gerar instalador
 

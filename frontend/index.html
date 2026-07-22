@@ -9,10 +9,22 @@
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       <script>
         (function () {
-          var theme = 'system';
-          try { theme = localStorage.getItem('crm-theme') || 'system'; } catch (e) {}
+          var theme = 'light';
+          try { theme = localStorage.getItem('crm-theme') || 'light'; } catch (e) {}
           var dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
           if (dark) document.documentElement.classList.add('dark');
+        })();
+      </script>
+      <script>
+        (function () {
+          if (!navigator.userAgent.includes('GenomaDesktop')) return;
+          var keys = ['token','authToken','jwtToken','access_token','genoma_user_role','genoma_role_permissions','genoma_stock_submodule_permissions','genoma_listings_submodule_permissions','genoma_definicoes_submodule_permissions','genoma_perfil_permissions_by_id'];
+          try {
+            for (var i = 0; i < keys.length; i++) {
+              localStorage.removeItem(keys[i]);
+              sessionStorage.removeItem(keys[i]);
+            }
+          } catch (e) {}
         })();
       </script>
       <title>Genoma CRM</title>

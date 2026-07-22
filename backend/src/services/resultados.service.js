@@ -141,6 +141,11 @@ exports.registarResultados = async (processoId, data, user) => {
     ? normalizeDateField(data.data_resultado)
     : new Date().toISOString().split('T')[0];
 
+  const hoje = new Date().toISOString().split('T')[0];
+  const dataEnvioLaboratorio = data.data_envio_laboratorio !== undefined
+    ? normalizeDateField(data.data_envio_laboratorio)
+    : (processo.data_envio_laboratorio || processo.data_colheita || hoje);
+
   await processosRepository.update(processoId, {
     status_id: 'Resultado Disponivel',
     resultado_tudo_ok: tudoOk,
@@ -153,9 +158,7 @@ exports.registarResultados = async (processoId, data, user) => {
       ? (data.resultado_cromossomas_sexuais || null)
       : undefined,
     id_amostra: data.id_amostra !== undefined ? (data.id_amostra || null) : undefined,
-    data_envio_laboratorio: data.data_envio_laboratorio !== undefined
-      ? normalizeDateField(data.data_envio_laboratorio)
-      : undefined,
+    data_envio_laboratorio: dataEnvioLaboratorio,
     data_chegada_laboratorio: data.data_recepcao_laboratorio !== undefined
       ? normalizeDateField(data.data_recepcao_laboratorio)
       : undefined,
@@ -189,14 +192,21 @@ exports.validarResultado = async (processoId, data, user) => {
     throw new Error('So e possivel validar processos com resultado disponivel.');
   }
 
-  await processosRepository.update(processoId, {
+  const hoje = new Date().toISOString().split('T')[0];
+  const patch = {
     status_id: 'Validado',
     relatorio_validado: true,
     data_validacao: data.data_validacao
       ? normalizeDateField(data.data_validacao)
-      : new Date().toISOString().split('T')[0],
+      : hoje,
     responsavel_fluxo: data.responsavel_fluxo || processo.responsavel_fluxo || null,
-  });
+  };
+
+  if (!processo.data_envio_laboratorio) {
+    patch.data_envio_laboratorio = processo.data_colheita || hoje;
+  }
+
+  await processosRepository.update(processoId, patch);
 
   if (user) {
     await logService.log({

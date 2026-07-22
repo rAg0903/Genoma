@@ -7,6 +7,7 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 const PDFDocument = require('pdfkit');
 const { buildRelatorioClinicoMaternityProposta1Html, RELATORIO_PROPOSTA1_A4_WIDTH_PX, RELATORIO_PROPOSTA1_A4_HEIGHT_PX } = require('../templates/relatorio-clinico-maternity-proposta1');
 
@@ -150,40 +151,71 @@ exports.gerarFaturaPdf = (opts) =>
 
 let browserPromise = null;
 
+const CHROME_LAUNCH_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--font-render-hinting=none',
+];
+
 const resolveChromePath = () => {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    const configured = process.env.PUPPETEER_EXECUTABLE_PATH;
+    if (fs.existsSync(configured)) return configured;
+  }
+
+  const candidates = [];
   if (process.platform === 'darwin') {
-    const macChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-    if (fs.existsSync(macChrome)) return macChrome;
-  }
-  if (process.platform === 'linux') {
-    for (const candidate of ['/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium']) {
-      if (fs.existsSync(candidate)) return candidate;
-    }
-  }
-  if (process.platform === 'win32') {
-    const winCandidates = [
+    candidates.push(
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+      path.join(process.env.HOME || '', 'Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
+    );
+  } else if (process.platform === 'linux') {
+    candidates.push('/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium');
+  } else if (process.platform === 'win32') {
+    candidates.push(
       process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe'),
       process.env.PROGRAMFILES && path.join(process.env.PROGRAMFILES, 'Google', 'Chrome', 'Application', 'chrome.exe'),
       process.env['PROGRAMFILES(X86)'] && path.join(process.env['PROGRAMFILES(X86)'], 'Google', 'Chrome', 'Application', 'chrome.exe'),
-    ].filter(Boolean);
-    for (const candidate of winCandidates) {
-      if (fs.existsSync(candidate)) return candidate;
-    }
+    );
   }
-  return undefined;
+
+  for (const candidate of candidates.filter(Boolean)) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
 };
 
 const getBrowser = async () => {
-  if (!browserPromise) {
-    const puppeteer = require('puppeteer');
-    const executablePath = resolveChromePath();
-    browserPromise = puppeteer.launch({
-      headless: true,
-      ...(executablePath ? { executablePath } : {}),
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--font-render-hinting=none'],
-    });
+  if (browserPromise) {
+    try {
+      return await browserPromise;
+    } catch {
+      browserPromise = null;
+    }
   }
+
+  const executablePath = resolveChromePath();
+  if (!executablePath) {
+    throw new Error(
+      'Nao foi possivel gerar o PDF no servidor: instale o Google Chrome ou defina PUPPETEER_EXECUTABLE_PATH.',
+    );
+  }
+
+  const puppeteer = require('puppeteer');
+  browserPromise = puppeteer.launch({
+    headless: true,
+    executablePath,
+    args: CHROME_LAUNCH_ARGS,
+    timeout: 60000,
+  }).catch((err) => {
+    browserPromise = null;
+    throw err;
+  });
+
   return browserPromise;
 };
 

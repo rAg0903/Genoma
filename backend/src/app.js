@@ -157,12 +157,30 @@ app.use('/api', (req, res, next) => {
 
 const frontendDist = process.env.SERVE_FRONTEND;
 if (frontendDist && fs.existsSync(frontendDist)) {
-  app.use(express.static(frontendDist, { index: false, maxAge: environment.isProduction ? '1h' : 0 }));
+  const desktopFrontend = process.env.DESKTOP_MODE === '1';
+  app.use(express.static(frontendDist, {
+    index: false,
+    maxAge: environment.isProduction && !desktopFrontend ? '1h' : 0,
+    setHeaders(res, filePath) {
+      if (!desktopFrontend) return;
+      if (filePath.endsWith('.html') || filePath.endsWith('.js')) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+      }
+    },
+  }));
 
   app.get(/^(?!\/api(?:\/|$)|\/health(?:\/|$)|\/api-docs).*/, (req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    if (/\.(js|mjs|css|map|ico|png|jpe?g|gif|webp|svg|woff2?|ttf|eot)$/i.test(req.path)) {
+      return res.status(404).json({ success: false, message: 'Asset não encontrado' });
+    }
     const indexHtml = path.join(frontendDist, 'index.html');
     if (!fs.existsSync(indexHtml)) return next();
+    if (desktopFrontend) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+    }
     res.sendFile(indexHtml);
   });
 

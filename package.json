@@ -10,7 +10,9 @@
     "frontend:build": "cd frontend && npm run build",
     "frontend:preview": "cd frontend && npm run preview",
     "desktop:install": "cd desktop && npm install",
+    "app": "open Genoma.app",
     "desktop:dev": "npm run frontend:build && cd desktop && npm start",
+    "desktop:open": "open Genoma.app",
     "desktop:pack:mac": "cd desktop && npm run pack:mac",
     "desktop:pack:win": "cd desktop && npm run pack:win"
   },

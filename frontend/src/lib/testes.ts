@@ -131,3 +131,97 @@ export function resolveParentFromTesteId(testes: Teste[], testeId?: string): Tes
   if (match) return match.parent;
   return findTestePrincipal(testes, testeId);
 }
+
+/** Nome do teste principal (nunca o sub-teste/pacote). */
+export function resolveTestePrincipalLabel(testes: Teste[], testeId?: string | null): string {
+  if (!testeId) return '';
+  const parent = resolveParentFromTesteId(testes, testeId);
+  if (parent && !parent.teste_pai_id) return parent.nome;
+  const principal = findTestePrincipal(testes, testeId);
+  return principal?.nome || '';
+}
+
+/** Campos clínicos aplicáveis ao teste/pacote seleccionado. */
+export interface TesteCamposClinicos {
+  showGravidez: boolean;
+  showTipoGravidez: boolean;
+  showOrigemConceicao: boolean;
+  showQuerSaberSexo: boolean;
+  showGestacao: boolean;
+  gestacaoMinimaSemanas: number | null;
+}
+
+const EMPTY_CAMPOS_CLINICOS: TesteCamposClinicos = {
+  showGravidez: false,
+  showTipoGravidez: false,
+  showOrigemConceicao: false,
+  showQuerSaberSexo: false,
+  showGestacao: false,
+  gestacaoMinimaSemanas: null,
+};
+
+function resolveTesteConfig(
+  testes: Teste[],
+  testeId?: string,
+): { teste: SubTeste | Teste; parent?: Teste } | undefined {
+  if (!testeId) return undefined;
+  const subMatch = findSubTeste(testes, testeId);
+  if (subMatch) return { teste: subMatch.sub, parent: subMatch.parent };
+  const principal = findTestePrincipal(testes, testeId);
+  if (principal) return { teste: principal };
+  return undefined;
+}
+
+function isTesteMaternity(parent: Teste | undefined, teste: SubTeste | Teste): boolean {
+  const tipoKit = parent?.tipo_kit || ('tipo_kit' in teste ? teste.tipo_kit : undefined);
+  if (tipoKit?.toLowerCase() === 'maternity') return true;
+  const nome = parent?.nome || teste.nome || '';
+  if (/maternity/i.test(nome)) return true;
+  return teste.gestacao_minima_semanas != null;
+}
+
+export function resolveCamposClinicosDoTeste(testes: Teste[], testeId?: string): TesteCamposClinicos {
+  const match = resolveTesteConfig(testes, testeId);
+  if (!match) return EMPTY_CAMPOS_CLINICOS;
+
+  const { teste, parent } = match;
+  if (!isTesteMaternity(parent, teste)) return EMPTY_CAMPOS_CLINICOS;
+
+  const showGestacao = teste.gestacao_minima_semanas != null || (teste.incluir_fracao_fetal ?? true);
+
+  return {
+    showGravidez: true,
+    showTipoGravidez: !!teste.gemeos,
+    showOrigemConceicao: true,
+    showQuerSaberSexo: !!teste.determinacao_sexo_fetal,
+    showGestacao,
+    gestacaoMinimaSemanas: teste.gestacao_minima_semanas ?? null,
+  };
+}
+
+export function sanitizeGravidezPorTeste<
+  T extends {
+    tipo_gravidez: string;
+    origem_conceicao: string;
+    quer_saber_sexo: boolean;
+    gestacao_semanas_registo: string;
+    gestacao_dias_registo: string;
+    gestacao_registada_em: string;
+  },
+>(gravidez: T, campos: TesteCamposClinicos): T {
+  if (!campos.showGravidez && !campos.showGestacao) return gravidez;
+
+  return {
+    ...gravidez,
+    ...(campos.showTipoGravidez ? {} : { tipo_gravidez: 'Singular' }),
+    ...(campos.showOrigemConceicao ? {} : { origem_conceicao: 'natural' }),
+    ...(campos.showQuerSaberSexo ? {} : { quer_saber_sexo: false }),
+    ...(campos.showGestacao
+      ? {}
+      : {
+          gestacao_semanas_registo: '',
+          gestacao_dias_registo: '',
+          gestacao_registada_em: '',
+        }),
+  };
+}

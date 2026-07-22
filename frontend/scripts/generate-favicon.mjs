@@ -8,17 +8,13 @@ const publicDir = path.join(root, 'public');
 const indexHtml = path.join(root, 'index.html');
 
 const icoSource = path.join(root, 'src/assets/genoma-logo_high_quality.ico');
-const pngSource = path.join(publicDir, 'genoma-logo.png');
+const legacyIco = path.join(publicDir, 'logo_genome.ico');
 const target = path.join(publicDir, 'favicon.ico');
 
-const source = fs.existsSync(icoSource) ? icoSource : (fs.existsSync(pngSource) ? pngSource : null);
+const source = fs.existsSync(icoSource) ? icoSource : (fs.existsSync(legacyIco) ? legacyIco : null);
 
 if (!source) {
-  if (fs.existsSync(target)) {
-    console.warn('generate-favicon: sem origem; mantém favicon.ico existente.');
-    process.exit(0);
-  }
-  console.error('generate-favicon: coloque genoma-logo.png em public/ ou genoma-logo_high_quality.ico em src/assets/');
+  console.error('generate-favicon: ficheiro .ico não encontrado em src/assets/');
   process.exit(1);
 }
 

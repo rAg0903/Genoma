@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { createPostalCodeAutofillHandlers } from '../../lib/postal-code-pt';
 import { ORIGEM_CONCEICAO_OPTIONS } from '../../lib/origem-conceicao';
 import { filterPostosNearContact, formatPostoOptionLabel, formatPostoProximidadeMotivo, hasValidContactPostalCode } from '../../lib/posto-proximity';
-import { getTestesComSubTestes, getTestesSelecionaveisComLabel, resolveParentFromTesteId, resolvePrecoTesteSelecionavel, resolveTesteSelecionavelLabel } from '../../lib/testes';
+import { getTestesComSubTestes, getTestesSelecionaveisComLabel, resolveCamposClinicosDoTeste, resolveParentFromTesteId, resolvePrecoTesteSelecionavel, resolveTestePrincipalLabel, resolveTesteSelecionavelLabel, sanitizeGravidezPorTeste } from '../../lib/testes';
 import { Contact, Processo } from '../data/types';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -22,6 +22,7 @@ import { buildContactClinicalPayload, buildContactPosConversao, contactTemProces
 import { todayLocal } from '../../lib/dates';
 import {
   buildFaturacaoPayload,
+  applyReciboFromProcesso,
   emptyProcessFaturacao,
   ProcessFaturacaoData,
   validateFaturacaoData,
@@ -42,8 +43,9 @@ import { parseGestacaoRegistoInput } from '../../lib/gestacao';
 import { CHECKBOX_INPUT_CLASS } from '../../lib/design-system';
 import { CONTROL, FORM } from '../../lib/design-tokens';
 import { CONTACT_TAB_IDS, withRecordQuery, type ContactTabId } from '../../lib/record-tabs';
-import { emptyColheitaForm, colheitaFromContact, colheitaToProcessoPayload } from '../../lib/colheita';
-import { ColheitaDetalheFields } from './shared/ColheitaFormFields';
+import { colheitaFromContact, colheitaToProcessoPayload, emptyColheitaForm } from '../../lib/colheita';
+import { workflowDatesFromContact } from '../../lib/workflow-faturacao';
+import { ColheitaPostoInfo, type ColheitaKitOption } from './shared/ColheitaFormFields';
 
 export type ContactFormEditHandle = {
   save: () => Promise<boolean>;
@@ -75,7 +77,7 @@ const emptyGravidez = {
 };
 const emptyColheita = emptyColheitaForm();
 
-interface KitOpcao { id: string; codigo_barras: string; tracking: string; tipo_kit: string; teste_nome?: string; data_validade: string }
+interface KitOpcao extends ColheitaKitOption {}
 
 const inputClass = CONTROL.input;
 
@@ -161,8 +163,12 @@ export function ContactFormPage({
   const [stockInfo, setStockInfo] = useState<{ disponiveis: number } | null>(null);
   const [checkingStock, setCheckingStock] = useState(false);
 
-  // Modal de seleção de kit + resultado
-  const [kitModal, setKitModal] = useState<{ open: boolean; loading: boolean; kits: KitOpcao[] }>({ open: false, loading: false, kits: [] });
+  // Modal de seleção de kit + confirmação
+  const [kitModal, setKitModal] = useState<{ open: boolean; loading: boolean; kits: KitOpcao[] }>({
+    open: false,
+    loading: false,
+    kits: [],
+  });
   const [kitPendingConfirm, setKitPendingConfirm] = useState<KitOpcao | null>(null);
   const [creatingProcesso, setCreatingProcesso] = useState(false);
   const [labPreview, setLabPreview] = useState<{ id: string; nome: string; codigo?: string } | null>(null);
@@ -211,6 +217,10 @@ export function ContactFormPage({
     const parent = resolveParentFromTesteId(testes, gravidez.teste_id);
     return parent?.tipo_kit || parent?.nome || 'Maternity';
   }, [testes, gravidez.teste_id]);
+  const camposClinicosTeste = useMemo(
+    () => resolveCamposClinicosDoTeste(testes, gravidez.teste_id),
+    [testes, gravidez.teste_id],
+  );
   const entidadesDoMedico = useMemo(() => {
     if (!gravidez.medico_id) return [];
     const medico = medicos.find((m) => m.utilizador_id === gravidez.medico_id);
@@ -249,6 +259,10 @@ export function ContactFormPage({
     ),
     [contacts, savedContactId, colheita.data_efetiva, colheita.data_prevista, contactProcessos],
   );
+  const contactNumeroProcesso = useMemo(
+    () => (savedContactId ? findProcessoDoContacto(savedContactId, processos)?.numero : undefined),
+    [savedContactId, processos],
+  );
   const [contactFaturacao, setContactFaturacao] = useState<ProcessFaturacaoData>(emptyProcessFaturacao());
   const [anulacao, setAnulacao] = useState({ anulado: false, motivo_anulacao_id: '' });
   const canEditFaturacao = canUpdate || canCreate;
@@ -269,7 +283,7 @@ export function ContactFormPage({
       estado_contacto: anulacao.anulado ? 'Cancelado' : null,
       motivo_anulacao_id: anulacao.anulado ? (anulacao.motivo_anulacao_id || null) : null,
     },
-    contactFaturacao,
+    applyReciboFromProcesso(contactFaturacao, contactNumeroProcesso),
   );
   const hydratedIdRef = useRef<string | null>(null);
   const moradaSnapshotRef = useRef<string | null>(null);
@@ -280,7 +294,7 @@ export function ContactFormPage({
       telemovel: c.telemovel, email: c.email, morada: c.morada, codigo_postal: c.codigo_postal || '',
       pais: c.pais || '', distrito: c.distrito || '', cidade: c.cidade || '', altura: c.altura || '', peso: c.peso || '',
     });
-    setGravidez({
+    setGravidez(sanitizeGravidezPorTeste({
       medico_id: c.medico_id || '',
       entidade_id: '',
       onde_seguida: c.onde_seguida || '',
@@ -292,7 +306,7 @@ export function ContactFormPage({
       gestacao_semanas_registo: c.gestacao_semanas_registo != null ? String(c.gestacao_semanas_registo) : '',
       gestacao_dias_registo: c.gestacao_dias_registo != null ? String(c.gestacao_dias_registo) : '',
       gestacao_registada_em: c.gestacao_registada_em || '',
-    });
+    }, resolveCamposClinicosDoTeste(testes, c.teste_id || '')));
     setColheita(colheitaFromContact(c));
     setNotas(c.notas_internas || '');
     setEstadoAgendamento(c.estado_agendamento || null);
@@ -445,9 +459,9 @@ export function ContactFormPage({
     setColheita((prev) => ({ ...prev, posto_id: '' }));
   }, [colheita.posto_id, contactoTemMoradaParaColheita, mostrarTodosPostos, postosAtivos, postosProximos]);
 
-  // Validação de stock quando posto + data prevista + teste estão preenchidos
+  // Validação de stock quando posto + teste estão preenchidos
   useEffect(() => {
-    if (!colheita.posto_id || !colheita.data_prevista || !gravidez.teste_id) {
+    if (!colheita.posto_id || !gravidez.teste_id) {
       setStockInfo(null);
       return;
     }
@@ -458,7 +472,7 @@ export function ContactFormPage({
       .catch(() => { if (!cancelled) setStockInfo(null); })
       .finally(() => { if (!cancelled) setCheckingStock(false); });
     return () => { cancelled = true; };
-  }, [colheita.posto_id, colheita.data_prevista, gravidez.teste_id, getPostoStock]);
+  }, [colheita.posto_id, gravidez.teste_id, getPostoStock]);
 
   const { handleCodigoPostalChange, autofillFromCp } = useMemo(
     () => createPostalCodeAutofillHandlers(setForm),
@@ -514,7 +528,7 @@ export function ContactFormPage({
       return false;
     }
     if (!anulacao.anulado && role !== 'Medico') {
-      const fatErr = validateFaturacaoData(contactFaturacao, contactWorkflowDates);
+      const fatErr = validateFaturacaoData(contactFaturacao, contactWorkflowDates, contactNumeroProcesso);
       if (fatErr) {
         toast.error(fatErr);
         focusTab('faturacao');
@@ -569,32 +583,16 @@ export function ContactFormPage({
     return () => { editRef.current = null; };
   });
 
-  // Ao preencher a Data Efetiva → abrir modal de seleção de kit
-  const handleDataEfetiva = async (value: string) => {
-    setColheita((c) => ({ ...c, data_efetiva: value }));
-    if (!value || linked) return;
-    if (anulacao.anulado) {
-      toast.error(t('pages.contacts.form.voidedBannerDetail'));
-      setColheita((c) => ({ ...c, data_efetiva: '' }));
-      return;
-    }
-    if (!colheita.posto_id) { toast.error(t('pages.contacts.form.toast.selectPostoFirst')); return; }
-    if (!gravidez.medico_id || !gravidez.teste_id) {
-      toast.error(t('pages.contacts.form.selectPackGravidez'));
-      focusTab('gravidez');
-      return;
-    }
-    const contactId = await ensureSaved();
-    if (!contactId) return;
+  const loadKitsModal = async (postoId: string, testeId: string) => {
     setKitModal({ open: true, loading: true, kits: [] });
     setLabPreview(null);
     try {
-      const kits = await getPostoKitsDisponiveis(colheita.posto_id, gravidez.teste_id);
+      const kits = await getPostoKitsDisponiveis(postoId, testeId);
       const token = getAuthToken();
-      if (token && colheita.posto_id) {
+      if (token) {
         try {
           const res = await apiRequest<{ data: { id: string; nome: string; codigo?: string } | null }>(
-            `/colheitas/laboratorio-final/preview?posto_id=${encodeURIComponent(colheita.posto_id)}`,
+            `/colheitas/laboratorio-final/preview?posto_id=${encodeURIComponent(postoId)}`,
             { token },
           );
           setLabPreview(res.data ?? null);
@@ -608,6 +606,43 @@ export function ContactFormPage({
       setLabPreview(null);
       toast.error(e instanceof Error ? e.message : t('pages.contacts.form.toast.loadKitsFailed'));
     }
+  };
+
+  const handlePickKitFromModal = (kit: KitOpcao) => {
+    setKitModal((prev) => ({ ...prev, open: false }));
+    setKitPendingConfirm(kit);
+  };
+
+  const handleDataEfetiva = async (value: string) => {
+    setColheita((c) => ({ ...c, data_efetiva: value }));
+    if (!value || linked) {
+      setKitModal({ open: false, loading: false, kits: [] });
+      setKitPendingConfirm(null);
+      setLabPreview(null);
+      return;
+    }
+    if (anulacao.anulado) {
+      toast.error(t('pages.contacts.form.voidedBannerDetail'));
+      setColheita((c) => ({ ...c, data_efetiva: '' }));
+      return;
+    }
+    if (!colheita.posto_id) {
+      toast.error(t('pages.contacts.form.toast.selectPostoFirst'));
+      setColheita((c) => ({ ...c, data_efetiva: '' }));
+      return;
+    }
+    if (!gravidez.medico_id || !gravidez.teste_id) {
+      toast.error(t('pages.contacts.form.selectPackGravidez'));
+      focusTab('gravidez');
+      setColheita((c) => ({ ...c, data_efetiva: '' }));
+      return;
+    }
+    const contactId = await ensureSaved();
+    if (!contactId) {
+      setColheita((c) => ({ ...c, data_efetiva: '' }));
+      return;
+    }
+    await loadKitsModal(colheita.posto_id, gravidez.teste_id);
   };
 
   const handleConfirmarKit = async () => {
@@ -666,6 +701,9 @@ export function ContactFormPage({
       setCreatingProcesso(false);
     }
   };
+
+  const kitTesteLegenda = (kit: KitOpcao) =>
+    resolveTestePrincipalLabel(testes, kit.teste_id) || kit.tipo_kit || t('pages.contacts.form.kit.defaultLabel');
 
   const initials = (form.nome || t('pages.contacts.form.header.newContact')).split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
   const podeGuardar = savedContactId ? canUpdate : canCreate;
@@ -932,7 +970,10 @@ export function ContactFormPage({
                   >
                     <FormRadixSelect
                       value={gravidez.teste_id}
-                      onChange={(v) => setGravidez({ ...gravidez, teste_id: v })}
+                      onChange={(v) => setGravidez((prev) => sanitizeGravidezPorTeste(
+                        { ...prev, teste_id: v },
+                        resolveCamposClinicosDoTeste(testes, v),
+                      ))}
                       disabled={!gravidez.teste_pai_id}
                       placeholder={
                         gravidez.teste_pai_id ? t('pages.contacts.form.selectPack') : t('pages.contacts.form.selectTestFirst')
@@ -943,53 +984,84 @@ export function ContactFormPage({
                 </div>
               </DetailSection>
 
-              <DetailDivider />
-
-              <DetailSection title={t('pages.contacts.form.sections.pregnancy')} icon={Baby}>
-                <div className={FORM.fieldRow}>
-                  <FormField label={t('form.fields.pregnancyType')} width="md">
-                    <FormRadixSelect
-                      value={gravidez.tipo_gravidez}
-                      onChange={(v) => setGravidez({ ...gravidez, tipo_gravidez: v })}
-                      options={[
-                        { value: 'Singular', label: t('form.options.pregnancyType.singular') },
-                        { value: 'Gemelar', label: t('form.options.pregnancyType.twin') },
-                      ]}
-                    />
-                  </FormField>
-                  <FormField label={t('form.fields.conceptionOrigin')} width="xl">
-                    <FormRadixSelect
-                      value={gravidez.origem_conceicao}
-                      onChange={(v) => setGravidez({ ...gravidez, origem_conceicao: v })}
-                      options={origemConceicaoOptions}
-                    />
-                  </FormField>
-                  <FormField label={t('form.fields.preferences')} width="lg" controlClassName="flex items-center">
-                    <label className={`${FORM.checkboxRow} inline-flex`}>
-                      <input
-                        type="checkbox"
-                        checked={gravidez.quer_saber_sexo}
-                        onChange={(e) => setGravidez({ ...gravidez, quer_saber_sexo: e.target.checked })}
-                        className={CHECKBOX_INPUT_CLASS}
-                      />
-                      <span>{t('pages.contacts.form.hints.wantsGender')}</span>
-                    </label>
-                  </FormField>
+              {!gravidez.teste_id ? (
+                <div className="px-5 pb-5 sm:px-6">
+                  <FormSectionNote>{t('pages.contacts.form.hints.selectPackForClinicalFields')}</FormSectionNote>
                 </div>
-              </DetailSection>
+              ) : null}
 
-              <DetailDivider />
+              {camposClinicosTeste.showGravidez && (
+                camposClinicosTeste.showTipoGravidez
+                  || camposClinicosTeste.showOrigemConceicao
+                  || camposClinicosTeste.showQuerSaberSexo
+              ) ? (
+                <>
+                  <DetailDivider />
 
-              <DetailSection title={t('pages.contacts.form.sections.gestation')} icon={CalendarDays}>
-                <GestacaoFields
-                  semanasRegisto={gravidez.gestacao_semanas_registo}
-                  diasRegisto={gravidez.gestacao_dias_registo}
-                  dataRegisto={gestacaoDataRegisto}
-                  onSemanasChange={(value) => setGravidez({ ...gravidez, gestacao_semanas_registo: value })}
-                  onDiasChange={(value) => setGravidez({ ...gravidez, gestacao_dias_registo: value })}
-                  inputClass={inputClass}
-                />
-              </DetailSection>
+                  <DetailSection title={t('pages.contacts.form.sections.pregnancy')} icon={Baby}>
+                    <div className={FORM.fieldRow}>
+                      {camposClinicosTeste.showTipoGravidez ? (
+                        <FormField label={t('form.fields.pregnancyType')} width="md">
+                          <FormRadixSelect
+                            value={gravidez.tipo_gravidez}
+                            onChange={(v) => setGravidez({ ...gravidez, tipo_gravidez: v })}
+                            options={[
+                              { value: 'Singular', label: t('form.options.pregnancyType.singular') },
+                              { value: 'Gemelar', label: t('form.options.pregnancyType.twin') },
+                            ]}
+                          />
+                        </FormField>
+                      ) : null}
+                      {camposClinicosTeste.showOrigemConceicao ? (
+                        <FormField label={t('form.fields.conceptionOrigin')} width="xl">
+                          <FormRadixSelect
+                            value={gravidez.origem_conceicao}
+                            onChange={(v) => setGravidez({ ...gravidez, origem_conceicao: v })}
+                            options={origemConceicaoOptions}
+                          />
+                        </FormField>
+                      ) : null}
+                      {camposClinicosTeste.showQuerSaberSexo ? (
+                        <FormField label={t('form.fields.preferences')} width="lg" controlClassName="flex items-center">
+                          <label className={`${FORM.checkboxRow} inline-flex`}>
+                            <input
+                              type="checkbox"
+                              checked={gravidez.quer_saber_sexo}
+                              onChange={(e) => setGravidez({ ...gravidez, quer_saber_sexo: e.target.checked })}
+                              className={CHECKBOX_INPUT_CLASS}
+                            />
+                            <span>{t('pages.contacts.form.hints.wantsGender')}</span>
+                          </label>
+                        </FormField>
+                      ) : null}
+                    </div>
+                  </DetailSection>
+                </>
+              ) : null}
+
+              {camposClinicosTeste.showGestacao ? (
+                <>
+                  <DetailDivider />
+
+                  <DetailSection title={t('pages.contacts.form.sections.gestation')} icon={CalendarDays}>
+                    {camposClinicosTeste.gestacaoMinimaSemanas != null ? (
+                      <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+                        {t('pages.contacts.form.hints.gestacaoMinima', {
+                          weeks: camposClinicosTeste.gestacaoMinimaSemanas,
+                        })}
+                      </p>
+                    ) : null}
+                    <GestacaoFields
+                      semanasRegisto={gravidez.gestacao_semanas_registo}
+                      diasRegisto={gravidez.gestacao_dias_registo}
+                      dataRegisto={gestacaoDataRegisto}
+                      onSemanasChange={(value) => setGravidez({ ...gravidez, gestacao_semanas_registo: value })}
+                      onDiasChange={(value) => setGravidez({ ...gravidez, gestacao_dias_registo: value })}
+                      inputClass={inputClass}
+                    />
+                  </DetailSection>
+                </>
+              ) : null}
 
               <div className="px-5 pb-5 sm:px-6">
                 <FormSectionNote>
@@ -1057,8 +1129,13 @@ export function ContactFormPage({
                   </FormField>
                 </div>
 
-                {colheita.posto_id && colheita.data_prevista && (
-                  <div className="mt-4">
+                {colheita.posto_id && (
+                  <div className="mt-4 space-y-4">
+                    {(() => {
+                      const selectedPosto = postos.find((p) => p.id === colheita.posto_id);
+                      return selectedPosto ? <ColheitaPostoInfo posto={selectedPosto} /> : null;
+                    })()}
+
                     {!gravidez.teste_id ? (
                       <FormInlineAlert tone="warning">
                         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -1087,13 +1164,6 @@ export function ContactFormPage({
                     )}
                   </div>
                 )}
-
-                <ColheitaDetalheFields
-                  value={colheita}
-                  onChange={(patch) => setColheita({ ...colheita, ...patch })}
-                  selectedPosto={postos.find((p) => p.id === colheita.posto_id)}
-                  showPostoInfo={!!colheita.posto_id}
-                />
               </DetailSection>
 
               <DetailDivider />
@@ -1141,6 +1211,7 @@ export function ContactFormPage({
                   canUpdate={canEditFaturacao}
                   showMultibancoEnvio={false}
                   workflowDates={contactWorkflowDates}
+                  numeroProcesso={contactNumeroProcesso}
                 />
               </DetailSection>
             </DetailPanel>
@@ -1193,9 +1264,11 @@ export function ContactFormPage({
 
   const modals = (
     <>
-      {/* Modal de seleção de kit */}
       {kitModal.open && (
-        <AppModal title={t('pages.contacts.form.kit.modalSelectTitle')} onClose={() => { setKitModal({ open: false, loading: false, kits: [] }); setLabPreview(null); }}>
+        <AppModal
+          title={t('pages.contacts.form.kit.modalSelectTitle')}
+          onClose={() => setKitModal({ open: false, loading: false, kits: [] })}
+        >
           {labPreview && (
             <ModalAlert>
               {t('pages.contacts.form.kit.labPreview', {
@@ -1221,14 +1294,13 @@ export function ContactFormPage({
                 <button
                   key={k.id}
                   type="button"
-                  onClick={() => setKitPendingConfirm(k)}
+                  onClick={() => handlePickKitFromModal(k)}
                   className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/30 transition-colors text-left"
                 >
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-mono">{k.codigo_barras}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {k.teste_nome || k.tipo_kit || t('pages.contacts.form.kit.defaultLabel')}
-                      {k.data_validade ? t('pages.contacts.form.kit.validity', { date: new Date(k.data_validade).toLocaleDateString(localeTag) }) : ''}
+                      {kitTesteLegenda(k)}
                     </div>
                   </div>
                   <Package className="w-4 h-4 text-teal-600 dark:text-teal-400" />
@@ -1244,10 +1316,21 @@ export function ContactFormPage({
           title={t('pages.contacts.form.kit.confirmTitle')}
           icon={AlertTriangle}
           iconClassName="text-amber-600 dark:text-amber-400"
-          onClose={() => !creatingProcesso && setKitPendingConfirm(null)}
+          onClose={() => {
+            if (creatingProcesso) return;
+            setKitPendingConfirm(null);
+            if (colheita.data_efetiva && colheita.posto_id && gravidez.teste_id) {
+              setKitModal((prev) => ({ ...prev, open: true }));
+            }
+          }}
           footer={
             <ModalActions
-              onCancel={() => setKitPendingConfirm(null)}
+              onCancel={() => {
+                setKitPendingConfirm(null);
+                if (colheita.data_efetiva && colheita.posto_id && gravidez.teste_id) {
+                  setKitModal((prev) => ({ ...prev, open: true }));
+                }
+              }}
               onSubmit={() => void handleConfirmarKit()}
               cancelLabel={t('pages.contacts.form.kit.chooseOther')}
               submitLabel={creatingProcesso ? t('pages.contacts.form.kit.creatingProcess') : t('pages.contacts.form.kit.confirmCreate')}

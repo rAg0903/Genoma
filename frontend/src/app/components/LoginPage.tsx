@@ -3,6 +3,7 @@ import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { apiRequest } from '../../lib/api';
 import { notifyAuthChanged } from '../../lib/auth-session';
+import { isGenomaDesktop } from '../../lib/desktop-app';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -23,10 +24,11 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
   const { t } = useLanguage();
+  const isDesktopApp = isGenomaDesktop();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberSession, setRememberSession] = useState(true);
+  const [rememberSession, setRememberSession] = useState(!isDesktopApp);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -49,7 +51,9 @@ export function LoginPage() {
         },
       });
 
-      const storage = rememberSession ? window.localStorage : window.sessionStorage;
+      const storage = isDesktopApp || !rememberSession
+        ? window.sessionStorage
+        : window.localStorage;
       storage.setItem('token', response.token);
       notifyAuthChanged();
       navigate('/', { replace: true });
@@ -138,15 +142,21 @@ export function LoginPage() {
             </div>
 
             <div className="flex items-center justify-between gap-4 pt-1">
-              <label className="flex cursor-pointer items-center gap-2.5 text-slate-600 dark:text-slate-400" style={{ fontSize: '13px' }}>
-                <input
-                  type="checkbox"
-                  checked={rememberSession}
-                  onChange={(event) => setRememberSession(event.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 accent-teal-600 focus:ring-teal-500 dark:border-slate-600"
-                />
-                {t('login.rememberMe')}
-              </label>
+              {!isDesktopApp ? (
+                <label className="flex cursor-pointer items-center gap-2.5 text-slate-600 dark:text-slate-400" style={{ fontSize: '13px' }}>
+                  <input
+                    type="checkbox"
+                    checked={rememberSession}
+                    onChange={(event) => setRememberSession(event.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 accent-teal-600 focus:ring-teal-500 dark:border-slate-600"
+                  />
+                  {t('login.rememberMe')}
+                </label>
+              ) : (
+                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: '13px' }}>
+                  {t('login.desktopSessionHint')}
+                </span>
+              )}
               <Link
                 to="/forgot-password"
                 className="text-teal-700 transition-colors hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300"

@@ -168,12 +168,12 @@ exports.create = async (data) => {
       `INSERT INTO processos (
         id, numero_processo, paciente_id, medico_id, teste_id, empresa_id,
         posto, posto_id, kit_id, status_id, data_entrada, observacoes,
-        data_colheita, data_colheita_prevista, data_chegada_laboratorio, data_resultado, data_validacao, data_envio_relatorio,
+        data_colheita, data_colheita_prevista, data_envio_laboratorio, data_chegada_laboratorio, data_resultado, data_validacao, data_envio_relatorio,
         responsavel_fluxo, relatorio_validado, relatorio_enviado_para,
         resultado_tudo_ok, resultado_anomalias, fracao_fetal,
         fatura_emitida, fatura_numero, fatura_data_emissao, valor_base, desconto_percentual, valor_final,
         pagamento_data, recibo_numero, pago
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ,
       [
         id,
@@ -190,6 +190,7 @@ exports.create = async (data) => {
         data.observacoes || null,
         data.data_colheita || null,
         data.data_colheita_prevista || null,
+        data.data_envio_laboratorio || null,
         data.data_chegada_laboratorio || null,
         data.data_resultado || null,
         data.data_validacao || null,

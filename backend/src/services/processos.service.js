@@ -109,8 +109,8 @@ const TRANSICOES_VALIDAS = {
   'Agendado': ['Kit Reservado', 'Cancelado'],
   'Kit Reservado': ['Colheita Realizada', 'Agendado', 'Cancelado'],
   'Colheita Realizada': ['Em Analise', 'Cancelado'],
-  'Enviado Laboratorio': ['Resultado Disponivel', 'Cancelado'],
-  'Em Analise': ['Resultado Disponivel', 'Cancelado'],
+  'Enviado Laboratorio': ['Cancelado'],
+  'Em Analise': ['Cancelado'],
   'Resultado Disponivel': ['Validado', 'Cancelado'],
   'Validado': ['Faturado', 'Cancelado'],
   'Faturado': [],
@@ -447,10 +447,6 @@ exports.create = async (data, user) => {
     throw new Error('Desconto percentual deve estar entre 0 e 100.');
   }
 
-  if (workflowData.pagamento_data && !workflowData.recibo_numero) {
-    throw new Error('Numero de recibo e obrigatorio ao marcar pagamento.');
-  }
-
   const dataEntradaProcesso = workflowData.data_entrada || data.data_entrada || formatCalendarDate(new Date());
   if (workflowData.fatura_data_emissao) {
     assertFaturaDataEmissaoCoerente(dataEntradaProcesso, workflowData.fatura_data_emissao);
@@ -464,6 +460,15 @@ exports.create = async (data, user) => {
   if (!numeroProcesso) {
     throw new Error('Numero do processo (codigo do kit) e obrigatorio.');
   }
+
+  if (workflowData.pagamento_data && !workflowData.recibo_numero?.trim()) {
+    workflowData.recibo_numero = String(numeroProcesso).trim();
+  }
+
+  if (workflowData.pagamento_data && !workflowData.recibo_numero) {
+    throw new Error('Numero de recibo e obrigatorio ao marcar pagamento.');
+  }
+
   const existenteNumero = await processosRepository.findByNumero(numeroProcesso);
   if (existenteNumero) throw new Error('Ja existe um processo com este numero.');
 
@@ -599,6 +604,11 @@ exports.update = async (id, data, user) => {
     }
   }
 
+  if (workflowData.pagamento_data && !workflowData.recibo_numero?.trim()) {
+    const numeroRecibo = workflowData.numero_processo || processo.numero_processo;
+    if (numeroRecibo) workflowData.recibo_numero = String(numeroRecibo).trim();
+  }
+
   if (workflowData.pagamento_data && !workflowData.recibo_numero && !(processo.recibo_numero && workflowData.recibo_numero === undefined)) {
     throw new Error('Numero de recibo e obrigatorio ao marcar pagamento.');
   }
@@ -710,6 +720,9 @@ exports.update = async (id, data, user) => {
       && !processo.data_validacao
       && updateData.data_validacao === undefined) {
       updateData.data_validacao = formatCalendarDate(new Date());
+    }
+    if (statusResultante === 'Validado' && updateData.relatorio_validado === undefined) {
+      updateData.relatorio_validado = true;
     }
     if ((statusResultante === 'Faturado' || statusResultante === 'Cancelado') && !processo.data_conclusao) {
       updateData.data_conclusao = statusResultante === 'Cancelado'

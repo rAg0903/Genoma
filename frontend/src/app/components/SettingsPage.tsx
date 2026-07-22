@@ -573,7 +573,13 @@ function TiposKitTab({ canCreate, canUpdate, canDelete }: { canCreate: boolean; 
               ))}</tr>
             </thead>
             <tbody className={ADMIN_TABLE_BODY_CLASS}>
-              {filtered.map((item) => (
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-10 text-center text-[13px] text-slate-500 dark:text-slate-400">
+                    {tiposKit.length === 0 ? 'Nenhum tipo de kit registado.' : 'Nenhum resultado para a pesquisa.'}
+                  </td>
+                </tr>
+              ) : filtered.map((item) => (
                 <tr key={item.id} className={ADMIN_TABLE_ROW_CLASS}>
                   <td className="px-4 py-3 text-[13px] font-medium text-slate-800 dark:text-slate-100">{item.nome}</td>
                   <td className="px-4 py-3 text-[13px] text-slate-500 dark:text-slate-400">{testesPorTipoKit.get(item.nome) ?? 0}</td>

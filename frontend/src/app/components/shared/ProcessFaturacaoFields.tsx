@@ -4,6 +4,7 @@ import { todayLocal, formatCalendarDatePt, maxCalendarDate, normalizeCalendarDat
 import { CONTROL, DETAIL, FORM } from '../../../lib/design-tokens';
 import {
   ProcessFaturacaoData,
+  applyReciboFromProcesso,
   isDocumentoFaturaCompleto,
   computeValorFinal,
   sanitizeDecimalInput,
@@ -33,6 +34,8 @@ interface ProcessFaturacaoFieldsProps {
   canUpdate?: boolean;
   showMultibancoEnvio?: boolean;
   workflowDates: WorkflowMilestoneDates;
+  /** Nº do processo — preenche automaticamente o recibo quando há data de pagamento. */
+  numeroProcesso?: string;
 }
 
 function FaturacaoSubsection({ title, children }: { title: string; children: ReactNode }) {
@@ -52,6 +55,7 @@ export function ProcessFaturacaoFields({
   canUpdate = true,
   showMultibancoEnvio = false,
   workflowDates,
+  numeroProcesso,
 }: ProcessFaturacaoFieldsProps) {
   const { t } = useLanguage();
   const documentoCompleto = isDocumentoFaturaCompleto(value);
@@ -107,10 +111,10 @@ export function ProcessFaturacaoFields({
       }
     }
     if (!isDocumentoFaturaCompleto(next) && next.pago) {
-      onChange({ ...next, pago: false, pagamento_data: '', recibo_numero: '' });
+      onChange(applyReciboFromProcesso({ ...next, pago: false, pagamento_data: '', recibo_numero: '' }, numeroProcesso));
       return;
     }
-    onChange(next);
+    onChange(applyReciboFromProcesso(next, numeroProcesso));
   };
 
   return (
@@ -279,7 +283,8 @@ export function ProcessFaturacaoFields({
                     ? value.pagamento_data
                     : paymentMinDate
                 )
-                : value.pagamento_data,
+                : '',
+              recibo_numero: e.target.checked ? value.recibo_numero : '',
             })}
             disabled={!canUpdate || !documentoCompleto}
             className={CHECKBOX_INPUT_CLASS}
@@ -296,22 +301,37 @@ export function ProcessFaturacaoFields({
             <FormField label={t('faturacao.fields.paymentDate')} width="sm">
               <FormDatePicker
                 value={value.pagamento_data || ''}
-                onChange={(v) => set({ pagamento_data: v, pago: v ? true : value.pago })}
+                onChange={(v) => set({
+                  pagamento_data: v,
+                  pago: !!v,
+                  recibo_numero: v ? value.recibo_numero : '',
+                })}
                 disabled={!canUpdate}
                 allowAnyDate={false}
                 minDate={paymentMinDate}
                 allowExistingPastDate
               />
             </FormField>
-            <FormField label={t('faturacao.fields.receiptNumber')} width="md">
-              <FormInput
-                type="text"
-                value={value.recibo_numero || ''}
-                onChange={(e) => set({ recibo_numero: e.target.value })}
-                className="font-mono"
-                disabled={!canUpdate}
-              />
-            </FormField>
+            {value.pagamento_data && (
+              <FormField label={t('faturacao.fields.receiptNumber')} width="md">
+                {numeroProcesso ? (
+                  <input
+                    type="text"
+                    readOnly
+                    value={applyReciboFromProcesso(value, numeroProcesso).recibo_numero || ''}
+                    className={`${readOnlyClass} font-mono`}
+                  />
+                ) : (
+                  <FormInput
+                    type="text"
+                    value={value.recibo_numero || ''}
+                    onChange={(e) => set({ recibo_numero: e.target.value })}
+                    className="font-mono"
+                    disabled={!canUpdate}
+                  />
+                )}
+              </FormField>
+            )}
           </div>
         )}
       </div>
@@ -341,10 +361,10 @@ export function ProcessFaturacaoView({ value, showMultibancoEnvio = false }: { v
       )}
       <InfoField label={t('faturacao.fields.paid')} value={yesNo(!!value.pago)} />
       {value.pago && (
-        <>
-          <InfoField label={t('faturacao.fields.paymentDate')} value={fmt(value.pagamento_data)} />
-          <InfoField label={t('faturacao.fields.receiptNumber')} value={value.recibo_numero || ''} mono />
-        </>
+        <InfoField label={t('faturacao.fields.paymentDate')} value={fmt(value.pagamento_data)} />
+      )}
+      {value.pagamento_data && (
+        <InfoField label={t('faturacao.fields.receiptNumber')} value={value.recibo_numero || ''} mono />
       )}
     </div>
   );

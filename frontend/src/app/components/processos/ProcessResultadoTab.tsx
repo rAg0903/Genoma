@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { AlertTriangle, CheckCircle2, FlaskConical, Loader2 } from 'lucide-react';
 import { Processo } from '../../data/types';
 import { processosApi } from '../../../lib/api-processos';
+import { gerarRelatorioComPdfCliente } from '../../../lib/gerar-relatorio-cliente';
 import { CHECKBOX_INPUT_CLASS } from '../../../lib/design-system';
 import { CONTROL, DRAWER } from '../../../lib/design-tokens';
 import { formatCalendarDatePt } from '../../../lib/dates';
@@ -73,7 +74,6 @@ export function ProcessResultadoTab({
   const [fracaoFetal, setFracaoFetal] = useState('');
   const [cromossomasSexuais, setCromossomasSexuais] = useState('');
   const [resultadoSexuais, setResultadoSexuais] = useState('');
-  const [idAmostra, setIdAmostra] = useState('');
   const [dataEnvioLab, setDataEnvioLab] = useState('');
   const [dataRecepcaoLab, setDataRecepcaoLab] = useState('');
   const [dataRelatorioLab, setDataRelatorioLab] = useState('');
@@ -107,7 +107,6 @@ export function ProcessResultadoTab({
       setFracaoFetal(r.fracao_fetal || '');
       setCromossomasSexuais(r.cromossomas_sexuais || '');
       setResultadoSexuais(r.resultado_cromossomas_sexuais || '');
-      setIdAmostra(r.id_amostra || '');
       setDataEnvioLab(r.data_envio_laboratorio || '');
       setDataRecepcaoLab(r.data_recepcao_laboratorio || '');
       setDataRelatorioLab(r.data_relatorio_laboratorio || '');
@@ -164,7 +163,6 @@ export function ProcessResultadoTab({
         fracao_fetal: fracaoFetal || undefined,
         cromossomas_sexuais: cromossomasSexuais || undefined,
         resultado_cromossomas_sexuais: resultadoSexuais || undefined,
-        id_amostra: idAmostra || undefined,
         data_envio_laboratorio: dataEnvioLab || undefined,
         data_recepcao_laboratorio: dataRecepcaoLab || undefined,
         data_relatorio_laboratorio: dataRelatorioLab || undefined,
@@ -183,7 +181,14 @@ export function ProcessResultadoTab({
     setBusy(true);
     try {
       const res = await processosApi.validar(processo.id);
-      const rel = res.relatorio_arquivo;
+      let rel = res.relatorio_arquivo;
+      if (!rel?.anexo && !rel?.skipped) {
+        try {
+          rel = await gerarRelatorioComPdfCliente(processo.id);
+        } catch (pdfErr) {
+          console.warn('[resultados] Falha PDF cliente após validação:', pdfErr);
+        }
+      }
       if (rel?.skipped) {
         toast.success('Resultado validado. Relatório PDF inalterado.');
       } else if (rel?.anexo) {
@@ -248,16 +253,6 @@ export function ProcessResultadoTab({
                 onChange={setDataRelatorioLab}
                 disabled={!podeEditar}
                 className={CONTROL.input}
-              />
-            </div>
-            <div>
-              <div className={DRAWER.fieldLabel}>ID amostra</div>
-              <input
-                value={idAmostra}
-                onChange={(e) => setIdAmostra(e.target.value)}
-                disabled={!podeEditar}
-                className={CONTROL.input}
-                placeholder="Ex.: AM-2026-001"
               />
             </div>
           </DrawerFieldGrid>

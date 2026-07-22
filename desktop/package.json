@@ -22,12 +22,14 @@
   "build": {
     "appId": "pt.genoma.crm",
     "productName": "Genoma",
+    "icon": "assets/Genoma.icns",
     "directories": {
       "output": "dist"
     },
     "files": [
       "main.js",
-      "preload.js",
+      "clear-auth.js",
+    "preload.js",
       "database.js",
       "paths.js",
       ".env.desktop.example"

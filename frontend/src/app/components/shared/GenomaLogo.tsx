@@ -8,7 +8,7 @@ type GenomaLogoProps = {
   alt?: string;
 };
 
-export function GenomaLogo({ className = 'h-8 w-auto', alt = 'Genoma' }: GenomaLogoProps) {
+export function GenomaLogo({ className = 'h-9 w-auto max-w-[180px]', alt = 'Genoma' }: GenomaLogoProps) {
   const { isDark } = useTheme();
 
   return (

@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+# Finder arranca apps com PATH mínimo — garantir node/npm.
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+DESKTOP="$ROOT/desktop"
+DIST="$ROOT/frontend/dist/index.html"
+
+if [ ! -f "$DIST" ]; then
+  osascript -e 'display notification "A compilar interface…" with title "Genoma"'
+  npm run frontend:build --prefix "$ROOT"
+fi
+
+if [ ! -d "$DESKTOP/node_modules/electron" ]; then
+  npm install --prefix "$DESKTOP"
+fi
+
+cd "$DESKTOP"
+exec env -u ELECTRON_RUN_AS_NODE node node_modules/electron/cli.js .

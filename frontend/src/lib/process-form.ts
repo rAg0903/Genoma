@@ -150,36 +150,51 @@ export const isDocumentoFaturaCompleto = (data: ProcessFaturacaoData): boolean =
     Number(data.valor_final ?? 0) > 0
   );
 
+/** Nº de recibo = nº do processo quando existe data de pagamento. */
+export const applyReciboFromProcesso = (
+  data: ProcessFaturacaoData,
+  numeroProcesso?: string | null,
+): ProcessFaturacaoData => {
+  if (!data.pagamento_data?.trim()) {
+    return data.recibo_numero ? { ...data, recibo_numero: '' } : data;
+  }
+  const numero = numeroProcesso?.trim();
+  if (!numero) return data;
+  return { ...data, recibo_numero: numero };
+};
+
 export const validateFaturacaoData = (
   data: ProcessFaturacaoData,
   workflow?: WorkflowMilestoneDates,
+  numeroProcesso?: string | null,
 ): string | null => {
-  const faturaEmitida = !!(data.fatura_numero?.trim() || data.fatura_data_emissao);
-  if (faturaEmitida && !data.fatura_data_emissao) {
+  const faturacao = applyReciboFromProcesso(data, numeroProcesso);
+  const faturaEmitida = !!(faturacao.fatura_numero?.trim() || faturacao.fatura_data_emissao);
+  if (faturaEmitida && !faturacao.fatura_data_emissao) {
     return 'Preencha a data de emissão da fatura.';
   }
-  if (data.fatura_data_emissao) {
+  if (faturacao.fatura_data_emissao) {
     if (!workflow) {
       return 'Não foi possível validar a data de faturação em relação ao processo.';
     }
-    const workflowErr = validateFaturacaoWorkflowDate(workflow, data.fatura_data_emissao);
+    const workflowErr = validateFaturacaoWorkflowDate(workflow, faturacao.fatura_data_emissao);
     if (workflowErr) return workflowErr;
   }
-  if (data.pago && !isDocumentoFaturaCompleto(data)) {
+  if (faturacao.pago && !isDocumentoFaturaCompleto(faturacao)) {
     return 'Preencha o documento de fatura antes de marcar como pago.';
   }
-  if (data.pagamento_data && !data.recibo_numero?.trim()) {
+  if (faturacao.pagamento_data && !faturacao.recibo_numero?.trim()) {
     return 'Preencha o número de recibo ao marcar a fatura como paga.';
   }
-  if (data.pagamento_data && data.fatura_data_emissao) {
-    const paymentMin = normalizeCalendarDate(data.fatura_data_emissao);
-    if (normalizeCalendarDate(data.pagamento_data) < paymentMin) {
+  if (faturacao.pagamento_data && faturacao.fatura_data_emissao) {
+    const paymentMin = normalizeCalendarDate(faturacao.fatura_data_emissao);
+    if (normalizeCalendarDate(faturacao.pagamento_data) < paymentMin) {
       return 'A data de pagamento não pode ser anterior à data da fatura.';
     }
   }
-  if (data.pago && data.pagamento_data) {
-    const paymentMin = maxCalendarDate(todayLocal(), data.fatura_data_emissao);
-    if (normalizeCalendarDate(data.pagamento_data) < paymentMin) {
+  if (faturacao.pago && faturacao.pagamento_data) {
+    const paymentMin = maxCalendarDate(todayLocal(), faturacao.fatura_data_emissao);
+    if (normalizeCalendarDate(faturacao.pagamento_data) < paymentMin) {
       return 'A data de pagamento não pode ser anterior à data de hoje nem à data da fatura.';
     }
   }
@@ -257,10 +272,18 @@ export const validateProcessForm = (
       recibo_numero: formData.recibo_numero,
     } as ProcessFaturacaoData,
     workflowDatesFromProcesso(formData),
+    formData.numero,
   );
   if (faturacaoErr) return faturacaoErr;
 
-  if (formData.pagamento_data && !formData.recibo_numero.trim()) {
+  const faturacaoComRecibo = applyReciboFromProcesso(
+    {
+      pagamento_data: formData.pagamento_data,
+      recibo_numero: formData.recibo_numero,
+    } as ProcessFaturacaoData,
+    formData.numero,
+  );
+  if (formData.pagamento_data && !faturacaoComRecibo.recibo_numero?.trim()) {
     return 'Preencha o número de recibo ao marcar a fatura como paga.';
   }
 
@@ -275,8 +298,17 @@ export const buildProcessSubmitPayload = (formData: ProcessFormData): Partial<Pr
     ...editable
   } = formData;
 
+  const faturacaoComRecibo = applyReciboFromProcesso(
+    {
+      pagamento_data: formData.pagamento_data,
+      recibo_numero: formData.recibo_numero,
+    } as ProcessFaturacaoData,
+    formData.numero,
+  );
+
   return {
     ...editable,
+    ...faturacaoComRecibo,
     valor_final: computeValorFinal(formData.valor_base ?? 0, formData.desconto_percentual ?? 0),
     fatura_emitida: !!(formData.fatura_numero?.trim() || formData.fatura_data_emissao),
   };

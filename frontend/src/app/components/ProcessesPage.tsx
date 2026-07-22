@@ -25,6 +25,8 @@ import {
   isRelatorioPorEnviar, isFaturaPorEmitir, isAntigo, resolveDataConclusao, proximosEstados,
 } from '../../lib/processos';
 import { canManageProcessoOperacional } from '../../lib/processo-access';
+import { needsTransitionConfirm } from '../../lib/process-data-quality';
+import { processosApi } from '../../lib/api-processos';
 import { isProcessoLaboratorio } from '../../lib/contactos';
 import { deleteTargetLabel } from '../../lib/confirm-delete';
 import { useConfirmDelete } from '../context/ConfirmDeleteContext';
@@ -165,7 +167,12 @@ export function ProcessesPage() {
       if (!ok) return;
     }
     try {
-      await updateProcesso(p.id, { estado: destino });
+      if (destino === 'Validado') {
+        await processosApi.validar(p.id);
+        await refreshProcessos();
+      } else {
+        await updateProcesso(p.id, { estado: destino });
+      }
       setDrawerProcesso((prev) => (prev?.id === p.id ? { ...prev, estado: destino } : prev));
       notifySuccess(`${p.numero} → ${ESTADO_LABEL[destino]}`);
     } catch (e) {
@@ -221,8 +228,16 @@ export function ProcessesPage() {
     }
     let ok = 0;
     for (const p of targets) {
-      try { await updateProcesso(p.id, { estado: destino }); ok += 1; } catch { /* skip invalid */ }
+      try {
+        if (destino === 'Validado') {
+          await processosApi.validar(p.id);
+        } else {
+          await updateProcesso(p.id, { estado: destino });
+        }
+        ok += 1;
+      } catch { /* skip invalid */ }
     }
+    if (destino === 'Validado') await refreshProcessos();
     notifySuccess(`${ok}/${targets.length} processos atualizados.`);
     clearSelection();
   };
